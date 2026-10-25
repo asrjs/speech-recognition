@@ -98,6 +98,31 @@ def suppress_logits(logits: np.ndarray, token_ids: list[int] | None):
             logits[..., tid] = -np.inf
 
 
+def build_decoder_step_feed(step_sess, step_input: np.ndarray, past_kv: dict[str, np.ndarray]):
+    """Build decoder-step inputs, including position metadata when the graph needs it."""
+    feed = {"input_ids": step_input, **past_kv}
+    input_names = {item.name for item in step_sess.get_inputs()}
+    if "cache_position" in input_names:
+        decoder_key = next(
+            (
+                value
+                for name, value in past_kv.items()
+                if name.startswith("past_key_values.") and name.endswith(".decoder.key")
+            ),
+            None,
+        )
+        if decoder_key is None or decoder_key.ndim < 3:
+            raise ValueError(
+                "decoder_step requires cache_position but no decoder self-attention cache was found"
+            )
+        cache_length = int(decoder_key.shape[-2])
+        token_count = int(step_input.shape[-1])
+        feed["cache_position"] = np.arange(
+            cache_length, cache_length + token_count, dtype=np.int64
+        )
+    return feed
+
+
 def onnx_infer(
     ort_sessions: dict,
     manifest: dict,
@@ -155,7 +180,7 @@ def onnx_infer(
     # Step loop
     while not eos_stopped and len(generated) < max_new_tokens:
         step_input = np.array([[next_token]], dtype=np.int64)
-        step_out = step_sess.run(None, {"input_ids": step_input, **past_kv})
+        step_out = step_sess.run(None, build_decoder_step_feed(step_sess, step_input, past_kv))
         step_names = [o.name for o in step_sess.get_outputs()]
 
         logits_s = step_out[0]

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "app": "showcase",
+  "modelId": "nemotron-3.5-asr-streaming-0.6b",
+  "source": "local",
+  "descriptorSources": [
+    "huggingface",
+    "local"
+  ],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu",
+  "requestedEncoderBackend": "webgpu",
+  "requestedDecoderBackend": "wasm",
+  "requestedEncoderQuant": "fp16",
+  "requestedDecoderQuant": "fp32",
+  "requestedComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "modelDir": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\mixed-fp16-named",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "FAIL",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "MISMATCH",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[LocalFolder] Folder input fallback selected files {count: 7}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 7, folderName: mixed-fp16-named}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Detected artifacts {encoder: Array(1), decoder: Array(1), tokenizers: Array(1), preprocessors: Array(0)}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Starting model load from local artifacts"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-24 19:22:03.756620 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-24 19:22:03.758980 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Selected artifacts {encoder: encoder_fp16.onnx, decoder: decoder.onnx, tokenizer: vocab.txt, preprocessorBackend: js, preprocessor: null}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Model sessions created from local artifacts"
+    },
+    {
+      "type": "log",
+      "text": "[LoadModel] Running warm-up verification transcription"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Fetching audio from: /showcase/assets/Harvard-L2-1-B6X4PDwP.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[App] Model verification successful."
+    },
+    {
+      "type": "timeEnd",
+      "text": "LoadModel: 11924.2861328125 ms"
+    },
+    {
+      "type": "timeEnd",
+      "text": "Transcribe-jfk2.en.wav: 4503.598876953125 ms"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 11093,
+    "file": 26928,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T19:21:52+0300",
+  "testBrowserProfile": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\nemotron-gpu-profile",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "actualEncoderQuant": "fp16",
+  "actualDecoderQuant": "fp32",
+  "actualBackend": "webgpu-hybrid",
+  "activeStage": "file-flow-running",
+  "loadPageText": "A\nASRJS\nTranscribe\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nMODEL CONFIGURATION\nModel Source\nHugging Face\nLocal folder\nexpand_more\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nexpand_more\nLocal Model Folder\nmixed-fp16-named\nfolder_open\n\nSelected 7 files from \"mixed-fp16-named\".\n\nFolder access can be persisted in this browser (you may be asked permission on revisit).\n\nEncoder dtypes: fp16\n\nDecoder dtypes: fp32\n\nTokenizers: vocab.txt\n\nFrontend ONNX: none\n\nRuntime Backend\nWebGPU\nWASM\nexpand_more\nEncoder Backend\nwebgpu\nwasm\nexpand_more\nDecoder Backend\nwasm\nwebgpu\nexpand_more\nThreads\nStride\nEncoder\nfp16\nexpand_more\nDecoder\nfp32\nexpand_more\nFrontend\nJS frontend\nexpand_more\n\nShared pure-JS NeMo frontend. This is the expected path for hosted RNNT models and for local folders without nemo*.onnx frontend assets.\n\nTokenizer\nvocab.txt\nexpand_more\nVerbose\nLog results\nEnable profiling\nbolt\nModel Loaded\nStatus:\nModel ready\ncheck_circle\nMulti-threaded (12 cores)\nTEST & TRANSCRIBE\nLanguage\nEnglish\nexpand_more\nLoad English Sample\ncloud_upload\n\nDrag & drop audio file here, or click to select\n\nSupports .wav, .mp3, .ogg\n\nTRANSCRIPTION COMPARISON\nTranscription\n\nTranscription will appear here...\n\nReference Text\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "nemotron-3.5-asr-streaming-0.6b",
+  "transcript": "And so my fellow Americans ask not what your country can do for you at what you can do for your country",
+  "verificationErrors": [
+    "Transcript is partial, duplicated, or differs from exact oracle"
+  ],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-24T19:22:15+0300"
+}

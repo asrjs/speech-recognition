@@ -259,8 +259,14 @@ export function resampleLinearWaveform(
  * HuggingFace `Wav2Vec2Processor` / WhisperX preprocessing:
  * zero-mean, unit-variance waveform before the feature encoder.
  */
-export function normalizeWav2Vec2Waveform(samples: Float32Array): Float32Array {
+export function normalizeWav2Vec2Waveform(
+  samples: Float32Array,
+  epsilon = 1e-7,
+): Float32Array {
   if (samples.length === 0) return samples;
+  if (!(epsilon > 0) || !Number.isFinite(epsilon)) {
+    throw new Error(`Invalid Wav2Vec2 waveform normalization epsilon: ${epsilon}`);
+  }
   let sum = 0;
   for (let index = 0; index < samples.length; index += 1) {
     sum += samples[index] ?? 0;
@@ -271,7 +277,7 @@ export function normalizeWav2Vec2Waveform(samples: Float32Array): Float32Array {
     const delta = (samples[index] ?? 0) - mean;
     varianceSum += delta * delta;
   }
-  const std = Math.sqrt(varianceSum / samples.length + 1e-7);
+  const std = Math.sqrt(varianceSum / samples.length + epsilon);
   const output = new Float32Array(samples.length);
   const invStd = 1 / std;
   for (let index = 0; index < samples.length; index += 1) {
@@ -284,8 +290,12 @@ export function prepareWav2Vec2Waveform(
   samples: Float32Array,
   sourceSampleRate: number,
   targetSampleRate: number,
+  epsilon = 1e-7,
 ): Float32Array {
-  return normalizeWav2Vec2Waveform(resampleLinearWaveform(samples, sourceSampleRate, targetSampleRate));
+  return normalizeWav2Vec2Waveform(
+    resampleLinearWaveform(samples, sourceSampleRate, targetSampleRate),
+    epsilon,
+  );
 }
 
 // ---------------------------------------------------------------------------

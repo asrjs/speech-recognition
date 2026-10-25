@@ -59,6 +59,27 @@ describe('Moonshine model allocation ownership', () => {
     expect(initOrt).toHaveBeenCalledWith('wasm', expect.any(Object));
   });
 
+  it('rejects incompatible per-layer decoder caches before inference and releases the graph set', async () => {
+    const releases = [vi.fn(), vi.fn(), vi.fn()];
+    const run = vi.fn();
+    let index = 0;
+    vi.mocked(initOrt).mockResolvedValue({ InferenceSession: {
+      create: async () => ({
+        inputNames: ['input_ids', 'past_key_values.0.decoder.key'],
+        outputNames: ['logits', 'present.0.decoder.key'],
+        run,
+        release: releases[index++],
+      }),
+    } } as never);
+    const model = await createMoonshineModelFamily().createModel({
+      modelId: 'moonshine-tiny', options: assets,
+    } as never, { backend: { id: 'wasm' } } as never);
+    await expect(model.createSession()).rejects.toThrow(/stacked self_past\/cross_past/);
+    expect(run).not.toHaveBeenCalled();
+    await model.dispose();
+    for (const release of releases) expect(release).toHaveBeenCalledTimes(1);
+  });
+
   it('releases late allocations once when disposed before initialization completes', async () => {
     const releases = [vi.fn(), vi.fn(), vi.fn()];
     let finish!: () => void;

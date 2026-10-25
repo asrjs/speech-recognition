@@ -44,6 +44,17 @@ export interface NemotronRnntEncoderCache {
   readonly timeDim: number;
 }
 
+/**
+ * Declared input-window geometry for the conditional-drop streaming export.
+ * The first call consumes only firstChunkFrames; later calls carry
+ * leftContextFrames before each shiftFrames of new audio.
+ */
+export interface NemotronRnntEncoderWindowing {
+  readonly firstChunkFrames: number;
+  readonly shiftFrames: number;
+  readonly leftContextFrames: number;
+}
+
 export interface NemotronRnntModelConfig extends NemoModelConfig {
   readonly ecosystem: 'nemo';
   readonly architecture: 'nemotron-rnnt';
@@ -53,6 +64,8 @@ export interface NemotronRnntModelConfig extends NemoModelConfig {
   readonly predictionLayers: number;
   readonly chunkFrames: number;
   readonly encoderOutputFramesPerChunk: number;
+  /** Absent for legacy static-window exports. */
+  readonly encoderWindowing?: NemotronRnntEncoderWindowing;
   readonly encoderCache: NemotronRnntEncoderCache;
   readonly promptIds: NemotronRnntPromptIds;
   readonly defaultPromptId: number;
@@ -128,8 +141,7 @@ export interface NemotronRnntNativeSpecialToken extends NemotronRnntNativeToken 
   readonly kind: 'lang-segment' | 'control';
 }
 
-export interface NemotronRnntNativeTranscript
-  extends Omit<NemoNativeTranscript, 'tokens'> {
+export interface NemotronRnntNativeTranscript extends Omit<NemoNativeTranscript, 'tokens'> {
   readonly rawUtteranceText?: string;
   readonly tokens?: readonly NemotronRnntNativeToken[];
   readonly specialTokens?: readonly NemotronRnntNativeSpecialToken[];

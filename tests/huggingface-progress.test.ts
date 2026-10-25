@@ -56,14 +56,19 @@ describe('Hugging Face progress reporting', () => {
   it.each([undefined, 'main'])('preserves existing main cache entries (%s)', async (revision) => {
     const cache = new io.IndexedDbAssetCache();
     vi.spyOn(io, 'getDefaultIndexedDbAssetCache').mockReturnValue(cache);
+    const legacyKey = 'hf-test/model-main--vocab.txt';
     const reading = vi
       .spyOn(cache, 'get')
-      .mockResolvedValue({ bytes: new TextEncoder().encode('cached main') });
+      .mockImplementation(async (key) =>
+        key === legacyKey ? { bytes: new TextEncoder().encode('cached main') } : null,
+      );
+    const writing = vi.spyOn(cache, 'set');
     const fetching = vi.fn();
     vi.stubGlobal('fetch', fetching);
     expect(await getModelText('test/model', 'vocab.txt', { revision })).toBe('cached main');
     expect(reading).toHaveBeenCalledWith('hf-test/model-main--vocab.txt');
     expect(fetching).not.toHaveBeenCalled();
+    expect(writing).not.toHaveBeenCalled();
   });
 
   it('coalesces chunk-level downloads into integer percent milestones', async () => {
@@ -149,10 +154,13 @@ describe('Hugging Face progress reporting', () => {
   it('can transfer blob locator ownership for deterministic disposal', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
-        status: 200,
-        headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
-      })),
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
+          }),
+      ),
     );
     const handles: Array<{ dispose(): Promise<void> | void }> = [];
 
@@ -184,10 +192,13 @@ describe('Hugging Face progress reporting', () => {
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL');
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
-        status: 200,
-        headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
-      })),
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { 'content-length': '3', 'content-type': 'application/octet-stream' },
+          }),
+      ),
     );
 
     const locator = await getModelFile('ysdede/example', 'encoder.onnx');

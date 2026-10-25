@@ -1,0 +1,51 @@
+{
+  "status": "FAIL",
+  "requiredFlows": [
+    "file",
+    "mic-manual-manual-none",
+    "mic-speech-detect-vad-only-ten-vad",
+    "mic-speech-detect-vad-only-firered-vad"
+  ],
+  "flowStatus": {
+    "file": {
+      "status": "FAIL",
+      "errors": [
+        "Browser console errors present"
+      ],
+      "activeStage": "file-flow-running"
+    },
+    "mic-manual-manual-none": {
+      "status": "FAIL",
+      "errors": [
+        "Page.wait_for_function: Timeout 180000ms exceeded."
+      ],
+      "activeStage": "mic-capture-running"
+    },
+    "mic-speech-detect-vad-only-ten-vad": {
+      "status": "FAIL",
+      "errors": [
+        "Page.wait_for_function: Timeout 180000ms exceeded."
+      ],
+      "activeStage": null
+    },
+    "mic-speech-detect-vad-only-firered-vad": {
+      "status": "FAIL",
+      "errors": [
+        "Page.wait_for_function: Timeout 180000ms exceeded."
+      ],
+      "activeStage": null
+    }
+  },
+  "missingFlows": [],
+  "failedFlows": [
+    "file",
+    "mic-manual-manual-none",
+    "mic-speech-detect-vad-only-ten-vad",
+    "mic-speech-detect-vad-only-firered-vad"
+  ],
+  "app": "realtime",
+  "modelId": "google/medasr",
+  "source": "local",
+  "requestedBackend": "wasm",
+  "finishedAt": "2026-10-24T23:45:53+0300"
+}

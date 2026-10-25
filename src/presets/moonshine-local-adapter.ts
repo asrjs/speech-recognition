@@ -31,6 +31,10 @@ const STREAMING = [
   'decoder_prefill_model.onnx',
   'decoder_step_model.onnx',
 ];
+const STREAMING_MODEL_IDS = new Set([
+  'moonshine-ai/moonshine-streaming-tiny',
+  'moonshine-streaming-tiny',
+]);
 
 function inspectMoonshineEntries(
   entries: readonly SpeechModelLocalEntry[],
@@ -65,6 +69,13 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
   ): Promise<ResolvedBuiltInLocalArtifacts> {
     if (options.entries.length === 0) {
       throw new Error('Pick a local model folder first.');
+    }
+
+    if (STREAMING_MODEL_IDS.has(options.modelId.toLowerCase())) {
+      const missingStreaming = STREAMING.filter((name) => !findLocalEntry(options.entries, name));
+      if (missingStreaming.length > 0) {
+        throw new Error(`Moonshine streaming model requires local streaming graphs: ${missingStreaming.join(', ')}.`);
+      }
     }
 
     const inspection = inspectMoonshineEntries(options.entries);
@@ -105,6 +116,15 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       }
       return await toLocator(sidecar.basename);
     };
+    const encoderBackend = options.encoderBackend ?? (
+      options.backend === 'wasm'
+        ? 'wasm'
+        : options.backend === 'webgpu' ||
+            options.backend === 'webgpu-hybrid' ||
+            options.backend === 'webgpu-strict'
+          ? 'webgpu'
+          : undefined
+    );
 
     try {
       const tokenizerUrl = await toLocator('tokenizer.json');
@@ -163,7 +183,7 @@ export const moonshineBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
           receiptUrl: findLocalEntry(options.entries, 'export-receipt.json')
             ? await toLocator('export-receipt.json')
             : undefined,
-          encoderBackend: options.encoderBackend,
+          encoderBackend,
           cpuThreads: options.cpuThreads,
           ...(streaming ? { streaming } : {}),
         },

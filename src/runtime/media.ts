@@ -1,4 +1,11 @@
 import { decodeWavToMonoPcm } from '../audio/wav.js';
+import {
+  rethrowIfAssetAborted,
+  subscribeToAbortSignal,
+  throwIfAssetAborted,
+  toFetchAbortSignal,
+} from '../io/abort.js';
+import type { AbortSignalLike } from '../types/index.js';
 
 export interface AudioBufferLikeForDecode {
   readonly numberOfChannels: number;
@@ -43,6 +50,7 @@ export interface AudioPreparationMetrics {
 
 export interface DecodeAudioSourceOptions {
   readonly targetSampleRate?: number;
+  readonly signal?: AbortSignalLike | null;
   readonly createAudioContext?: (sampleRate?: number) => AudioContextLikeForDecode;
   readonly fetchImpl?: typeof fetch;
   readonly strategy?: 'browser-target-rate' | 'native-rate';
@@ -79,9 +87,10 @@ export function mixAudioBufferChannelsToMono(audioBuffer: AudioBufferLikeForDeco
 
 export async function resolveAudioSourceToBlob(
   source: string | Blob,
-  options: Pick<DecodeAudioSourceOptions, 'fetchImpl'> = {},
+  options: Pick<DecodeAudioSourceOptions, 'fetchImpl' | 'signal'> = {},
 ): Promise<Blob> {
   if (typeof source !== 'string') {
+    throwIfAssetAborted(options.signal, 'audio-source');
     return source;
   }
 
@@ -90,12 +99,34 @@ export async function resolveAudioSourceToBlob(
     throw new Error('resolveAudioSourceToBlob requires fetch when source is a URL.');
   }
 
-  const response = await fetchImpl(source);
-  if (!response.ok) {
-    throw new Error(`Audio fetch failed: ${response.status}`);
+  throwIfAssetAborted(options.signal, 'audio-fetch');
+  const nativeSignal = toFetchAbortSignal(options.signal);
+  const abortController =
+    options.signal && !nativeSignal && typeof AbortController !== 'undefined'
+      ? new AbortController()
+      : undefined;
+  const unsubscribeAbort = abortController
+    ? subscribeToAbortSignal(options.signal, () => abortController.abort())
+    : undefined;
+  try {
+    const response = await fetchImpl(source, {
+      ...((nativeSignal ?? abortController?.signal)
+        ? { signal: nativeSignal ?? abortController?.signal }
+        : {}),
+    });
+    throwIfAssetAborted(options.signal, 'audio-fetch');
+    if (!response.ok) {
+      throw new Error(`Audio fetch failed: ${response.status}`);
+    }
+    const blob = await response.blob();
+    throwIfAssetAborted(options.signal, 'audio-fetch');
+    return blob;
+  } catch (error) {
+    rethrowIfAssetAborted(error, 'audio-fetch');
+    throw error;
+  } finally {
+    unsubscribeAbort?.();
   }
-
-  return await response.blob();
 }
 
 export function encodeMonoPcmToWavBlob(
@@ -155,7 +186,7 @@ function isWavArrayBuffer(arrayBuffer: ArrayBuffer): boolean {
   return readAscii(view, 0, 4) === 'RIFF' && readAscii(view, 8, 4) === 'WAVE';
 }
 
-function resampleLinear(audio: Float32Array, fromRate: number, toRate: number): Float32Array {
+export function resampleLinear(audio: Float32Array, fromRate: number, toRate: number): Float32Array {
   if (fromRate === toRate) {
     return audio;
   }
@@ -185,8 +216,10 @@ export async function decodeAudioSourceToMonoPcm(
 ): Promise<DecodedMonoAudio> {
   const startMs = nowMs();
   const targetSampleRate = options.targetSampleRate ?? 16000;
+  throwIfAssetAborted(options.signal, 'audio-source');
   const blob = await resolveAudioSourceToBlob(source, options);
   const arrayBuffer = await blob.arrayBuffer();
+  throwIfAssetAborted(options.signal, 'audio-read');
   const strategy = options.strategy ?? 'browser-target-rate';
   const resamplerQuality = options.resamplerQuality ?? 'linear';
 
@@ -204,6 +237,7 @@ export async function decodeAudioSourceToMonoPcm(
   if (strategy === 'native-rate' && isWavArrayBuffer(arrayBuffer)) {
     const decodeStartMs = nowMs();
     const decoded = decodeWavToMonoPcm(arrayBuffer);
+    throwIfAssetAborted(options.signal, 'audio-decode');
     const decodeMs = nowMs() - decodeStartMs;
     const resampleStartMs = nowMs();
     const pcm = resampleLinear(decoded.pcm, decoded.sampleRate, targetSampleRate);
@@ -235,9 +269,12 @@ export async function decodeAudioSourceToMonoPcm(
 
   const audioContext =
     strategy === 'native-rate' ? createAudioContext() : createAudioContext(targetSampleRate);
+  let primaryError: unknown;
+  let failed = false;
   try {
     const decodeStartMs = nowMs();
     const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    throwIfAssetAborted(options.signal, 'audio-decode');
     const decodeMs = nowMs() - decodeStartMs;
     const downmixStartMs = nowMs();
     const mixedMono = mixAudioBufferChannelsToMono(decoded);
@@ -279,8 +316,21 @@ export async function decodeAudioSourceToMonoPcm(
         audioDurationSec: durationSec,
       },
     };
+  } catch (error) {
+    primaryError = error;
+    failed = true;
+    throw error;
   } finally {
-    await audioContext.close?.();
+    try {
+      await audioContext.close?.();
+    } catch (cleanupError) {
+      if (failed) {
+        throw new AggregateError([primaryError, cleanupError], 'Audio decode and cleanup failed.', {
+          cause: primaryError,
+        });
+      }
+      throw cleanupError;
+    }
   }
 }
 

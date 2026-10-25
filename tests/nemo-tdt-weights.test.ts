@@ -5,8 +5,33 @@ import {
   pickPreferredNemoTdtQuantization,
 } from '@asrjs/speech-recognition/models/nemo-tdt';
 import { resolveNemoTdtArtifacts } from '../src/models/nemo-tdt/ort.js';
+import { buildSpeechModelLoadOptions } from '../src/runtime/catalog.js';
+import type { NemoTdtArtifactSource } from '../src/models/nemo-tdt/types.js';
 
 describe('nemo-tdt weight defaults', () => {
+  it.each([
+    ['webgpu-hybrid', {}, 'fp16', 'int8'],
+    ['wasm', {}, 'int8', 'int8'],
+    ['webgpu-hybrid', { encoderQuant: 'fp32', decoderQuant: 'fp16' }, 'fp32', 'fp16'],
+    ['webgpu-hybrid', { encoderBackend: 'wasm' }, 'int8', 'int8'],
+  ] as const)(
+    'keeps catalog and executor precision decisions aligned for %s with %j',
+    (backend, overrides, encoder, decoder) => {
+      const request = buildSpeechModelLoadOptions({
+        modelId: 'parakeet-tdt-0.6b-v2',
+        backend,
+        ...overrides,
+      });
+      const { source } = request.options as { source: NemoTdtArtifactSource };
+      // A runtime primary of WASM must not erase an explicit WebGPU component split.
+      const resolved = resolveNemoTdtArtifacts(source, 'wasm');
+      expect(resolved.artifacts.encoderFilename).toBe(
+        encoder === 'fp32' ? 'encoder-model.onnx' : `encoder-model.${encoder}.onnx`,
+      );
+      expect(resolved.artifacts.decoderFilename).toBe(`decoder_joint-model.${decoder}.onnx`);
+    },
+  );
+
   it('prefers fp16 encoder weights with fp32 fallback on webgpu', () => {
     expect(getDefaultNemoTdtWeightSetup('webgpu')).toEqual({
       backend: 'webgpu',

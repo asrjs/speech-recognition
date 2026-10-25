@@ -1,0 +1,135 @@
+{
+  "schema": "canary-checkpoint-inspection/v1",
+  "modelId": "nvidia/canary-1b-v2",
+  "revision": "cc46424723391883dbf1e2516631f5c177d7b263",
+  "artifact": {
+    "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2.nemo",
+    "sizeBytes": 6358958080,
+    "sha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094"
+  },
+  "inspectionMode": "read-only archive metadata and tokenizer only; no model restore, inference, export, or GPU execution",
+  "modelConfig": {
+    "nemoVersion": "2.3rc5",
+    "promptFormat": "canary2",
+    "sampleRate": 16000,
+    "preprocessor": {
+      "class": "nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor",
+      "features": 128,
+      "windowSizeSeconds": 0.025,
+      "windowStrideSeconds": 0.01,
+      "normalization": "per_feature",
+      "nfft": 512
+    },
+    "encoder": {
+      "class": "nemo.collections.asr.modules.ConformerEncoder",
+      "layers": 32,
+      "hiddenSize": 1024,
+      "heads": 8,
+      "subsamplingFactor": 8
+    },
+    "intermediateTransformerEncoderLayers": 0,
+    "decoder": {
+      "layers": 8,
+      "hiddenSize": 1024,
+      "heads": 8,
+      "maxSequenceLength": 1024
+    },
+    "headNumClasses": 16384
+  },
+  "tokenizer": {
+    "class": "nemo.collections.common.tokenizers.canary_tokenizer.CanaryBPETokenizer",
+    "kind": "unified SentencePiece vocabulary",
+    "vocabSize": 16384,
+    "sentencePieceByteFallback": false,
+    "sentencePieceUnknownId": 0,
+    "fullIdPieceComparison": {
+      "comparedIds": 16384,
+      "mismatches": 0
+    },
+    "specialTokenIds": {
+      "<|nospeech|>": 1,
+      "<pad>": 2,
+      "<|endoftext|>": 3,
+      "<|startoftranscript|>": 4,
+      "<|pnc|>": 5,
+      "<|nopnc|>": 6,
+      "<|startofcontext|>": 7,
+      "<|itn|>": 8,
+      "<|noitn|>": 9,
+      "<|timestamp|>": 10,
+      "<|notimestamp|>": 11,
+      "<|diarize|>": 12,
+      "<|nodiarize|>": 13,
+      "<|emo:undefined|>": 16,
+      "<|en|>": 64
+    },
+    "officialSupportedLanguages": [
+      "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
+      "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk"
+    ],
+    "languageMetadataSource": "https://huggingface.co/nvidia/canary-1b-v2",
+    "tokenizerContainsGenericTwoLetterLanguageLikePieces": 183,
+    "supportedLanguagesInferredFromVocabulary": false
+  },
+  "textDecodeCases": {
+    "english": {
+      "ids": [3947, 1363, 1168, 3422, 1493, 4590, 16073],
+      "sentencePiece": "This is a short test.",
+      "helper": "This is a short test.",
+      "joinedPieces": "This is a short test.",
+      "joinedPiecesMatch": true
+    },
+    "punctuation": {
+      "ids": [1305, 3832, 16067, 9151, 16210],
+      "sentencePiece": "Hello, world!",
+      "helper": "Hello, world!",
+      "joinedPieces": "Hello, world!",
+      "joinedPiecesMatch": true
+    },
+    "specialFiltered": {
+      "ids": [64, 1235, 4590, 16073, 3],
+      "sentencePiece": "A test.",
+      "helper": "A test."
+    },
+    "unknownId": {
+      "id": 0,
+      "piece": "<unk>",
+      "sentencePiece": " ⁇ ",
+      "helper": "⁇",
+      "spacingDiffersAfterHelperNormalization": true
+    }
+  },
+  "jfkNativeReference": {
+    "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2-jfk-reference.json",
+    "device": "cpu",
+    "fixturePath": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+    "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "durationSeconds": 11.0,
+    "promptIds": [16053, 7, 4, 16, 64, 64, 5, 9, 11, 13],
+    "settings": {
+      "sourceLanguage": "en",
+      "targetLanguage": "en",
+      "punctuation": true,
+      "itn": false,
+      "timestamps": false,
+      "diarization": false
+    },
+    "manualText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "nemoText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "normalizedOracleMatch": true,
+    "nativeTextMatchesManual": true,
+    "manualTokenIds": 32,
+    "nativeTokenIds": 31,
+    "commonContentTokenIds": 31,
+    "manualTerminalToken": "<|endoftext|>",
+    "nativeOmitsTerminalEos": true,
+    "rawTokenIdsMatch": false,
+    "differenceAssessment": "Expected EOS handling difference between the manual helper and NeMo greedy output; all content token IDs match. Raw IDs are not reported as matching."
+  },
+  "focusedTests": {
+    "file": "tools/model-debugging/reference/canary-180m-flash/test_canary_common.py",
+    "result": "5 passed",
+    "includesRealEmbeddedTokenizer": true,
+    "checkpointRestoreExecuted": false
+  }
+}

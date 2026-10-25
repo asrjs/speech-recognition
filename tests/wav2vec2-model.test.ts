@@ -59,6 +59,20 @@ function createRuntime() {
 }
 
 describe('Wav2Vec2 model family', () => {
+  it('keeps the Wav2Vec2 normalization default and supports model-specific epsilon', () => {
+    const samples = new Float32Array([0, 0.25, 0.5, 0.75]);
+    const mean = 0.375;
+    const variance = 0.078125;
+    const expectedDefault = (samples[0]! - mean) / Math.sqrt(variance + 1e-7);
+    const expectedOmnilingual = (samples[0]! - mean) / Math.sqrt(variance + 1e-5);
+
+    expect(normalizeWav2Vec2Waveform(samples)[0]).toBeCloseTo(expectedDefault, 6);
+    expect(normalizeWav2Vec2Waveform(samples, 1e-5)[0]).toBeCloseTo(expectedOmnilingual, 6);
+    expect(normalizeWav2Vec2Waveform(samples, 1e-5)[0]).not.toBe(
+      normalizeWav2Vec2Waveform(samples)[0],
+    );
+  });
+
   it('matches Wav2Vec2 model IDs and CTC classification', () => {
     const family = createWav2Vec2ModelFamily();
 

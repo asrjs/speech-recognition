@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T18:14:50.290428+00:00",
+  "status": "CANDIDATE_GRAPH_CHECKED_NO_NUMERICAL_CLAIM",
+  "sourceGraph": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\encoder-packed\\encoder.onnx",
+  "sourceGraphSha256": "03d6cd3d33434133534e94d7954db40a9a318c6039d3761763ccbb839a94264e",
+  "candidateGraph": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\encoder.onnx",
+  "candidateGraphSha256": "c5f75200a708852901bdf9d4447f9731ea4b4ca943e359f2745c459be39749cd",
+  "externalData": [
+    {
+      "location": "encoder.onnx.data",
+      "sourceSha256": "7584f85df76bc9ae6fbdfa53aa8d97b07a842525d1c501d536d77fd9e4f57ac7",
+      "candidateSha256": "7584f85df76bc9ae6fbdfa53aa8d97b07a842525d1c501d536d77fd9e4f57ac7",
+      "sizeBytes": 2454405120,
+      "byteIdentical": true
+    }
+  ],
+  "conditionalDrop": "cache_last_channel_len == 0 => [0], otherwise [2]",
+  "modifiedOriginalInputs": {
+    "/Slice": {
+      "input": 1,
+      "from": [
+        2
+      ],
+      "to": "asrjs_conditional_drop_value"
+    },
+    "/Sub": {
+      "input": 1,
+      "from": 2,
+      "to": "asrjs_conditional_drop_value"
+    }
+  },
+  "otherOriginalNodesModified": false,
+  "originalInitializersBytePreserved": true,
+  "onnxChecker": "PASS_PATH_CHECK",
+  "bundleConfig": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\config.json",
+  "scope": "isolated offline candidate only; source model graph and external weights are never overwritten"
+}

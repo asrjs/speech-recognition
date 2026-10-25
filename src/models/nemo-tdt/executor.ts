@@ -355,6 +355,21 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           },
           this.backendId,
         );
+        const cause =
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        const warning = {
+          code: candidate.warningCode,
+          message: `${candidate.warningMessage} Cause: ${cause}`,
+          recoverable: true as const,
+        } satisfies TranscriptWarning;
+        this.runtimeHooks?.onProgress?.({
+          phase: 'model-load:fallback',
+          modelId: this.modelId,
+          backendId: resolved.encoderBackendForOrt,
+          file: fallbackResolved.artifacts.encoderFilename,
+          message: warning.message,
+          warning,
+        });
         const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
           fallbackResolved.artifacts,
         );
@@ -377,11 +392,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
               ? `${artifacts.encoderFilename}.data`
               : undefined,
           });
-          warnings.push({
-            code: candidate.warningCode,
-            message: candidate.warningMessage,
-            recoverable: true,
-          });
+          warnings.push(warning);
           fallbackSucceeded = true;
           break;
         } catch (candidateError) {
@@ -440,6 +451,20 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
           },
           this.backendId,
         );
+        const cause = error instanceof Error ? error.message : String(error);
+        const warning = {
+          code: 'nemo-tdt.decoder-fp32-fallback',
+          message: `Decoder weights required missing external data at the selected quantization. Falling back to INT8 decoder weights. Cause: ${cause}`,
+          recoverable: true as const,
+        } satisfies TranscriptWarning;
+        this.runtimeHooks?.onProgress?.({
+          phase: 'model-load:fallback',
+          modelId: this.modelId,
+          backendId: resolved.decoderBackendForOrt,
+          file: fallbackResolved.artifacts.decoderFilename,
+          message: warning.message,
+          warning,
+        });
         const fallbackArtifacts = await this.materializeHuggingFaceArtifacts(
           fallbackResolved.artifacts,
         );
@@ -462,12 +487,7 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
             ? `${artifacts.decoderFilename}.data`
             : undefined,
         });
-        warnings.push({
-          code: 'nemo-tdt.decoder-fp32-fallback',
-          message:
-            'Decoder weights required missing external data at the selected quantization. Falling back to INT8 decoder weights.',
-          recoverable: true,
-        });
+        warnings.push(warning);
       }
       if (this.disposed) {
         throw new Error(`NeMo TDT executor was disposed during load for "${this.modelId}".`);

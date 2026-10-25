@@ -1,0 +1,1850 @@
+{
+  "status": "PASS",
+  "physicalMicrophone": "UNVERIFIED",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "modelDir": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx",
+  "backend": "WebGPU FP16 encoder + WASM INT8 decoder",
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 21:10:03.077443 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 21:10:03.079439 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] TEN-VAD ready for diagnostics {state: ready, error: null, probability: 0, speaking: false, threshold: 0.5}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.019, threshold: 0.08, snr: 4.35}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 6656, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 40960}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 4608, endFrame: 40960, logicalEndFrame: 40960, durationSec: 2.27, normalizedPowerAt16k: 684.02}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.029, threshold: 0.08, snr: 4.59}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.024, threshold: 0.08, snr: 2}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 53760, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 73216}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 39680, endFrame: 73216, logicalEndFrame: 73216, durationSec: 2.1, normalizedPowerAt16k: 294.47}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.026, threshold: 0.08, snr: 2.21}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 87808, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 123904}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 71936, endFrame: 123904, logicalEndFrame: 123904, durationSec: 3.25, normalizedPowerAt16k: 236.41}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 132352, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 178176}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 122624, endFrame: 178176, logicalEndFrame: 178176, durationSec: 3.47, normalizedPowerAt16k: 172.47}"
+    }
+  ],
+  "pageErrors": [],
+  "state": {
+    "load": "PASS",
+    "file": "EXECUTED",
+    "captures": [
+      {
+        "mode": "manual",
+        "started": true,
+        "status": "EXECUTED",
+        "utterances": [
+          {
+            "frames": 224256,
+            "sampleRate": 16000,
+            "reason": "stop",
+            "context": null
+          }
+        ],
+        "updates": [
+          {
+            "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+            "context": null,
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 30.76,
+              "encodeMs": 593.31,
+              "decodeMs": 190.08,
+              "tokenizeMs": 0.185,
+              "totalMs": 814.94,
+              "wallMs": 814.94,
+              "audioDurationSec": 14.016,
+              "rtf": 0.0581,
+              "rtfx": 17.1988,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 176,
+              "decodeIterations": 55,
+              "emittedTokenCount": 38,
+              "emittedWordCount": 22
+            }
+          }
+        ],
+        "startVadState": {
+          "state": "disabled",
+          "error": null,
+          "probability": 0,
+          "speaking": false,
+          "threshold": 0.5
+        },
+        "final": {
+          "status": "ready",
+          "modelId": "parakeet-tdt-0.6b-v3",
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "mic": {
+            "isMicActive": false,
+            "micStatus": "Microphone stopped",
+            "micError": "",
+            "micMode": "manual",
+            "captureInfo": {
+              "inputSampleRate": null,
+              "contextSampleRate": null,
+              "processingSampleRate": 16000,
+              "chunkFrames": 256,
+              "chunkDurationMs": 16,
+              "deviceLabel": ""
+            },
+            "latency": {
+              "sampleRate": 16000,
+              "inProgressUtterance": null,
+              "completedUtterances": [
+                {
+                  "firstPartialLatencyMs": 14824.945000000298,
+                  "endOfUtteranceLatencyMs": 837.1850000023842,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 836.9950000047684,
+                      "processLatencyMs": 819.6850000023842
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "finalize",
+                      "revision": 2,
+                      "emitLagMs": 837.1850000023842,
+                      "processLatencyMs": 819.875
+                    }
+                  ]
+                }
+              ],
+              "lastFirstPartialLatencyMs": 14824.945000000298,
+              "lastEndOfUtteranceLatencyMs": 837.1850000023842,
+              "meanProcessLatencyMs": 819.7800000011921,
+              "p50ProcessLatencyMs": 819.6850000023842,
+              "p95ProcessLatencyMs": 819.875,
+              "meanEmitLagMs": 837.0900000035763,
+              "p50EmitLagMs": 836.9950000047684,
+              "p95EmitLagMs": 837.1850000023842,
+              "totalUpdates": 2,
+              "totalPartials": 1,
+              "totalFinals": 1,
+              "totalCommitShrinkCount": 0,
+              "totalStagnantUpdateCount": 1
+            },
+            "transcript": {
+              "kind": "final",
+              "trigger": "finalize",
+              "partial": {
+                "kind": "final",
+                "revision": 2,
+                "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "committedText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "previewText": "",
+                "warnings": [],
+                "meta": {
+                  "detailLevel": "segments",
+                  "backendId": "webgpu",
+                  "sampleRate": 16000,
+                  "durationSeconds": 14.016,
+                  "language": "en",
+                  "modelId": "parakeet-tdt-0.6b-v3",
+                  "metrics": {
+                    "encoderBackend": "webgpu",
+                    "decoderBackend": "wasm",
+                    "jointBackend": "wasm",
+                    "preprocessMs": 30.76,
+                    "encodeMs": 593.31,
+                    "decodeMs": 190.08,
+                    "tokenizeMs": 0.185,
+                    "totalMs": 814.94,
+                    "wallMs": 814.94,
+                    "audioDurationSec": 14.016,
+                    "rtf": 0.0581,
+                    "rtfx": 17.1988,
+                    "requestedPreprocessorBackend": "js",
+                    "preprocessorBackend": "js",
+                    "decodeAudioMs": null,
+                    "downmixMs": null,
+                    "resampleMs": null,
+                    "audioPreparationMs": null,
+                    "inputSampleRate": null,
+                    "outputSampleRate": null,
+                    "resampler": null,
+                    "resamplerQuality": null,
+                    "encoderFrameCount": 176,
+                    "decodeIterations": 55,
+                    "emittedTokenCount": 38,
+                    "emittedWordCount": 22
+                  },
+                  "averageConfidence": 0.9816159287063758,
+                  "averageWordConfidence": 0.9808126226301372,
+                  "averageTokenConfidence": 0.9816159287063758,
+                  "isFinal": true,
+                  "modelFamily": "parakeet",
+                  "tokenCount": null,
+                  "wordCount": null,
+                  "sentenceCount": null,
+                  "segmentCount": 1,
+                  "nativeAvailable": true
+                },
+                "segments": [
+                  {
+                    "index": 0,
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": 0.16,
+                    "endTime": 11.04,
+                    "confidence": 0.9808126226301372,
+                    "wordIndices": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      10,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16,
+                      17,
+                      18,
+                      19,
+                      20,
+                      21
+                    ]
+                  }
+                ],
+                "sentences": null,
+                "words": null,
+                "tokens": null
+              },
+              "snapshot": {
+                "committedText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "previewText": "",
+                "fullText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "committedSentences": [
+                  {
+                    "id": "sentence_0",
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": null,
+                    "endTime": null,
+                    "wordCount": 22,
+                    "words": [
+                      {
+                        "text": "And",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 0
+                      },
+                      {
+                        "text": "so,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 1
+                      },
+                      {
+                        "text": "my",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 2
+                      },
+                      {
+                        "text": "fellow",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 3
+                      },
+                      {
+                        "text": "Americans,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 4
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 5
+                      },
+                      {
+                        "text": "not",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 6
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 7
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 8
+                      },
+                      {
+                        "text": "country",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 9
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 10
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 11
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 12
+                      },
+                      {
+                        "text": "you,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 13
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 14
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 15
+                      },
+                      {
+                        "text": "you",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 16
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 17
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 18
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 19
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 20
+                      },
+                      {
+                        "text": "country.",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 21
+                      }
+                    ],
+                    "isCommitted": true,
+                    "detectionMethod": "heuristic"
+                  }
+                ],
+                "newlyCommittedSentences": [
+                  {
+                    "id": "sentence_0",
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": null,
+                    "endTime": null,
+                    "wordCount": 22,
+                    "words": [
+                      {
+                        "text": "And",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 0
+                      },
+                      {
+                        "text": "so,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 1
+                      },
+                      {
+                        "text": "my",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 2
+                      },
+                      {
+                        "text": "fellow",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 3
+                      },
+                      {
+                        "text": "Americans,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 4
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 5
+                      },
+                      {
+                        "text": "not",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 6
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 7
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 8
+                      },
+                      {
+                        "text": "country",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 9
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 10
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 11
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 12
+                      },
+                      {
+                        "text": "you,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 13
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 14
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 15
+                      },
+                      {
+                        "text": "you",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 16
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 17
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 18
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 19
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 20
+                      },
+                      {
+                        "text": "country.",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 21
+                      }
+                    ],
+                    "isCommitted": true,
+                    "detectionMethod": "heuristic"
+                  }
+                ],
+                "pendingSentence": null,
+                "matureCursorTime": 0,
+                "revision": 2,
+                "sourceText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+              },
+              "canonical": {
+                "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "warnings": [],
+                "meta": {
+                  "detailLevel": "segments",
+                  "backendId": "webgpu",
+                  "sampleRate": 16000,
+                  "durationSeconds": 14.016,
+                  "language": "en",
+                  "modelId": "parakeet-tdt-0.6b-v3",
+                  "metrics": {
+                    "encoderBackend": "webgpu",
+                    "decoderBackend": "wasm",
+                    "jointBackend": "wasm",
+                    "preprocessMs": 30.76,
+                    "encodeMs": 593.31,
+                    "decodeMs": 190.08,
+                    "tokenizeMs": 0.185,
+                    "totalMs": 814.94,
+                    "wallMs": 814.94,
+                    "audioDurationSec": 14.016,
+                    "rtf": 0.0581,
+                    "rtfx": 17.1988,
+                    "requestedPreprocessorBackend": "js",
+                    "preprocessorBackend": "js",
+                    "decodeAudioMs": null,
+                    "downmixMs": null,
+                    "resampleMs": null,
+                    "audioPreparationMs": null,
+                    "inputSampleRate": null,
+                    "outputSampleRate": null,
+                    "resampler": null,
+                    "resamplerQuality": null,
+                    "encoderFrameCount": 176,
+                    "decodeIterations": 55,
+                    "emittedTokenCount": 38,
+                    "emittedWordCount": 22
+                  },
+                  "averageConfidence": 0.9816159287063758,
+                  "averageWordConfidence": 0.9808126226301372,
+                  "averageTokenConfidence": 0.9816159287063758,
+                  "isFinal": true,
+                  "modelFamily": "parakeet",
+                  "tokenCount": null,
+                  "wordCount": null,
+                  "sentenceCount": null,
+                  "segmentCount": 1,
+                  "nativeAvailable": true
+                },
+                "segments": [
+                  {
+                    "index": 0,
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": 0.16,
+                    "endTime": 11.04,
+                    "confidence": 0.9808126226301372,
+                    "wordIndices": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      10,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16,
+                      17,
+                      18,
+                      19,
+                      20,
+                      21
+                    ]
+                  }
+                ]
+              },
+              "window": {
+                "startFrame": 0,
+                "endFrame": 224256,
+                "durationSeconds": 14.016,
+                "isInitial": true,
+                "matureCursorFrame": 224256
+              },
+              "activity": {
+                "sampleRate": 16000,
+                "latestFrame": 0,
+                "baseFrame": 0,
+                "trailingSilenceSeconds": 0,
+                "segments": []
+              },
+              "context": null
+            },
+            "transcriptText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+          },
+          "error": null
+        },
+        "trackStates": [
+          "ended"
+        ]
+      },
+      {
+        "mode": "ten-vad",
+        "started": true,
+        "status": "EXECUTED",
+        "utterances": [
+          {
+            "frames": 40960,
+            "sampleRate": 16000,
+            "reason": "silence",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 1,
+              "startFrame": 0,
+              "endFrame": 40960,
+              "sampleRate": 16000,
+              "finalized": false
+            }
+          },
+          {
+            "frames": 73216,
+            "sampleRate": 16000,
+            "reason": "silence",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 2,
+              "startFrame": 0,
+              "endFrame": 73216,
+              "sampleRate": 16000,
+              "finalized": false
+            }
+          },
+          {
+            "frames": 123904,
+            "sampleRate": 16000,
+            "reason": "silence",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 3,
+              "startFrame": 0,
+              "endFrame": 123904,
+              "sampleRate": 16000,
+              "finalized": false
+            }
+          },
+          {
+            "frames": 178176,
+            "sampleRate": 16000,
+            "reason": "silence",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 4,
+              "startFrame": 0,
+              "endFrame": 178176,
+              "sampleRate": 16000,
+              "finalized": false
+            }
+          },
+          {
+            "frames": 187776,
+            "sampleRate": 16000,
+            "reason": "stop",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 5,
+              "startFrame": 0,
+              "endFrame": 187776,
+              "sampleRate": 16000,
+              "finalized": true
+            }
+          }
+        ],
+        "updates": [
+          {
+            "text": "And so my fellow Americans.",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 1,
+              "startFrame": 0,
+              "endFrame": 40960,
+              "sampleRate": 16000,
+              "finalized": false
+            },
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 18.66,
+              "encodeMs": 281.9,
+              "decodeMs": 37.8,
+              "tokenizeMs": 0.05,
+              "totalMs": 338.525,
+              "wallMs": 338.525,
+              "audioDurationSec": 2.56,
+              "rtf": 0.1322,
+              "rtfx": 7.5622,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 32,
+              "decodeIterations": 13,
+              "emittedTokenCount": 10,
+              "emittedWordCount": 5
+            }
+          },
+          {
+            "text": "And so, my fellow Americans, ask not.",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 2,
+              "startFrame": 0,
+              "endFrame": 73216,
+              "sampleRate": 16000,
+              "finalized": false
+            },
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 6.81,
+              "encodeMs": 143.11,
+              "decodeMs": 58.175,
+              "tokenizeMs": 0.075,
+              "totalMs": 208.38,
+              "wallMs": 208.38,
+              "audioDurationSec": 4.576,
+              "rtf": 0.0455,
+              "rtfx": 21.9599,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 58,
+              "decodeIterations": 19,
+              "emittedTokenCount": 15,
+              "emittedWordCount": 7
+            }
+          },
+          {
+            "text": "And so, my fellow Americans, ask not what your country can do for you.",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 3,
+              "startFrame": 0,
+              "endFrame": 123904,
+              "sampleRate": 16000,
+              "finalized": false
+            },
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 18.925,
+              "encodeMs": 181.26,
+              "decodeMs": 113.645,
+              "tokenizeMs": 0.09,
+              "totalMs": 314.22,
+              "wallMs": 314.22,
+              "audioDurationSec": 7.744,
+              "rtf": 0.0406,
+              "rtfx": 24.6452,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 97,
+              "decodeIterations": 32,
+              "emittedTokenCount": 25,
+              "emittedWordCount": 14
+            }
+          },
+          {
+            "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 4,
+              "startFrame": 0,
+              "endFrame": 178176,
+              "sampleRate": 16000,
+              "finalized": false
+            },
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 17.565,
+              "encodeMs": 208.745,
+              "decodeMs": 185.755,
+              "tokenizeMs": 0.09,
+              "totalMs": 412.6,
+              "wallMs": 412.6,
+              "audioDurationSec": 11.136,
+              "rtf": 0.0371,
+              "rtfx": 26.9898,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 140,
+              "decodeIterations": 47,
+              "emittedTokenCount": 38,
+              "emittedWordCount": 22
+            }
+          },
+          {
+            "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+            "context": {
+              "id": "speech-context-1",
+              "revision": 5,
+              "startFrame": 0,
+              "endFrame": 187776,
+              "sampleRate": 16000,
+              "finalized": true
+            },
+            "kind": "final",
+            "metrics": {
+              "encoderBackend": "webgpu",
+              "decoderBackend": "wasm",
+              "jointBackend": "wasm",
+              "preprocessMs": 14.875,
+              "encodeMs": 167.85,
+              "decodeMs": 148.175,
+              "tokenizeMs": 0.08,
+              "totalMs": 331.47,
+              "wallMs": 331.47,
+              "audioDurationSec": 11.736,
+              "rtf": 0.0282,
+              "rtfx": 35.4059,
+              "requestedPreprocessorBackend": "js",
+              "preprocessorBackend": "js",
+              "decodeAudioMs": null,
+              "downmixMs": null,
+              "resampleMs": null,
+              "audioPreparationMs": null,
+              "inputSampleRate": null,
+              "outputSampleRate": null,
+              "resampler": null,
+              "resamplerQuality": null,
+              "encoderFrameCount": 147,
+              "decodeIterations": 48,
+              "emittedTokenCount": 38,
+              "emittedWordCount": 22
+            }
+          }
+        ],
+        "startVadState": {
+          "state": "ready",
+          "error": null,
+          "probability": 0,
+          "speaking": false,
+          "threshold": 0.5
+        },
+        "final": {
+          "status": "ready",
+          "modelId": "parakeet-tdt-0.6b-v3",
+          "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "mic": {
+            "isMicActive": false,
+            "micStatus": "Microphone stopped",
+            "micError": "",
+            "micMode": "speech-detect",
+            "captureInfo": {
+              "inputSampleRate": null,
+              "contextSampleRate": null,
+              "processingSampleRate": 16000,
+              "chunkFrames": 256,
+              "chunkDurationMs": 16,
+              "deviceLabel": ""
+            },
+            "latency": {
+              "sampleRate": 16000,
+              "inProgressUtterance": null,
+              "completedUtterances": [
+                {
+                  "firstPartialLatencyMs": 2860.365000002086,
+                  "endOfUtteranceLatencyMs": 339.625,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 339.58500000089407,
+                      "processLatencyMs": 339.554999999702
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "silence-finalize",
+                      "revision": 2,
+                      "emitLagMs": 339.625,
+                      "processLatencyMs": 339.5949999988079
+                    }
+                  ]
+                },
+                {
+                  "firstPartialLatencyMs": 2228.625,
+                  "endOfUtteranceLatencyMs": 209.80000000447035,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 209.7850000038743,
+                      "processLatencyMs": 209.76000000536442
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "silence-finalize",
+                      "revision": 2,
+                      "emitLagMs": 209.80000000447035,
+                      "processLatencyMs": 209.77500000596046
+                    }
+                  ]
+                },
+                {
+                  "firstPartialLatencyMs": 3489.130000002682,
+                  "endOfUtteranceLatencyMs": 316.6200000047684,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 316.6050000041723,
+                      "processLatencyMs": 316.5649999976158
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "silence-finalize",
+                      "revision": 2,
+                      "emitLagMs": 316.6200000047684,
+                      "processLatencyMs": 316.57999999821186
+                    }
+                  ]
+                },
+                {
+                  "firstPartialLatencyMs": 3808.6750000044703,
+                  "endOfUtteranceLatencyMs": 416.32999999821186,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 416.304999999702,
+                      "processLatencyMs": 416.23499999940395
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "silence-finalize",
+                      "revision": 2,
+                      "emitLagMs": 416.32999999821186,
+                      "processLatencyMs": 416.25999999791384
+                    }
+                  ]
+                },
+                {
+                  "firstPartialLatencyMs": 3299.52499999851,
+                  "endOfUtteranceLatencyMs": 2698.0750000029802,
+                  "partialCount": 1,
+                  "finalCount": 1,
+                  "commitShrinkCount": 0,
+                  "stagnantUpdateCount": 1,
+                  "updates": [
+                    {
+                      "kind": "partial",
+                      "trigger": "flush",
+                      "revision": 1,
+                      "emitLagMs": 2698.054999999702,
+                      "processLatencyMs": 335.33500000089407
+                    },
+                    {
+                      "kind": "final",
+                      "trigger": "finalize",
+                      "revision": 2,
+                      "emitLagMs": 2698.0750000029802,
+                      "processLatencyMs": 335.3550000041723
+                    }
+                  ]
+                }
+              ],
+              "lastFirstPartialLatencyMs": 3299.52499999851,
+              "lastEndOfUtteranceLatencyMs": 2698.0750000029802,
+              "meanProcessLatencyMs": 323.50150000080464,
+              "p50ProcessLatencyMs": 335.33500000089407,
+              "p95ProcessLatencyMs": 416.25999999791384,
+              "meanEmitLagMs": 796.0785000018775,
+              "p50EmitLagMs": 339.58500000089407,
+              "p95EmitLagMs": 2698.0750000029802,
+              "totalUpdates": 10,
+              "totalPartials": 5,
+              "totalFinals": 5,
+              "totalCommitShrinkCount": 0,
+              "totalStagnantUpdateCount": 5
+            },
+            "transcript": {
+              "kind": "final",
+              "trigger": "finalize",
+              "partial": {
+                "kind": "final",
+                "revision": 2,
+                "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "committedText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "previewText": "",
+                "warnings": [],
+                "meta": {
+                  "detailLevel": "segments",
+                  "backendId": "webgpu",
+                  "sampleRate": 16000,
+                  "durationSeconds": 11.736,
+                  "language": "en",
+                  "modelId": "parakeet-tdt-0.6b-v3",
+                  "metrics": {
+                    "encoderBackend": "webgpu",
+                    "decoderBackend": "wasm",
+                    "jointBackend": "wasm",
+                    "preprocessMs": 14.875,
+                    "encodeMs": 167.85,
+                    "decodeMs": 148.175,
+                    "tokenizeMs": 0.08,
+                    "totalMs": 331.47,
+                    "wallMs": 331.47,
+                    "audioDurationSec": 11.736,
+                    "rtf": 0.0282,
+                    "rtfx": 35.4059,
+                    "requestedPreprocessorBackend": "js",
+                    "preprocessorBackend": "js",
+                    "decodeAudioMs": null,
+                    "downmixMs": null,
+                    "resampleMs": null,
+                    "audioPreparationMs": null,
+                    "inputSampleRate": null,
+                    "outputSampleRate": null,
+                    "resampler": null,
+                    "resamplerQuality": null,
+                    "encoderFrameCount": 147,
+                    "decodeIterations": 48,
+                    "emittedTokenCount": 38,
+                    "emittedWordCount": 22
+                  },
+                  "averageConfidence": 0.9880164474123386,
+                  "averageWordConfidence": 0.9916965780444716,
+                  "averageTokenConfidence": 0.9880164474123386,
+                  "isFinal": true,
+                  "modelFamily": "parakeet",
+                  "tokenCount": null,
+                  "wordCount": null,
+                  "sentenceCount": null,
+                  "segmentCount": 1,
+                  "nativeAvailable": true
+                },
+                "segments": [
+                  {
+                    "index": 0,
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": 0.24,
+                    "endTime": 11.04,
+                    "confidence": 0.9916965780444716,
+                    "wordIndices": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      10,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16,
+                      17,
+                      18,
+                      19,
+                      20,
+                      21
+                    ]
+                  }
+                ],
+                "sentences": null,
+                "words": null,
+                "tokens": null
+              },
+              "snapshot": {
+                "committedText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "previewText": "",
+                "fullText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "committedSentences": [
+                  {
+                    "id": "sentence_0",
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": null,
+                    "endTime": null,
+                    "wordCount": 22,
+                    "words": [
+                      {
+                        "text": "And",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 0
+                      },
+                      {
+                        "text": "so,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 1
+                      },
+                      {
+                        "text": "my",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 2
+                      },
+                      {
+                        "text": "fellow",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 3
+                      },
+                      {
+                        "text": "Americans,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 4
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 5
+                      },
+                      {
+                        "text": "not",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 6
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 7
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 8
+                      },
+                      {
+                        "text": "country",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 9
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 10
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 11
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 12
+                      },
+                      {
+                        "text": "you,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 13
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 14
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 15
+                      },
+                      {
+                        "text": "you",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 16
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 17
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 18
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 19
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 20
+                      },
+                      {
+                        "text": "country.",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 21
+                      }
+                    ],
+                    "isCommitted": true,
+                    "detectionMethod": "heuristic"
+                  }
+                ],
+                "newlyCommittedSentences": [
+                  {
+                    "id": "sentence_0",
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": null,
+                    "endTime": null,
+                    "wordCount": 22,
+                    "words": [
+                      {
+                        "text": "And",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 0
+                      },
+                      {
+                        "text": "so,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 1
+                      },
+                      {
+                        "text": "my",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 2
+                      },
+                      {
+                        "text": "fellow",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 3
+                      },
+                      {
+                        "text": "Americans,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 4
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 5
+                      },
+                      {
+                        "text": "not",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 6
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 7
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 8
+                      },
+                      {
+                        "text": "country",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 9
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 10
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 11
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 12
+                      },
+                      {
+                        "text": "you,",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 13
+                      },
+                      {
+                        "text": "ask",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 14
+                      },
+                      {
+                        "text": "what",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 15
+                      },
+                      {
+                        "text": "you",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 16
+                      },
+                      {
+                        "text": "can",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 17
+                      },
+                      {
+                        "text": "do",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 18
+                      },
+                      {
+                        "text": "for",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 19
+                      },
+                      {
+                        "text": "your",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 20
+                      },
+                      {
+                        "text": "country.",
+                        "startTime": null,
+                        "endTime": null,
+                        "confidence": null,
+                        "wordIndex": 21
+                      }
+                    ],
+                    "isCommitted": true,
+                    "detectionMethod": "heuristic"
+                  }
+                ],
+                "pendingSentence": null,
+                "matureCursorTime": 0,
+                "revision": 2,
+                "sourceText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+              },
+              "canonical": {
+                "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                "warnings": [],
+                "meta": {
+                  "detailLevel": "segments",
+                  "backendId": "webgpu",
+                  "sampleRate": 16000,
+                  "durationSeconds": 11.736,
+                  "language": "en",
+                  "modelId": "parakeet-tdt-0.6b-v3",
+                  "metrics": {
+                    "encoderBackend": "webgpu",
+                    "decoderBackend": "wasm",
+                    "jointBackend": "wasm",
+                    "preprocessMs": 14.875,
+                    "encodeMs": 167.85,
+                    "decodeMs": 148.175,
+                    "tokenizeMs": 0.08,
+                    "totalMs": 331.47,
+                    "wallMs": 331.47,
+                    "audioDurationSec": 11.736,
+                    "rtf": 0.0282,
+                    "rtfx": 35.4059,
+                    "requestedPreprocessorBackend": "js",
+                    "preprocessorBackend": "js",
+                    "decodeAudioMs": null,
+                    "downmixMs": null,
+                    "resampleMs": null,
+                    "audioPreparationMs": null,
+                    "inputSampleRate": null,
+                    "outputSampleRate": null,
+                    "resampler": null,
+                    "resamplerQuality": null,
+                    "encoderFrameCount": 147,
+                    "decodeIterations": 48,
+                    "emittedTokenCount": 38,
+                    "emittedWordCount": 22
+                  },
+                  "averageConfidence": 0.9880164474123386,
+                  "averageWordConfidence": 0.9916965780444716,
+                  "averageTokenConfidence": 0.9880164474123386,
+                  "isFinal": true,
+                  "modelFamily": "parakeet",
+                  "tokenCount": null,
+                  "wordCount": null,
+                  "sentenceCount": null,
+                  "segmentCount": 1,
+                  "nativeAvailable": true
+                },
+                "segments": [
+                  {
+                    "index": 0,
+                    "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+                    "startTime": 0.24,
+                    "endTime": 11.04,
+                    "confidence": 0.9916965780444716,
+                    "wordIndices": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      10,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16,
+                      17,
+                      18,
+                      19,
+                      20,
+                      21
+                    ]
+                  }
+                ]
+              },
+              "window": {
+                "startFrame": 0,
+                "endFrame": 187776,
+                "durationSeconds": 11.736,
+                "isInitial": true,
+                "matureCursorFrame": 187776
+              },
+              "activity": {
+                "sampleRate": 16000,
+                "latestFrame": 0,
+                "baseFrame": 0,
+                "trailingSilenceSeconds": 0,
+                "segments": []
+              },
+              "context": {
+                "id": "speech-context-1",
+                "revision": 5,
+                "startFrame": 0,
+                "endFrame": 187776,
+                "sampleRate": 16000,
+                "finalized": true
+              }
+            },
+            "transcriptText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+          },
+          "error": null
+        },
+        "trackStates": [
+          "ended",
+          "ended"
+        ]
+      }
+    ],
+    "progress": [
+      {
+        "phase": "resolve:start",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "message": "Resolving model request."
+      },
+      {
+        "phase": "resolve:complete",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "message": "Resolved preset \"parakeet\"."
+      },
+      {
+        "phase": "model-load:start",
+        "backendId": "webgpu",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "message": "Loading parakeet-tdt-0.6b-v3 with webgpu."
+      },
+      {
+        "phase": "model-load:complete",
+        "backendId": "webgpu",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "message": "Loaded parakeet-tdt-0.6b-v3 with webgpu."
+      },
+      {
+        "phase": "session-create:start",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "backendId": "webgpu",
+        "message": "Creating a ready session for parakeet-tdt-0.6b-v3."
+      },
+      {
+        "phase": "session-create:complete",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "backendId": "webgpu",
+        "message": "Ready session created for parakeet-tdt-0.6b-v3."
+      },
+      {
+        "phase": "ready",
+        "modelId": "parakeet-tdt-0.6b-v3",
+        "backendId": "webgpu",
+        "message": "parakeet-tdt-0.6b-v3 is ready for transcription."
+      }
+    ],
+    "errors": [],
+    "baseline": {
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "metrics": {
+        "encoderBackend": "webgpu",
+        "decoderBackend": "wasm",
+        "jointBackend": "wasm",
+        "preprocessMs": 33.055,
+        "encodeMs": 3069.21,
+        "decodeMs": 258.055,
+        "tokenizeMs": 0.965,
+        "totalMs": 3362.55,
+        "wallMs": 3362.55,
+        "audioDurationSec": 11,
+        "rtf": 0.3057,
+        "rtfx": 3.2713,
+        "requestedPreprocessorBackend": "js",
+        "preprocessorBackend": "js",
+        "decodeAudioMs": null,
+        "downmixMs": null,
+        "resampleMs": null,
+        "audioPreparationMs": null,
+        "inputSampleRate": null,
+        "outputSampleRate": null,
+        "resampler": null,
+        "resamplerQuality": null,
+        "encoderFrameCount": 138,
+        "decodeIterations": 46,
+        "emittedTokenCount": 38,
+        "emittedWordCount": 22
+      }
+    },
+    "afterCapture": {
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "status": "ready"
+    },
+    "disposal": {
+      "status": "disposed",
+      "tracks": [
+        "ended",
+        "ended"
+      ]
+    }
+  },
+  "requests": [],
+  "browserRequests": [
+    "http://127.0.0.1:4342/",
+    "http://127.0.0.1:4342/assets/index-DNnnLmA4.js",
+    "http://127.0.0.1:4342/assets/load-D6Z7adhl.js",
+    "http://127.0.0.1:4342/assets/builtins-WpFxlHjN.js",
+    "http://127.0.0.1:4342/assets/owned-session-Bj8tiD9q.js",
+    "http://127.0.0.1:4342/assets/probe-DKGCKPcu.js",
+    "http://127.0.0.1:4342/assets/probe-B2Oc-wKF.js",
+    "http://127.0.0.1:4342/assets/ort.bundle.min-BdsNfDLz.js",
+    "http://127.0.0.1:4342/model/vocab.txt",
+    "http://127.0.0.1:4342/ort/ort-wasm-simd-threaded.jsep.mjs",
+    "http://127.0.0.1:4342/ort/ort-wasm-simd-threaded.jsep.mjs",
+    "http://127.0.0.1:4342/ort/ort-wasm-simd-threaded.jsep.mjs",
+    "http://127.0.0.1:4342/ort/ort-wasm-simd-threaded.jsep.wasm",
+    "http://127.0.0.1:4342/ort/ort-wasm-simd-threaded.jsep.mjs",
+    "http://127.0.0.1:4342/model/encoder-model.fp16.onnx",
+    "http://127.0.0.1:4342/model/decoder_joint-model.int8.onnx",
+    "http://127.0.0.1:4342/fixtures/jfk2.en.wav",
+    "http://127.0.0.1:4342/assets/browser-controller-IcWrYHaO.js",
+    "http://127.0.0.1:4342/assets/ten-vad-worker-BuXpfewi.js",
+    "http://127.0.0.1:4342/assets/ten_vad-BWj8dcPJ.js",
+    "http://127.0.0.1:4342/assets/ten_vad-DpmpZqYN.wasm",
+    "http://127.0.0.1:4342/fixtures/jfk2.en.wav"
+  ]
+}

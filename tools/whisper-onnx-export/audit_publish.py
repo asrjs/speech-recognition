@@ -299,8 +299,8 @@ def _audit_variant_dir(
         sz = fpath.stat().st_size
         print(f"    {sz / 1024 / 1024:8.1f} MB  {sha[:16]}...  {vdir.name}/{gname}")
 
-    # ---- 9. Smoke decode (optional) ----
-    if smoke_decode and reference_json:
+    # ---- 9. Minimal graph-execution smoke (optional; not an accuracy test) ----
+    if smoke_decode:
         _run_smoke_decode(vdir, reference_json, check)
 
 
@@ -402,43 +402,49 @@ def _audit_external_data_offsets(graph_path: Path, vdir: Path, check):
             )
 
 
-def _run_smoke_decode(vdir: Path, reference_json: Path, check):
-    """Minimal smoke decode using ORT."""
+def _run_smoke_decode(vdir: Path, reference_json: Optional[Path], check):
+    """Execute a tiny dummy-input graph smoke; this does not test ASR accuracy."""
     import numpy as np
     from pathlib import Path as P
 
+    if reference_json is None:
+        check(False, "Smoke execution requested but no reference JSON was provided")
+        return
+
     ref_path = P(reference_json)
     if not ref_path.exists():
-        print(f"  SKIP smoke: reference JSON not found at {ref_path}")
+        check(False, f"Smoke execution reference JSON not found at {ref_path}")
         return
 
     try:
         with open(ref_path) as f:
             ref = json.load(f)
     except Exception as e:
-        print(f"  SKIP smoke: failed to load reference: {e}")
+        check(False, f"Smoke execution failed to load reference JSON: {e}")
         return
 
     try:
         enc_sess = ort.InferenceSession(str(vdir / "encoder_model.onnx"), providers=['CPUExecutionProvider'])
         init_sess = ort.InferenceSession(str(vdir / "decoder_init.onnx"), providers=['CPUExecutionProvider'])
     except Exception as e:
-        print(f"  SKIP smoke: session creation failed: {e}")
+        check(False, f"Smoke execution ORT session creation failed: {e}")
         return
 
-    # Run encoder with a dummy mel
-    mel = np.random.randn(1, 80, 3000).astype(np.float32)
-    enc_out = enc_sess.run(None, {"input_features": mel})
-    print(f"  Smoke encoder: output shape {enc_out[0].shape}")
-    check(enc_out[0].shape[0] == 1, "Smoke encoder batch dim OK")
+    try:
+        # Run encoder with a random dummy mel; this is execution coverage only.
+        mel = np.random.randn(1, 80, 3000).astype(np.float32)
+        enc_out = enc_sess.run(None, {"input_features": mel})
+        print(f"  Smoke encoder: output shape {enc_out[0].shape}")
+        check(enc_out[0].shape[0] == 1, "Smoke encoder batch dim OK")
 
-    # Run decoder_init with dummy input_ids + encoder output
-    input_ids = np.array([[50258, 50259, 50359, 50363]], dtype=np.int64)
-    init_out = init_sess.run(None, {"input_ids": input_ids, "encoder_hidden_states": enc_out[0]})
-    print(f"  Smoke decoder_init: {len(init_out)} outputs")
-    check(len(init_out) > 0, "Smoke decoder_init produces outputs")
-
-    print(f"  Smoke decode: OK")
+        # Run decoder_init with dummy input_ids + encoder output.
+        input_ids = np.array([[50258, 50259, 50359, 50363]], dtype=np.int64)
+        init_out = init_sess.run(None, {"input_ids": input_ids, "encoder_hidden_states": enc_out[0]})
+        print(f"  Smoke decoder_init: {len(init_out)} outputs")
+        check(len(init_out) > 0, "Smoke decoder_init produces outputs")
+        print("  Smoke graph execution: OK (not an accuracy check)")
+    except Exception as e:
+        check(False, f"Smoke graph execution failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +455,7 @@ def main():
     parser = argparse.ArgumentParser(description="Publish-readiness audit for Whisper ONNX exports")
     parser.add_argument("directory", type=str, help="Path to export directory")
     parser.add_argument("--variant", type=str, default=None, help="Specific variant to audit (fp32, fp16, int8-dynamic)")
-    parser.add_argument("--smoke", action="store_true", help="Run minimal smoke decode")
+    parser.add_argument("--smoke", action="store_true", help="Run a minimal dummy-input graph execution check (not an accuracy test)")
     parser.add_argument("--reference", type=str, default=None, help="Path to reference JSON for smoke decode")
     args = parser.parse_args()
 

@@ -2,11 +2,7 @@ import {
   MODELS as CANARY_MODELS,
 } from './canary/catalog.js';
 import type { ModelInferenceLimits } from '../types/index.js';
-import {
-  CANARY_180M_FLASH_DOCS,
-  resolveCanaryArtifactSource,
-  resolveCanaryPresetManifest,
-} from './canary/manifest.js';
+import { resolveCanaryArtifactSource, resolveCanaryPresetManifest } from './canary/manifest.js';
 import { resolveMedAsrPresetManifest } from './medasr/manifest.js';
 import {
   MODELS as PARAKEET_MODELS,
@@ -192,13 +188,15 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
   return Object.entries(CANARY_MODELS).map(([modelId, config]) => {
     const manifest = resolveCanaryPresetManifest(modelId);
     const source = resolveCanaryArtifactSource(modelId);
+    const docs = manifest?.docs;
+    const supportsExtendedPrompt = manifest?.config.promptFormat === 'canary2';
 
     return {
       modelId,
       aliases: manifest?.aliases ?? [],
       preset: 'canary',
       displayName: config.displayName,
-      description: CANARY_180M_FLASH_DOCS.architecture.summary,
+      description: docs?.architecture.summary ?? manifest?.description ?? config.displayName,
       classification: manifest?.classification ?? {},
       languages: config.languages,
       defaultSourceLanguage: config.defaultSourceLanguage,
@@ -207,16 +205,16 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
         supportedTasks: ['asr', 'speech-translation'],
         supportsTranslation: true,
         supportsPunctuationCapitalization: true,
-        supportsInverseTextNormalization: true,
-        supportsWordTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsWordTimestamps,
-        supportsSegmentTimestamps: CANARY_180M_FLASH_DOCS.capabilities.supportsSegmentTimestamps,
+        supportsInverseTextNormalization: supportsExtendedPrompt,
+        supportsWordTimestamps: docs?.capabilities.supportsWordTimestamps ?? false,
+        supportsSegmentTimestamps: docs?.capabilities.supportsSegmentTimestamps ?? false,
         supportsPromptControls: true,
       },
       inference: createConservativeAedInferenceLimits(),
       loading: {
         repoId: config.repoId,
-        supportsHubSource: true,
-        supportsLocalSource: false,
+        supportsHubSource: source !== undefined,
+        supportsLocalSource: true,
         supportsSplitQuantization: true,
         supportsSplitBackends: true,
         availableEncoderBackends: ['webgpu', 'wasm'],
@@ -266,23 +264,29 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
           type: 'boolean',
           defaultValue: true,
         },
-        {
-          key: 'timestamps',
-          label: 'Timestamps',
-          description: 'Injects the Canary timestamp prompt toggle.',
-          type: 'boolean',
-          defaultValue: false,
-        },
+        ...(supportsExtendedPrompt
+          ? [{
+              key: 'timestamps',
+              label: 'Timestamps',
+              description: 'Injects the Canary timestamp prompt toggle.',
+              type: 'boolean' as const,
+              defaultValue: false,
+            }]
+          : []),
       ],
       warmup: {
         mode: 'expected-text',
         expectedTexts: buildWarmupExpectedTexts(),
       },
-      docs: {
-        modelCardUrl: CANARY_180M_FLASH_DOCS.modelCardUrl,
-        architectureSummary: CANARY_180M_FLASH_DOCS.architecture.summary,
-        promptingNote: CANARY_180M_FLASH_DOCS.prompting.note,
-      },
+      ...(docs
+        ? {
+            docs: {
+              modelCardUrl: docs.modelCardUrl,
+              architectureSummary: docs.architecture.summary,
+              promptingNote: docs.prompting.note,
+            },
+          }
+        : {}),
     };
   });
 }
@@ -314,7 +318,7 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
       loading: {
         repoId: source?.kind === 'huggingface' ? source.repoId : undefined,
         supportsHubSource: true,
-        supportsLocalSource: false,
+        supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
         availableEncoderBackends: ['webgpu', 'wasm'],
@@ -479,6 +483,109 @@ function createOmnilingualCtcDescriptors(): BuiltInModelDescriptor[] {
         architectureSummary:
           'Raw 16 kHz waveform, zero-mean unit-variance, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.',
       },
+    },
+  ];
+}
+
+function createNewLocalAsrDescriptors(): BuiltInModelDescriptor[] {
+  const commonCapabilities = {
+    supportedTasks: ['asr'] as const,
+    supportsTranslation: false,
+    supportsPunctuationCapitalization: false,
+    supportsInverseTextNormalization: false,
+    supportsWordTimestamps: false,
+    supportsSegmentTimestamps: false,
+    supportsPromptControls: false,
+  };
+  const localLoading = (artifact: string) => ({
+    supportsHubSource: false,
+    supportsLocalSource: true,
+    supportsSplitQuantization: false,
+    supportsSplitBackends: false,
+    availableEncoderBackends: ['wasm', 'webgpu'] as const,
+    availableDecoderBackends: ['wasm'] as const,
+    defaultEncoderBackend: 'wasm' as const,
+    defaultDecoderBackend: 'wasm' as const,
+    availableEncoderQuantizations: ['fp32'] as const,
+    availableDecoderQuantizations: ['fp32'] as const,
+    defaultEncoderQuantization: 'fp32' as const,
+    defaultDecoderQuantization: 'fp32' as const,
+    supportsPreprocessorBackend: false,
+    preprocessorBackends: [] as const,
+    defaultPreprocessorBackend: null,
+    defaultPreprocessorName: null,
+    encoderArtifactBaseName: artifact,
+    decoderArtifactBaseName: artifact,
+    defaultRevision: 'local',
+  });
+  const localInference = {
+    sampleRate: 16000,
+    maxInputDurationSec: 60,
+    recommendedWindowDurationSec: 30,
+    minWindowDurationSec: 1,
+    maxWindowDurationSec: 60,
+    autoWindowThresholdSec: 60,
+    supportsWordTimestamps: false,
+    supportsTokenTimestamps: false,
+    supportsSegmentTimestamps: false,
+    supportsConfidence: false,
+    defaultSegmentationStrategy: 'ctc-frame' as const,
+    defaultMergeStrategy: 'ctc-collapse' as const,
+  };
+  return [
+    {
+      status: 'experimental', modelId: 'gigaam-multilingual-ctc', aliases: [], preset: 'gigaam-ctc',
+      displayName: 'GigaAM Multilingual CTC',
+      description: 'Official GigaAM multilingual CTC graph; local artifacts only.',
+      classification: { ecosystem: 'gigaam', processor: 'gigaam-fbank', encoder: 'conformer', decoder: 'ctc', topology: 'ctc', family: 'gigaam-ctc', task: 'asr' },
+      languages: ['ru', 'en', 'kk', 'ky', 'uz'], defaultSourceLanguage: 'ru',
+      capabilities: commonCapabilities,
+      inference: { ...localInference, supportsTokenTimestamps: true, supportsConfidence: true },
+      loading: localLoading('multilingual_ctc'), controls: [], warmup: { mode: 'non-empty' },
+      docs: { architectureSummary: 'Official GigaAM multilingual CTC encoder with GigaAM fbank features.' },
+    },
+    {
+      status: 'experimental', modelId: 'gigaam-v3-e2e-rnnt', aliases: [], preset: 'gigaam-rnnt',
+      displayName: 'GigaAM v3 E2E RNN-T (Russian)',
+      description: 'Official Russian GigaAM v3 RNN-T graphs; local artifacts only.',
+      classification: { ecosystem: 'gigaam', processor: 'gigaam-fbank', encoder: 'conformer', decoder: 'rnnt', topology: 'rnnt', family: 'gigaam-rnnt', task: 'asr' },
+      languages: ['ru'], defaultSourceLanguage: 'ru',
+      capabilities: commonCapabilities,
+      inference: { ...localInference, maxInputDurationSec: 30, recommendedWindowDurationSec: 15, maxWindowDurationSec: 30, autoWindowThresholdSec: 30, defaultSegmentationStrategy: 'vad', defaultMergeStrategy: 'concat' },
+      loading: { ...localLoading('v3_e2e_rnnt_encoder'), supportsSplitBackends: true, availableDecoderBackends: ['wasm', 'webgpu'] as const },
+      controls: [], warmup: { mode: 'non-empty' },
+      docs: { architectureSummary: 'Russian-only official GigaAM v3 encoder, predictor and joint graphs.' },
+    },
+    {
+      status: 'experimental', modelId: 'FunAudioLLM/SenseVoiceSmall', aliases: ['SenseVoiceSmall'], preset: 'sensevoice',
+      displayName: 'SenseVoice Small',
+      description: 'Official FunAudioLLM SenseVoiceSmall ONNX export; local artifacts only.',
+      classification: { ecosystem: 'funasr', processor: 'kaldi-fbank', encoder: 'conformer', decoder: 'ctc', topology: 'ctc', family: 'sensevoice', task: 'asr' },
+      languages: ['auto', 'zh', 'en', 'yue', 'ja', 'ko'], defaultSourceLanguage: 'auto',
+      capabilities: commonCapabilities,
+      inference: { ...localInference, maxInputDurationSec: 30, maxWindowDurationSec: 30, autoWindowThresholdSec: 30 },
+      loading: { ...localLoading('model'), supportsPreprocessorBackend: true, preprocessorBackends: ['js'] as const, defaultPreprocessorBackend: 'js' as const },
+      controls: [], warmup: { mode: 'non-empty' },
+      docs: { architectureSummary: 'Official SenseVoice CTC graph with Kaldi fbank, LFR and CMVN features.' },
+    },
+    {
+      status: 'experimental', modelId: 'x-asr-zh-en-160ms', aliases: [], preset: 'x-asr',
+      displayName: 'X-ASR zh-en 160 ms Streaming',
+      description: 'Experimental local-only Zipformer2 transducer with native encoder-cache streaming.',
+      classification: { ecosystem: 'x-asr', processor: 'kaldi-fbank', encoder: 'zipformer2', decoder: 'stateless-rnnt', topology: 'stateless-rnnt', family: 'x-asr', task: 'asr' },
+      languages: ['zh', 'en'], defaultSourceLanguage: 'zh',
+      capabilities: commonCapabilities,
+      inference: { ...localInference, defaultSegmentationStrategy: 'none', defaultMergeStrategy: 'concat' },
+      loading: {
+        ...localLoading('encoder-160ms'),
+        availableDecoderBackends: ['wasm', 'webgpu'] as const,
+        supportsPreprocessorBackend: true,
+        preprocessorBackends: ['js'] as const,
+        defaultPreprocessorBackend: 'js' as const,
+        decoderArtifactBaseName: 'decoder-160ms',
+      },
+      controls: [], warmup: { mode: 'non-empty' },
+      docs: { architectureSummary: 'Native 160 ms cache-aware Zipformer2 encoder streaming with stateless RNN-T decoding; graph cache contract is provided by the family default config.' },
     },
   ];
 }
@@ -690,6 +797,71 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
           'Raw 16 kHz samples, conv subsampler in graph, Conformer encoder with rotary embeddings, autoregressive Transformer decoder with self-attention history.',
       },
     },
+    {
+      status: 'experimental',
+      modelId: 'moonshine-ai/moonshine-streaming-tiny',
+      aliases: ['moonshine-streaming-tiny'],
+      preset: 'moonshine',
+      displayName: 'Moonshine Tiny Streaming',
+      description: 'Local-only Moonshine Tiny export with native streaming graphs.',
+      classification: {
+        ecosystem: 'moonshine',
+        processor: 'raw-waveform-conv',
+        encoder: 'moonshine-conformer',
+        decoder: 'aed',
+        topology: 'aed',
+        family: 'moonshine',
+        task: 'asr',
+      },
+      languages: ['en'],
+      defaultSourceLanguage: 'en',
+      defaultTargetLanguage: 'en',
+      capabilities: {
+        supportedTasks: ['asr'],
+        supportsTranslation: false,
+        supportsPunctuationCapitalization: false,
+        supportsInverseTextNormalization: false,
+        supportsWordTimestamps: false,
+        supportsSegmentTimestamps: false,
+        supportsPromptControls: false,
+      },
+      inference: {
+        ...createCtcInferenceLimits(),
+        supportsWordTimestamps: false,
+        supportsTokenTimestamps: false,
+        supportsSegmentTimestamps: false,
+        supportsConfidence: false,
+        defaultSegmentationStrategy: 'word-punctuation',
+        defaultMergeStrategy: 'concat',
+      },
+      loading: {
+        supportsHubSource: false,
+        supportsLocalSource: true,
+        supportsSplitQuantization: false,
+        supportsSplitBackends: false,
+        availableEncoderBackends: ['wasm', 'webgpu'],
+        availableDecoderBackends: ['wasm', 'webgpu'],
+        defaultEncoderBackend: 'wasm',
+        defaultDecoderBackend: 'wasm',
+        availableEncoderQuantizations: ['fp32'],
+        availableDecoderQuantizations: ['fp32'],
+        defaultEncoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp32',
+        supportsPreprocessorBackend: false,
+        preprocessorBackends: [],
+        defaultPreprocessorBackend: null,
+        defaultPreprocessorName: null,
+        encoderArtifactBaseName: 'encoder_model',
+        decoderArtifactBaseName: 'decoder_step_model',
+        defaultRevision: 'local',
+      },
+      controls: [],
+      warmup: { mode: 'expected-text' },
+      docs: {
+        architectureSummary:
+          'Local four-graph Moonshine export. The same selected backend runs the whole and chunked encoders plus decoder prefill and step graphs; streaming is native encoder-cache streaming.',
+      },
+    },
   ];
 }
 
@@ -757,13 +929,23 @@ function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
 }
 
 function createWhisperDescriptors(): BuiltInModelDescriptor[] {
-  return ['openai/whisper-base', 'openai/whisper-large-v3'].map((modelId) => {
+  return [
+    'openai/whisper-base',
+    'openai/whisper-large-v3',
+    'ysdede/whisper-large-v3-turbo-onnx-4graph',
+  ].map((modelId) => {
     const manifest = resolveWhisperPresetManifest(modelId);
+    const isTurbo4Graph = modelId === 'ysdede/whisper-large-v3-turbo-onnx-4graph';
+    const isLocal4Graph = manifest?.localGeometry !== undefined;
     return {
       modelId,
       aliases: manifest?.aliases ?? [],
       preset: 'whisper',
-      displayName: modelId === 'openai/whisper-base' ? 'Whisper Base' : 'Whisper Large v3',
+      displayName: isTurbo4Graph
+        ? 'Whisper Large v3 Turbo (4-graph ONNX)'
+        : modelId === 'openai/whisper-base'
+          ? 'Whisper Base'
+          : 'Whisper Large v3',
       description: manifest?.description ?? 'Whisper preset.',
       classification: manifest?.classification ?? {},
       languages: manifest?.config.languages ?? ['auto'],
@@ -780,18 +962,18 @@ function createWhisperDescriptors(): BuiltInModelDescriptor[] {
       },
       inference: createWhisperInferenceLimits(),
       loading: {
-        supportsHubSource: true,
-        supportsLocalSource: false,
+        supportsHubSource: manifest?.source !== undefined,
+        supportsLocalSource: isLocal4Graph,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
-        availableEncoderBackends: ['webgpu', 'wasm'],
-        availableDecoderBackends: ['webgpu', 'wasm'],
+        availableEncoderBackends: isLocal4Graph ? ['webgpu'] : ['webgpu', 'wasm'],
+        availableDecoderBackends: isLocal4Graph ? ['webgpu'] : ['webgpu', 'wasm'],
         defaultEncoderBackend: 'webgpu',
         defaultDecoderBackend: 'webgpu',
-        availableEncoderQuantizations: ['fp32'],
-        availableDecoderQuantizations: ['fp32'],
-        defaultEncoderQuantization: 'fp32',
-        defaultDecoderQuantization: 'fp32',
+        availableEncoderQuantizations: isLocal4Graph ? ['fp16'] : ['fp32'],
+        availableDecoderQuantizations: isLocal4Graph ? ['fp16'] : ['fp32'],
+        defaultEncoderQuantization: isLocal4Graph ? 'fp16' : 'fp32',
+        defaultDecoderQuantization: isLocal4Graph ? 'fp16' : 'fp32',
         supportsPreprocessorBackend: false,
         preprocessorBackends: [],
         defaultPreprocessorBackend: null,
@@ -893,6 +1075,7 @@ export const BUILT_IN_MODEL_DESCRIPTORS = [
   ...createWav2Vec2Descriptors(),
   ...createParakeetCtcDescriptors(),
   ...createOmnilingualCtcDescriptors(),
+  ...createNewLocalAsrDescriptors(),
   ...createTurkishWav2Vec2Descriptors(),
   ...createMoonshineDescriptors(),
   ...createQwen3AsrDescriptors(),

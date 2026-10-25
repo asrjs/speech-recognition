@@ -5,6 +5,7 @@ import {
   toFetchAbortSignal,
   throwAssetLoadAborted,
 } from './abort.js';
+import { getAssetCacheIdentity, type AssetCacheIdentity } from './cache-identity.js';
 import type {
   AssetCache,
   AssetCacheValue,
@@ -16,17 +17,16 @@ import type {
 interface CacheReadHit {
   readonly key: string;
   readonly value: AssetCacheValue;
+  readonly automaticAlias: boolean;
 }
 
 interface BlobCacheReadHit {
   readonly key: string;
   readonly blob: Blob;
+  readonly automaticAlias: boolean;
 }
 
-function emitAssetProgress(
-  request: AssetRequest,
-  event: AssetProgressEvent,
-): void {
+function emitAssetProgress(request: AssetRequest, event: AssetProgressEvent): void {
   if (event.aborted) {
     request.onProgress?.({
       id: request.id,
@@ -133,17 +133,27 @@ async function readCache(
   cache: AssetCache | undefined,
   key: string | undefined,
   fallbackKeys: readonly string[] = [],
+  automaticAliases: readonly string[] = [],
 ): Promise<CacheReadHit | null> {
   if (!cache || !key) {
     return null;
   }
 
-  const keys = [key, ...fallbackKeys.filter((candidate) => candidate && candidate !== key)];
-  for (const candidateKey of keys) {
+  const keys = [
+    { key, automaticAlias: false },
+    ...fallbackKeys
+      .filter((candidate) => candidate && candidate !== key)
+      .map((candidate) => ({ key: candidate, automaticAlias: false })),
+    ...automaticAliases
+      .filter((candidate) => candidate && candidate !== key && !fallbackKeys.includes(candidate))
+      .map((candidate) => ({ key: candidate, automaticAlias: true })),
+  ];
+  for (const candidate of keys) {
+    const candidateKey = candidate.key;
     try {
       const value = await cache.get(candidateKey);
       if (value) {
-        return { key: candidateKey, value };
+        return { key: candidateKey, value, automaticAlias: candidate.automaticAlias };
       }
     } catch (error) {
       console.warn(
@@ -181,17 +191,27 @@ async function readBlobCache(
   cache: AssetCache | undefined,
   key: string | undefined,
   fallbackKeys: readonly string[] = [],
+  automaticAliases: readonly string[] = [],
 ): Promise<BlobCacheReadHit | null> {
   if (!cache?.getBlob || !key) {
     return null;
   }
 
-  const keys = [key, ...fallbackKeys.filter((candidate) => candidate && candidate !== key)];
-  for (const candidateKey of keys) {
+  const keys = [
+    { key, automaticAlias: false },
+    ...fallbackKeys
+      .filter((candidate) => candidate && candidate !== key)
+      .map((candidate) => ({ key: candidate, automaticAlias: false })),
+    ...automaticAliases
+      .filter((candidate) => candidate && candidate !== key && !fallbackKeys.includes(candidate))
+      .map((candidate) => ({ key: candidate, automaticAlias: true })),
+  ];
+  for (const candidate of keys) {
+    const candidateKey = candidate.key;
     try {
       const blob = await cache.getBlob(candidateKey);
       if (blob) {
-        return { key: candidateKey, blob };
+        return { key: candidateKey, blob, automaticAlias: candidate.automaticAlias };
       }
     } catch (error) {
       console.warn(
@@ -230,7 +250,7 @@ async function migrateBlobCacheHit(
   primaryKey: string | undefined,
   hit: BlobCacheReadHit,
 ): Promise<void> {
-  if (!cache?.setBlob || !primaryKey || hit.key === primaryKey) {
+  if (!cache?.setBlob || !primaryKey || hit.key === primaryKey || hit.automaticAlias) {
     return;
   }
 
@@ -242,7 +262,7 @@ async function migrateCacheHit(
   primaryKey: string | undefined,
   hit: CacheReadHit,
 ): Promise<void> {
-  if (!cache || !primaryKey || hit.key === primaryKey) {
+  if (!cache || !primaryKey || hit.key === primaryKey || hit.automaticAlias) {
     return;
   }
 
@@ -343,12 +363,15 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
   private bytesPromise: Promise<Uint8Array> | null = null;
   private blobPromise: Promise<Blob> | null = null;
   private disposed = false;
+  private readonly cacheIdentity: AssetCacheIdentity;
 
   constructor(
     readonly request: AssetRequest,
     private readonly url: string,
     private readonly cache?: AssetCache,
-  ) {}
+  ) {
+    this.cacheIdentity = getAssetCacheIdentity(request, url);
+  }
 
   get contentType(): string | undefined {
     return this.request.contentType;
@@ -358,11 +381,12 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
     throwIfAssetAborted(this.request.signal, 'download');
     const cached = await readCache(
       this.cache,
-      this.request.cacheKey,
+      this.cacheIdentity.primaryKey,
       this.request.cacheKeyFallbacks,
+      this.cacheIdentity.automaticAliases,
     );
     if (cached) {
-      await migrateCacheHit(this.cache, this.request.cacheKey, cached);
+      await migrateCacheHit(this.cache, this.cacheIdentity.primaryKey, cached);
       throwIfAssetAborted(this.request.signal, 'download');
       emitAssetProgress(this.request, {
         id: this.request.id,
@@ -384,7 +408,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       if (!body) {
         const bytes = new Uint8Array(await response.arrayBuffer());
         throwIfAssetAborted(this.request.signal, 'download');
-        await writeCache(this.cache, this.request.cacheKey, {
+        await writeCache(this.cache, this.cacheIdentity.primaryKey, {
           bytes,
           contentType: response.headers.get('content-type') || undefined,
         });
@@ -402,7 +426,8 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
       // `openStream()` is the large-asset path. Retaining every chunk here
       // would double the live payload for callers that did not request a
       // cache write, so only collect when there is an actual cache target.
-      const cacheChunks: Uint8Array[] | null = this.cache && this.request.cacheKey ? [] : null;
+      const cacheChunks: Uint8Array[] | null =
+        this.cache && this.cacheIdentity.primaryKey ? [] : null;
       let loaded = 0;
       for await (const chunk of readReadableStream(
         body as ReadableStream<Uint8Array>,
@@ -435,7 +460,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
           bytes.set(chunk, offset);
           offset += chunk.byteLength;
         }
-        await writeCache(this.cache, this.request.cacheKey, {
+        await writeCache(this.cache, this.cacheIdentity.primaryKey, {
           bytes,
           contentType: response.headers.get('content-type') || undefined,
         });
@@ -451,11 +476,12 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         throwIfAssetAborted(this.request.signal, 'download');
         const cached = await readCache(
           this.cache,
-          this.request.cacheKey,
+          this.cacheIdentity.primaryKey,
           this.request.cacheKeyFallbacks,
+          this.cacheIdentity.automaticAliases,
         );
         if (cached) {
-          await migrateCacheHit(this.cache, this.request.cacheKey, cached);
+          await migrateCacheHit(this.cache, this.cacheIdentity.primaryKey, cached);
           throwIfAssetAborted(this.request.signal, 'download');
           emitAssetProgress(this.request, {
             id: this.request.id,
@@ -497,7 +523,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
             source: 'network',
           });
 
-          await writeCache(this.cache, this.request.cacheKey, {
+          await writeCache(this.cache, this.cacheIdentity.primaryKey, {
             bytes,
             contentType: response.headers.get('content-type') || undefined,
           });
@@ -560,11 +586,12 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
         throwIfAssetAborted(this.request.signal, 'download');
         const cached = await readBlobCache(
           this.cache,
-          this.request.cacheKey,
+          this.cacheIdentity.primaryKey,
           this.request.cacheKeyFallbacks,
+          this.cacheIdentity.automaticAliases,
         );
         if (cached) {
-          await migrateBlobCacheHit(this.cache, this.request.cacheKey, cached);
+          await migrateBlobCacheHit(this.cache, this.cacheIdentity.primaryKey, cached);
           throwIfAssetAborted(this.request.signal, 'download');
           emitAssetProgress(this.request, {
             id: this.request.id,
@@ -607,7 +634,7 @@ export class UrlAssetHandle implements ResolvedAssetHandle {
             source: 'network',
           });
 
-          await writeBlobCache(this.cache, this.request.cacheKey, blob);
+          await writeBlobCache(this.cache, this.cacheIdentity.primaryKey, blob);
 
           return blob;
         } catch (error) {

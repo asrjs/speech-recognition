@@ -1,0 +1,158 @@
+{
+  "modelId": "nvidia/canary-1b-v2",
+  "limitations": [
+    "preprocessor export skipped and JS frontend was not rerun in browser",
+    "no WASM, WebGPU, microphone, streaming or VAD validation in this CPU export subtask"
+  ],
+  "bundle": {
+    "config": {
+      "preprocessor_normalization": "per_feature",
+      "preprocessor_valid_length_mode": "onnx",
+      "external_data": {
+        "encoder": "encoder-model.onnx.data",
+        "decoder": null
+      }
+    },
+    "decoderExternalTensorReferences": 0,
+    "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-bundle-publisher",
+    "pathBasedGraphCheck": "PASS",
+    "encoderTensorReferences": 487,
+    "artifacts": {
+      "tokenizer.json": {
+        "sha256": "2f74972b146840e829bc6fcd8f9086c8f2b76d520fa5d72b2642a74f8b58b4ae",
+        "bytes": 342397
+      },
+      "decoder-model.onnx": {
+        "sha256": "1d283495fc0b791886f0d1251e32c3f4ed14bbca42dfb9973e732a5227036845",
+        "bytes": 676338494
+      },
+      "encoder-model.onnx": {
+        "sha256": "af8a77ac3502e6471b87bfdf1cf0344f80b39a1e101dfa19a4aba461bef7741d",
+        "bytes": 4013476
+      },
+      "config.json": {
+        "sha256": "0311edf848f5a37e39e13060505d2d36614813d8c8598afb69265fb6b1c2a7ab",
+        "bytes": 1347
+      },
+      "encoder-model.onnx.data": {
+        "sha256": "9904f1a89bdfe20e04f2828b2955d2bb91cb308c8a3e28bfcf68a88d8433d9aa",
+        "bytes": 3282000896
+      }
+    }
+  },
+  "firstExportAttempt": {
+    "result": "stopped by owner",
+    "retryEnvironment": {
+      "NUMBA_CACHE_DIR": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\numba-cache"
+    },
+    "cause": "Numba cache ensure_cache_path loop in tempfile._mkstemp_inner importing librosa",
+    "evidence": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\export.stderr.log",
+    "globalEnvironmentChanged": false
+  },
+  "generatedAt": "2026-10-24T17:25:56.3211117Z",
+  "focusedTests": {
+    "exactMaskMismatchGate": true,
+    "realEmbeddedTokenizer": true,
+    "file": "tools/model-debugging/tests/test_canary_common.py",
+    "falsePassDecodeExit": true,
+    "externalGraphPublication": true,
+    "result": "9 passed",
+    "frontendSkipScope": true
+  },
+  "revision": "cc46424723391883dbf1e2516631f5c177d7b263",
+  "nativeReference": {
+    "transcript": null,
+    "durationSeconds": 11.0,
+    "manualAndNativeTextMatch": null,
+    "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2-jfk-reference.json",
+    "terminalEosDifference": "manual helper emits terminal EOS; NeMo native greedy omits EOS; content IDs/text match",
+    "manualTokenCount": 0,
+    "nativeTokenCount": 0,
+    "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "fixturePath": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav"
+  },
+  "status": "REAL_CHECKPOINT_CPU_GATED_COMPONENTS_PASS",
+  "export": {
+    "publisherSmoke": "PASS against exported real graphs",
+    "script": "tools/model-debugging/reference/canary-180m-flash/export_canary_onnx.py",
+    "args": [
+      "--model-id",
+      "nvidia/canary-1b-v2",
+      "--checkpoint-path",
+      "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2.nemo",
+      "--supported-languages",
+      "bg,hr,cs,da,nl,en,et,fi,fr,de,el,hu,it,lv,lt,mt,pl,pt,ro,sk,sl,es,sv,ru,uk",
+      "--output-dir",
+      "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-fp32",
+      "--device",
+      "cpu",
+      "--skip-preprocessor"
+    ],
+    "canonicalEncoderExternalDataBytes": 3282000896,
+    "stagingTemporaryCleaned": true,
+    "dtype": "fp32",
+    "rawEncoderExternalTensorCount": 487,
+    "externalDataEnabled": true
+  },
+  "environment": {
+    "torch": "2.6.0+cu118",
+    "device": "cpu",
+    "nemoToolkit": "3.0.0 overlay",
+    "onnxruntime": "1.23.2",
+    "onnx": "1.20.1",
+    "torchThreads": {
+      "intra": 2,
+      "interop": 1
+    },
+    "python": "3.10.12"
+  },
+  "checkpoint": {
+    "authentication": "none",
+    "url": "https://huggingface.co/nvidia/canary-1b-v2/resolve/cc46424723391883dbf1e2516631f5c177d7b263/canary-1b-v2.nemo",
+    "sha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094",
+    "hfCacheUsed": false,
+    "bytes": 6358958080
+  },
+  "schema": "canary-onnx-export-verification/v1",
+  "priorCpuOrtMeasurements": {
+    "decode": {
+      "tokenIdsMatch": true,
+      "onnxText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "referenceText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "textMatch": true
+    },
+    "preprocessor": {
+      "skipped": true
+    },
+    "json": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-verify-cpu.json",
+    "encoder": {
+      "shape_match": true,
+      "max_abs_diff": 4.461407661437988E-05,
+      "mean_abs_diff": 5.490412036124326E-07,
+      "mask": {
+        "shape_match": true,
+        "max_abs_diff": 0.0,
+        "mean_abs_diff": 0.0
+      },
+      "lengths_match": true
+    },
+    "scope": "reference frontend features supplied to encoder; preprocessor skipped; CPU ORT only",
+    "gateHardenedCliRerun": {
+      "evidenceOrigin": "Parent hardened verifier replay report",
+      "exitCode": 0,
+      "status": "PASS_GATED_COMPONENTS",
+      "scope": "frozen reference frontend features; encoder and decoder ONNX components only",
+      "decoder": {
+        "tokenIdsMatch": true,
+        "textMatch": true
+      },
+      "numericDifferences": "MEASURED_NOT_GATED",
+      "encoder": {
+        "maskShapeAndValuesMatch": true,
+        "shapeMatch": true,
+        "lengthsMatch": true
+      },
+      "browserRuntime": "NOT_RUN"
+    }
+  }
+}

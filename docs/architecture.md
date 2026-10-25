@@ -53,6 +53,15 @@ Recommended package layout when those bindings are published:
 
 This boundary matters because mixing framework widgets into the core package would force the wrong dependency model and bundle shape on every consumer.
 
+## Framework integration
+
+React, Svelte and Vue bindings are developed in the sibling `frameworks`
+workspace. They subscribe to `createSpeechController()` through the narrow
+`@asrjs/speech-recognition/controller` entry. The core owns model loading,
+inference, streaming order and disposal; adapters only connect snapshots to
+framework state. They borrow the controller, so one component unmounting does
+not dispose a model shared by other views. See [framework bindings](FRAMEWORKS.md).
+
 ## Internal Layout
 
 ```text

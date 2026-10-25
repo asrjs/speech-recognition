@@ -156,7 +156,6 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
   private readonly emitPartials: boolean;
   private finalized = false;
   private durationSeconds = 0;
-  private revision = 0;
   private disposed = false;
   private generation = 0;
   private operationAbortController = new AbortController();
@@ -176,14 +175,15 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
   }
   async pushAudio(input: AudioInputLike): Promise<PartialTranscript> {
     const generation = this.generation;
-    return this.enqueue(() => {
+    return this.enqueue(async () => {
       this.assertOpen();
       if (generation !== this.generation) return this.staleUpdate();
       const audio = normalizePcmInput(input).toMono();
       this.durationSeconds += audio.durationSeconds;
       const pcm = audio.channels?.[0] ?? new Float32Array(0);
-      if (!this.emitPartials) return this.blank('partial');
-      return this.transcribeStream(pcm, false, generation);
+      const update = await this.transcribeStream(pcm, false, generation);
+      if (generation !== this.generation || this.emitPartials) return update;
+      return this.blank('partial');
     });
   }
   async flush(): Promise<PartialTranscript> {
@@ -212,7 +212,6 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
     this.stream = this.executor.createStream();
     this.accumulator.reset();
     this.durationSeconds = 0;
-    this.revision = 0;
     this.finalized = false;
     void this.operationTail.then(() => this.disposeRetiredStreams());
   }
@@ -255,9 +254,9 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
     }
     if (generation !== this.generation) return this.staleUpdate();
     this.stream = result.state;
-    const update = this.update(result);
+    const update = this.update(result, final ? 'final' : 'partial');
     if (final) this.executor.disposeStream(result.state);
-    return final ? { ...update, kind: 'final' } : update;
+    return update;
   }
   private staleUpdate(): PartialTranscript {
     const state = this.accumulator.getState();
@@ -305,10 +304,10 @@ class XAsrStreamingTranscriber implements StreamingTranscriber {
     return this.accumulator.update(value, kind);
   }
   private blank(kind: 'partial' | 'final'): PartialTranscript {
-    this.revision += 1;
+    const { revision } = this.accumulator.getState();
     return {
       kind,
-      revision: this.revision,
+      revision,
       text: '',
       committedText: '',
       previewText: '',

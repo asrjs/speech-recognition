@@ -146,6 +146,86 @@ describe('X-ASR artifact-gated family', () => {
     await runtime.dispose();
   });
 
+  it.each([true, false])(
+    'continues feeding audio to the executor when emitPartials=%s',
+    async (emitPartials) => {
+      const calls: Array<{ samples: number[]; final: boolean }> = [];
+      const emptyState = (): XAsrStreamState => ({
+        audio: new Float32Array(0),
+        features: new Float32Array(0),
+        encodedFrames: 0,
+        inputFrames: 0,
+        tokenIds: [],
+        encoderStates: [],
+      });
+      const executor: XAsrExecutor = {
+        async ready() {},
+        createStream: emptyState,
+        async pushStream(state, audio, final) {
+          calls.push({ samples: Array.from(audio), final });
+          return {
+            state,
+            transcript: {
+              utteranceText: final ? 'complete captured sentence' : `revision ${calls.length}`,
+              isFinal: final,
+              warnings: [],
+            },
+          };
+        },
+        transcribe: async () => ({ utteranceText: '', isFinal: true, warnings: [] }),
+        disposeStream() {},
+        dispose() {},
+      };
+      const runtime = createBuiltInSpeechRuntime({ useManifestSources: false });
+      const streamingModel = await createXAsrModelFamily({
+        dependencies: { executor },
+      }).createModel(
+        { modelId: 'X-ASR-zh-en' },
+        {
+          backend: runtime.listBackends().find((item) => item.id === 'wasm')!,
+          assetProvider: undefined,
+          hooks: {},
+        },
+      );
+      const transcriber = await streamingModel.createStreamingTranscriber({
+        emitPartials,
+        detail: 'text',
+      });
+
+      const firstChunk = Float32Array.from([0.1, 0.2, 0.3]);
+      const secondChunk = Float32Array.from([0.4, 0.5]);
+      const first = await transcriber.pushAudio(firstChunk);
+      const flushed = await transcriber.flush();
+      const second = await transcriber.pushAudio(secondChunk);
+      if (emitPartials) {
+        expect(first.text).toBe('revision 1');
+        expect(second.text).toBe('revision 3');
+      } else {
+        expect(first.text).toBe('');
+        expect(second.text).toBe('');
+      }
+
+      const final = await transcriber.finalize();
+      expect(final.kind).toBe('final');
+      expect(final.meta.isFinal).toBe(true);
+      expect(final.text).toBe('complete captured sentence');
+      expect(transcriber.getState().isFinalized).toBe(true);
+      expect([first.revision, flushed.revision, second.revision, final.revision]).toEqual([
+        1, 2, 3, 4,
+      ]);
+      expect(calls).toEqual([
+        { samples: Array.from(firstChunk), final: false },
+        { samples: [], final: false },
+        { samples: Array.from(secondChunk), final: false },
+        { samples: [], final: true },
+      ]);
+
+      await transcriber.dispose();
+      await streamingModel.dispose();
+      await runtime.dispose();
+    },
+  );
+
   it('serializes streaming calls and invalidates an in-flight result on reset', async () => {
     const emptyState = (): XAsrStreamState => ({
       audio: new Float32Array(0),

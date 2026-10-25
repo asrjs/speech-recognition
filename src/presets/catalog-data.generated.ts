@@ -496,7 +496,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     loading: {
       repoId: 'ysdede/canary-180m-flash-onnx',
       supportsHubSource: true,
-      supportsLocalSource: false,
+      supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
       availableEncoderBackends: [
@@ -596,7 +596,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     ],
     preset: 'canary',
     displayName: 'Canary 1B (Multilingual AED)',
-    description: 'FastConformer encoder + Transformer decoder encoder-decoder ASR/translation model with aggregate SentencePiece tokenization.',
+    description: 'Canary-1B preset over the shared NeMo AED implementation boundary.',
     classification: {
       ecosystem: 'nemo',
       processor: 'nemo-mel',
@@ -621,9 +621,9 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       ],
       supportsTranslation: true,
       supportsPunctuationCapitalization: true,
-      supportsInverseTextNormalization: true,
-      supportsWordTimestamps: true,
-      supportsSegmentTimestamps: true,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
       supportsPromptControls: true
     },
     inference: {
@@ -643,8 +643,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     },
     loading: {
       repoId: 'nvidia/canary-1b',
-      supportsHubSource: true,
-      supportsLocalSource: false,
+      supportsHubSource: false,
+      supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
       availableEncoderBackends: [
@@ -715,13 +715,6 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
         description: 'Injects the Canary PnC prompt toggle.',
         type: 'boolean',
         defaultValue: true
-      },
-      {
-        key: 'timestamps',
-        label: 'Timestamps',
-        description: 'Injects the Canary timestamp prompt toggle.',
-        type: 'boolean',
-        defaultValue: false
       }
     ],
     warmup: {
@@ -730,11 +723,6 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
         'The boy was there when the sun rose.',
         'The boy was there when the sun rose. A rod is used to catch pink salmon.'
       ]
-    },
-    docs: {
-      modelCardUrl: 'https://huggingface.co/nvidia/canary-180m-flash',
-      architectureSummary: 'FastConformer encoder + Transformer decoder encoder-decoder ASR/translation model with aggregate SentencePiece tokenization.',
-      promptingNote: 'Task control is encoded through special prompt tokens rather than a separate task enum in the runtime.'
     }
   },
   {
@@ -744,7 +732,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     ],
     preset: 'canary',
     displayName: 'Canary 1B v2 (Multilingual AED)',
-    description: 'FastConformer encoder + Transformer decoder encoder-decoder ASR/translation model with aggregate SentencePiece tokenization.',
+    description: 'Canary-1B-v2 preset over the shared NeMo AED implementation boundary.',
     classification: {
       ecosystem: 'nemo',
       processor: 'nemo-mel',
@@ -755,10 +743,31 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       task: 'multitask-asr-translation'
     },
     languages: [
+      'bg',
+      'hr',
+      'cs',
+      'da',
+      'nl',
       'en',
+      'et',
+      'fi',
+      'fr',
       'de',
+      'el',
+      'hu',
+      'it',
+      'lv',
+      'lt',
+      'mt',
+      'pl',
+      'pt',
+      'ro',
+      'sk',
+      'sl',
       'es',
-      'fr'
+      'sv',
+      'ru',
+      'uk'
     ],
     defaultSourceLanguage: 'en',
     defaultTargetLanguage: 'en',
@@ -770,8 +779,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       supportsTranslation: true,
       supportsPunctuationCapitalization: true,
       supportsInverseTextNormalization: true,
-      supportsWordTimestamps: true,
-      supportsSegmentTimestamps: true,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
       supportsPromptControls: true
     },
     inference: {
@@ -791,8 +800,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     },
     loading: {
       repoId: 'nvidia/canary-1b-v2',
-      supportsHubSource: true,
-      supportsLocalSource: false,
+      supportsHubSource: false,
+      supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
       availableEncoderBackends: [
@@ -878,11 +887,6 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
         'The boy was there when the sun rose.',
         'The boy was there when the sun rose. A rod is used to catch pink salmon.'
       ]
-    },
-    docs: {
-      modelCardUrl: 'https://huggingface.co/nvidia/canary-180m-flash',
-      architectureSummary: 'FastConformer encoder + Transformer decoder encoder-decoder ASR/translation model with aggregate SentencePiece tokenization.',
-      promptingNote: 'Task control is encoded through special prompt tokens rather than a separate task enum in the runtime.'
     }
   },
   {
@@ -937,7 +941,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     loading: {
       repoId: 'ysdede/medasr-onnx',
       supportsHubSource: true,
-      supportsLocalSource: false,
+      supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
       availableEncoderBackends: [
@@ -1336,6 +1340,356 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     }
   },
   {
+    status: 'experimental',
+    modelId: 'gigaam-multilingual-ctc',
+    aliases: [],
+    preset: 'gigaam-ctc',
+    displayName: 'GigaAM Multilingual CTC',
+    description: 'Official GigaAM multilingual CTC graph; local artifacts only.',
+    classification: {
+      ecosystem: 'gigaam',
+      processor: 'gigaam-fbank',
+      encoder: 'conformer',
+      decoder: 'ctc',
+      topology: 'ctc',
+      family: 'gigaam-ctc',
+      task: 'asr'
+    },
+    languages: [
+      'ru',
+      'en',
+      'kk',
+      'ky',
+      'uz'
+    ],
+    defaultSourceLanguage: 'ru',
+    capabilities: {
+      supportedTasks: [
+        'asr'
+      ],
+      supportsTranslation: false,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 60,
+      recommendedWindowDurationSec: 30,
+      minWindowDurationSec: 1,
+      maxWindowDurationSec: 60,
+      autoWindowThresholdSec: 60,
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: true,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: true,
+      defaultSegmentationStrategy: 'ctc-frame',
+      defaultMergeStrategy: 'ctc-collapse'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: false,
+      availableEncoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'wasm'
+      ],
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      availableEncoderQuantizations: [
+        'fp32'
+      ],
+      availableDecoderQuantizations: [
+        'fp32'
+      ],
+      defaultEncoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp32',
+      supportsPreprocessorBackend: false,
+      preprocessorBackends: [],
+      defaultPreprocessorBackend: null,
+      defaultPreprocessorName: null,
+      encoderArtifactBaseName: 'multilingual_ctc',
+      decoderArtifactBaseName: 'multilingual_ctc',
+      defaultRevision: 'local'
+    },
+    controls: [],
+    warmup: {
+      mode: 'non-empty'
+    },
+    docs: {
+      architectureSummary: 'Official GigaAM multilingual CTC encoder with GigaAM fbank features.'
+    }
+  },
+  {
+    status: 'experimental',
+    modelId: 'gigaam-v3-e2e-rnnt',
+    aliases: [],
+    preset: 'gigaam-rnnt',
+    displayName: 'GigaAM v3 E2E RNN-T (Russian)',
+    description: 'Official Russian GigaAM v3 RNN-T graphs; local artifacts only.',
+    classification: {
+      ecosystem: 'gigaam',
+      processor: 'gigaam-fbank',
+      encoder: 'conformer',
+      decoder: 'rnnt',
+      topology: 'rnnt',
+      family: 'gigaam-rnnt',
+      task: 'asr'
+    },
+    languages: [
+      'ru'
+    ],
+    defaultSourceLanguage: 'ru',
+    capabilities: {
+      supportedTasks: [
+        'asr'
+      ],
+      supportsTranslation: false,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 30,
+      recommendedWindowDurationSec: 15,
+      minWindowDurationSec: 1,
+      maxWindowDurationSec: 30,
+      autoWindowThresholdSec: 30,
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: false,
+      defaultSegmentationStrategy: 'vad',
+      defaultMergeStrategy: 'concat'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: true,
+      availableEncoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      availableEncoderQuantizations: [
+        'fp32'
+      ],
+      availableDecoderQuantizations: [
+        'fp32'
+      ],
+      defaultEncoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp32',
+      supportsPreprocessorBackend: false,
+      preprocessorBackends: [],
+      defaultPreprocessorBackend: null,
+      defaultPreprocessorName: null,
+      encoderArtifactBaseName: 'v3_e2e_rnnt_encoder',
+      decoderArtifactBaseName: 'v3_e2e_rnnt_encoder',
+      defaultRevision: 'local'
+    },
+    controls: [],
+    warmup: {
+      mode: 'non-empty'
+    },
+    docs: {
+      architectureSummary: 'Russian-only official GigaAM v3 encoder, predictor and joint graphs.'
+    }
+  },
+  {
+    status: 'experimental',
+    modelId: 'FunAudioLLM/SenseVoiceSmall',
+    aliases: [
+      'SenseVoiceSmall'
+    ],
+    preset: 'sensevoice',
+    displayName: 'SenseVoice Small',
+    description: 'Official FunAudioLLM SenseVoiceSmall ONNX export; local artifacts only.',
+    classification: {
+      ecosystem: 'funasr',
+      processor: 'kaldi-fbank',
+      encoder: 'conformer',
+      decoder: 'ctc',
+      topology: 'ctc',
+      family: 'sensevoice',
+      task: 'asr'
+    },
+    languages: [
+      'auto',
+      'zh',
+      'en',
+      'yue',
+      'ja',
+      'ko'
+    ],
+    defaultSourceLanguage: 'auto',
+    capabilities: {
+      supportedTasks: [
+        'asr'
+      ],
+      supportsTranslation: false,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 30,
+      recommendedWindowDurationSec: 30,
+      minWindowDurationSec: 1,
+      maxWindowDurationSec: 30,
+      autoWindowThresholdSec: 30,
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: false,
+      defaultSegmentationStrategy: 'ctc-frame',
+      defaultMergeStrategy: 'ctc-collapse'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: false,
+      availableEncoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'wasm'
+      ],
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      availableEncoderQuantizations: [
+        'fp32'
+      ],
+      availableDecoderQuantizations: [
+        'fp32'
+      ],
+      defaultEncoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp32',
+      supportsPreprocessorBackend: true,
+      preprocessorBackends: [
+        'js'
+      ],
+      defaultPreprocessorBackend: 'js',
+      defaultPreprocessorName: null,
+      encoderArtifactBaseName: 'model',
+      decoderArtifactBaseName: 'model',
+      defaultRevision: 'local'
+    },
+    controls: [],
+    warmup: {
+      mode: 'non-empty'
+    },
+    docs: {
+      architectureSummary: 'Official SenseVoice CTC graph with Kaldi fbank, LFR and CMVN features.'
+    }
+  },
+  {
+    status: 'experimental',
+    modelId: 'x-asr-zh-en-160ms',
+    aliases: [],
+    preset: 'x-asr',
+    displayName: 'X-ASR zh-en 160 ms Streaming',
+    description: 'Experimental local-only Zipformer2 transducer with native encoder-cache streaming.',
+    classification: {
+      ecosystem: 'x-asr',
+      processor: 'kaldi-fbank',
+      encoder: 'zipformer2',
+      decoder: 'stateless-rnnt',
+      topology: 'stateless-rnnt',
+      family: 'x-asr',
+      task: 'asr'
+    },
+    languages: [
+      'zh',
+      'en'
+    ],
+    defaultSourceLanguage: 'zh',
+    capabilities: {
+      supportedTasks: [
+        'asr'
+      ],
+      supportsTranslation: false,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 60,
+      recommendedWindowDurationSec: 30,
+      minWindowDurationSec: 1,
+      maxWindowDurationSec: 60,
+      autoWindowThresholdSec: 60,
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: false,
+      defaultSegmentationStrategy: 'none',
+      defaultMergeStrategy: 'concat'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: false,
+      availableEncoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      availableEncoderQuantizations: [
+        'fp32'
+      ],
+      availableDecoderQuantizations: [
+        'fp32'
+      ],
+      defaultEncoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp32',
+      supportsPreprocessorBackend: true,
+      preprocessorBackends: [
+        'js'
+      ],
+      defaultPreprocessorBackend: 'js',
+      defaultPreprocessorName: null,
+      encoderArtifactBaseName: 'encoder-160ms',
+      decoderArtifactBaseName: 'decoder-160ms',
+      defaultRevision: 'local'
+    },
+    controls: [],
+    warmup: {
+      mode: 'non-empty'
+    },
+    docs: {
+      architectureSummary: 'Native 160 ms cache-aware Zipformer2 encoder streaming with stateless RNN-T decoding; graph cache contract is provided by the family default config.'
+    }
+  },
+  {
     modelId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
     aliases: [
       'wav2vec2-xls-r-300m-cv7-turkish',
@@ -1510,6 +1864,94 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     docs: {
       modelCardUrl: 'https://huggingface.co/UsefulSensors/moonshine-tiny',
       architectureSummary: 'Raw 16 kHz samples, conv subsampler in graph, Conformer encoder with rotary embeddings, autoregressive Transformer decoder with self-attention history.'
+    }
+  },
+  {
+    status: 'experimental',
+    modelId: 'moonshine-ai/moonshine-streaming-tiny',
+    aliases: [
+      'moonshine-streaming-tiny'
+    ],
+    preset: 'moonshine',
+    displayName: 'Moonshine Tiny Streaming',
+    description: 'Local-only Moonshine Tiny export with native streaming graphs.',
+    classification: {
+      ecosystem: 'moonshine',
+      processor: 'raw-waveform-conv',
+      encoder: 'moonshine-conformer',
+      decoder: 'aed',
+      topology: 'aed',
+      family: 'moonshine',
+      task: 'asr'
+    },
+    languages: [
+      'en'
+    ],
+    defaultSourceLanguage: 'en',
+    defaultTargetLanguage: 'en',
+    capabilities: {
+      supportedTasks: [
+        'asr'
+      ],
+      supportsTranslation: false,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 60,
+      recommendedWindowDurationSec: 30,
+      minWindowDurationSec: 5,
+      maxWindowDurationSec: 60,
+      autoWindowThresholdSec: 60,
+      defaultOverlapSec: 5,
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: false,
+      defaultSegmentationStrategy: 'word-punctuation',
+      defaultMergeStrategy: 'concat'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: false,
+      availableEncoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'wasm',
+        'webgpu'
+      ],
+      defaultEncoderBackend: 'wasm',
+      defaultDecoderBackend: 'wasm',
+      availableEncoderQuantizations: [
+        'fp32'
+      ],
+      availableDecoderQuantizations: [
+        'fp32'
+      ],
+      defaultEncoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp32',
+      supportsPreprocessorBackend: false,
+      preprocessorBackends: [],
+      defaultPreprocessorBackend: null,
+      defaultPreprocessorName: null,
+      encoderArtifactBaseName: 'encoder_model',
+      decoderArtifactBaseName: 'decoder_step_model',
+      defaultRevision: 'local'
+    },
+    controls: [],
+    warmup: {
+      mode: 'expected-text'
+    },
+    docs: {
+      architectureSummary: 'Local four-graph Moonshine export. The same selected backend runs the whole and chunked encoders plus decoder prefill and step graphs; streaming is native encoder-cache streaming.'
     }
   },
   {
@@ -1689,11 +2131,103 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
   },
   {
     modelId: 'openai/whisper-large-v3',
-    aliases: [],
+    aliases: [
+      'whisper-large-v3'
+    ],
     preset: 'whisper',
     displayName: 'Whisper Large v3',
-    description: 'Whisper preset.',
-    classification: {},
+    description: 'Whisper Large v3 with a local four-graph ONNX export.',
+    classification: {
+      ecosystem: 'openai',
+      processor: 'whisper-mel',
+      encoder: 'whisper-transformer',
+      decoder: 'transformer-decoder',
+      topology: 'aed',
+      family: 'whisper',
+      task: 'multitask-asr-translation'
+    },
+    languages: [
+      'auto'
+    ],
+    defaultSourceLanguage: 'auto',
+    defaultTargetLanguage: 'auto',
+    capabilities: {
+      supportedTasks: [
+        'asr',
+        'speech-translation'
+      ],
+      supportsTranslation: true,
+      supportsPunctuationCapitalization: false,
+      supportsInverseTextNormalization: false,
+      supportsWordTimestamps: true,
+      supportsSegmentTimestamps: true,
+      supportsPromptControls: false
+    },
+    inference: {
+      sampleRate: 16000,
+      maxInputDurationSec: 30,
+      recommendedWindowDurationSec: 30,
+      minWindowDurationSec: 5,
+      maxWindowDurationSec: 30,
+      autoWindowThresholdSec: 30,
+      defaultStrideSec: 5,
+      supportsWordTimestamps: true,
+      supportsTokenTimestamps: true,
+      supportsSegmentTimestamps: true,
+      supportsConfidence: true,
+      defaultSegmentationStrategy: 'whisper-token',
+      defaultMergeStrategy: 'whisper-stride'
+    },
+    loading: {
+      supportsHubSource: false,
+      supportsLocalSource: true,
+      supportsSplitQuantization: false,
+      supportsSplitBackends: false,
+      availableEncoderBackends: [
+        'webgpu'
+      ],
+      availableDecoderBackends: [
+        'webgpu'
+      ],
+      defaultEncoderBackend: 'webgpu',
+      defaultDecoderBackend: 'webgpu',
+      availableEncoderQuantizations: [
+        'fp16'
+      ],
+      availableDecoderQuantizations: [
+        'fp16'
+      ],
+      defaultEncoderQuantization: 'fp16',
+      defaultDecoderQuantization: 'fp16',
+      supportsPreprocessorBackend: false,
+      preprocessorBackends: [],
+      defaultPreprocessorBackend: null,
+      defaultPreprocessorName: null,
+      defaultRevision: 'main'
+    },
+    controls: [],
+    warmup: {
+      mode: 'non-empty'
+    }
+  },
+  {
+    modelId: 'ysdede/whisper-large-v3-turbo-onnx-4graph',
+    aliases: [
+      'whisper-large-v3-turbo-onnx-4graph',
+      'whisper-large-v3-turbo-4graph'
+    ],
+    preset: 'whisper',
+    displayName: 'Whisper Large v3 Turbo (4-graph ONNX)',
+    description: 'Whisper Large-v3 Turbo ONNX 4-graph split decoder port with KV-cache decode for WebGPU.',
+    classification: {
+      ecosystem: 'openai',
+      processor: 'whisper-mel',
+      encoder: 'whisper-transformer',
+      decoder: 'transformer-decoder',
+      topology: 'aed',
+      family: 'whisper',
+      task: 'multitask-asr-translation'
+    },
     languages: [
       'auto'
     ],
@@ -1728,27 +2262,25 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     },
     loading: {
       supportsHubSource: true,
-      supportsLocalSource: false,
+      supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
       availableEncoderBackends: [
-        'webgpu',
-        'wasm'
+        'webgpu'
       ],
       availableDecoderBackends: [
-        'webgpu',
-        'wasm'
+        'webgpu'
       ],
       defaultEncoderBackend: 'webgpu',
       defaultDecoderBackend: 'webgpu',
       availableEncoderQuantizations: [
-        'fp32'
+        'fp16'
       ],
       availableDecoderQuantizations: [
-        'fp32'
+        'fp16'
       ],
-      defaultEncoderQuantization: 'fp32',
-      defaultDecoderQuantization: 'fp32',
+      defaultEncoderQuantization: 'fp16',
+      defaultDecoderQuantization: 'fp16',
       supportsPreprocessorBackend: false,
       preprocessorBackends: [],
       defaultPreprocessorBackend: null,
@@ -1762,14 +2294,29 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
   }
 ];
 export const CATALOG_LANGUAGES: Readonly<Record<string, string>> = {
-  en: 'English',
-  de: 'German',
-  es: 'Spanish',
-  fr: 'French',
-  it: 'Italian',
-  pt: 'Portuguese',
+  bg: 'Bulgarian',
+  hr: 'Croatian',
+  cs: 'Czech',
+  da: 'Danish',
   nl: 'Dutch',
+  en: 'English',
+  et: 'Estonian',
+  fi: 'Finnish',
+  fr: 'French',
+  de: 'German',
+  el: 'Greek',
+  hu: 'Hungarian',
+  it: 'Italian',
+  lv: 'Latvian',
+  lt: 'Lithuanian',
+  mt: 'Maltese',
   pl: 'Polish',
+  pt: 'Portuguese',
+  ro: 'Romanian',
+  sk: 'Slovak',
+  sl: 'Slovenian',
+  es: 'Spanish',
+  sv: 'Swedish',
   ru: 'Russian',
   uk: 'Ukrainian',
   ja: 'Japanese',
@@ -1808,16 +2355,6 @@ const sources = {
   'nvidia/canary-180m-flash': {
     kind: 'huggingface',
     repoId: 'ysdede/canary-180m-flash-onnx',
-    preprocessorBackend: 'js'
-  },
-  'nvidia/canary-1b': {
-    kind: 'huggingface',
-    repoId: 'nvidia/canary-1b',
-    preprocessorBackend: 'js'
-  },
-  'nvidia/canary-1b-v2': {
-    kind: 'huggingface',
-    repoId: 'nvidia/canary-1b-v2',
     preprocessorBackend: 'js'
   },
   'google/medasr': {

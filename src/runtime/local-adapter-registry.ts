@@ -16,6 +16,13 @@ import { omnilingualCtcBuiltInLocalModelAdapter } from '../presets/omnilingual-c
 import { wav2vec2TurkishBuiltInLocalModelAdapter } from '../presets/wav2vec2-tr-local-adapter.js';
 import { moonshineBuiltInLocalModelAdapter } from '../presets/moonshine-local-adapter.js';
 import { qwen3AsrBuiltInLocalModelAdapter } from '../presets/qwen3-asr-local-adapter.js';
+import { whisperBuiltInLocalModelAdapter } from '../presets/whisper/local-adapter.js';
+import { canaryBuiltInLocalModelAdapter } from '../presets/canary/local-adapter.js';
+import { medAsrBuiltInLocalModelAdapter } from '../presets/medasr/local-adapter.js';
+import { gigaAmCtcBuiltInLocalModelAdapter } from '../presets/gigaam-ctc-local-adapter.js';
+import { gigaAmRnntBuiltInLocalModelAdapter } from '../presets/gigaam-rnnt-local-adapter.js';
+import { senseVoiceBuiltInLocalModelAdapter } from '../presets/sensevoice-local-adapter.js';
+import { xAsrBuiltInLocalModelAdapter } from '../presets/x-asr-local-adapter.js';
 
 export interface SpeechModelLocalInspection {
   readonly encoderQuantizations: readonly QuantizationMode[];
@@ -95,6 +102,13 @@ const BUILT_IN_LOCAL_MODEL_ADAPTERS = new Map<string, BuiltInLocalModelAdapter>(
   [wav2vec2TurkishBuiltInLocalModelAdapter.preset, wav2vec2TurkishBuiltInLocalModelAdapter],
   [moonshineBuiltInLocalModelAdapter.preset, moonshineBuiltInLocalModelAdapter],
   [qwen3AsrBuiltInLocalModelAdapter.preset, qwen3AsrBuiltInLocalModelAdapter],
+  [whisperBuiltInLocalModelAdapter.preset, whisperBuiltInLocalModelAdapter],
+  [canaryBuiltInLocalModelAdapter.preset, canaryBuiltInLocalModelAdapter],
+  [medAsrBuiltInLocalModelAdapter.preset, medAsrBuiltInLocalModelAdapter],
+  [gigaAmCtcBuiltInLocalModelAdapter.preset, gigaAmCtcBuiltInLocalModelAdapter],
+  [gigaAmRnntBuiltInLocalModelAdapter.preset, gigaAmRnntBuiltInLocalModelAdapter],
+  [senseVoiceBuiltInLocalModelAdapter.preset, senseVoiceBuiltInLocalModelAdapter],
+  [xAsrBuiltInLocalModelAdapter.preset, xAsrBuiltInLocalModelAdapter],
 ]);
 
 export function listBuiltInLocalModelAdapters(): readonly BuiltInLocalModelAdapter[] {

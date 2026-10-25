@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "status": "CPU_SEGMENT_REFERENCE_COMPLETED_NOT_RUNTIME_PASS",
+  "scope": "Official Transformers local-only CPU whole-utterance generation separately on each captured VAD PCM segment, joined by ascending worker requestId. This isolates model behavior on exact segments from browser runtime; no streaming-cache or WebGPU equivalence claim.",
+  "source": {
+    "modelId": "moonshine-ai/moonshine-streaming-tiny",
+    "upstreamRevision": "f8e9dfd8c562",
+    "snapshot": "N:\\github\\asrjs\\speech-recognition\\.cache\\moonshine-streaming-tiny",
+    "modelSha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040",
+    "configSha256": "166861753adaf928ae99b3709bfb1da47cb76319be58f37c6f9b7a539ce371f0",
+    "tokenizerSha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+    "transformers": "5.18.0",
+    "torch": "2.14.1+cpu",
+    "device": "cpu",
+    "localFilesOnly": true
+  },
+  "originalJfk": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+    "pcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "durationSeconds": 11.0,
+    "native": {
+      "tokens": [
+        1,
+        1126,
+        577,
+        29892,
+        590,
+        10404,
+        23035,
+        29892,
+        2244,
+        451,
+        825,
+        596,
+        4234,
+        508,
+        437,
+        363,
+        366,
+        29892,
+        2244,
+        825,
+        366,
+        508,
+        437,
+        363,
+        596,
+        4234,
+        29889,
+        2
+      ],
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "validSamples": 176000,
+      "inputShape": [
+        1,
+        176000
+      ]
+    }
+  },
+  "flows": [
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "browserTranscript": "And so my fellow Americans. And... Knock! What your country can do for you? Ask what you can do for your country.",
+      "browserTranscriptBefore": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. And so my fellow Americans. Ask! Knock! What your country can do for you? Ask what you can do for your country.",
+      "browserTranscriptAfter": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. And so my fellow Americans. Ask! Knock! What your country can do for you? Ask what you can do for your country. And so my fellow Americans. And... Knock! What your country can do for you? Ask what you can do for your country.",
+      "segments": [
+        {
+          "requestId": 7,
+          "frames": 33664,
+          "durationSeconds": 2.104,
+          "pcmSha256": "50b4556043953b69e41655b16725bfb160015311dde37051c839043b2c43008b",
+          "native": {
+            "tokens": [
+              1,
+              1126,
+              577,
+              590,
+              10404,
+              23035,
+              29889,
+              2
+            ],
+            "text": "And so my fellow Americans.",
+            "validSamples": 33664,
+            "inputShape": [
+              1,
+              33680
+            ]
+          },
+          "generateSeconds": 0.134
+        },
+        {
+          "requestId": 8,
+          "frames": 26112,
+          "durationSeconds": 1.632,
+          "pcmSha256": "416e37e56a629982e02e18f72408af9a810f418c8b9f69a44c4f1f68a8c10864",
+          "native": {
+            "tokens": [
+              1,
+              26579,
+              29889,
+              2
+            ],
+            "text": "Ask.",
+            "validSamples": 26112,
+            "inputShape": [
+              1,
+              26160
+            ]
+          },
+          "generateSeconds": 0.092
+        },
+        {
+          "requestId": 9,
+          "frames": 8704,
+          "durationSeconds": 0.544,
+          "pcmSha256": "890aac537400f0405847b6e57c4e5f5bfe25dd2d78cfc2a072aef4751cc2419e",
+          "native": {
+            "tokens": [
+              1,
+              2216,
+              29991,
+              2
+            ],
+            "text": "Not!",
+            "validSamples": 8704,
+            "inputShape": [
+              1,
+              8720
+            ]
+          },
+          "generateSeconds": 0.083
+        },
+        {
+          "requestId": 10,
+          "frames": 54016,
+          "durationSeconds": 3.376,
+          "pcmSha256": "97991d9fd1d0ed654ad5da858d79a69f034c4f92e5500f6621b72a7b8eb6c680",
+          "native": {
+            "tokens": [
+              1,
+              1724,
+              596,
+              4234,
+              508,
+              437,
+              363,
+              366,
+              29973,
+              2
+            ],
+            "text": "What your country can do for you?",
+            "validSamples": 54016,
+            "inputShape": [
+              1,
+              54080
+            ]
+          },
+          "generateSeconds": 0.187
+        },
+        {
+          "requestId": 11,
+          "frames": 49408,
+          "durationSeconds": 3.088,
+          "pcmSha256": "f07b5cff42dbd0bf04621cb47fc479a3074e740051a71c889b8b811a547e1e76",
+          "native": {
+            "tokens": [
+              1,
+              26579,
+              825,
+              366,
+              508,
+              437,
+              363,
+              596,
+              4234,
+              29889,
+              2
+            ],
+            "text": "Ask what you can do for your country.",
+            "validSamples": 49408,
+            "inputShape": [
+              1,
+              49440
+            ]
+          },
+          "generateSeconds": 0.162
+        }
+      ],
+      "nativeJoinedInRequestOrder": "And so my fellow Americans. Ask. Not! What your country can do for you? Ask what you can do for your country.",
+      "nativeJoinedMatchesBrowserTranscript": false,
+      "nonemptySegmentCount": 5,
+      "segmentCount": 5
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "browserTranscript": "And so my fellow Americans. Ask! Knock! What your country can do for you? Ask what you can do for your country.",
+      "browserTranscriptBefore": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "browserTranscriptAfter": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country. And so my fellow Americans. Ask! Knock! What your country can do for you? Ask what you can do for your country.",
+      "segments": [
+        {
+          "requestId": 3,
+          "frames": 36096,
+          "durationSeconds": 2.256,
+          "pcmSha256": "aeb729efdd9e0ab457946fe07ad9746591ba018b2660ec8c9dcec29e2818f2b6",
+          "native": {
+            "tokens": [
+              1,
+              1126,
+              577,
+              590,
+              10404,
+              23035,
+              29889,
+              2
+            ],
+            "text": "And so my fellow Americans.",
+            "validSamples": 36096,
+            "inputShape": [
+              1,
+              36160
+            ]
+          },
+          "generateSeconds": 0.111
+        },
+        {
+          "requestId": 4,
+          "frames": 33536,
+          "durationSeconds": 2.096,
+          "pcmSha256": "987acf31052c238a17e00041f3e0fe647138a98396306d97cbde2b054e337fcd",
+          "native": {
+            "tokens": [
+              1,
+              26579,
+              451,
+              29991,
+              2
+            ],
+            "text": "Ask not!",
+            "validSamples": 33536,
+            "inputShape": [
+              1,
+              33600
+            ]
+          },
+          "generateSeconds": 0.098
+        },
+        {
+          "requestId": 5,
+          "frames": 52736,
+          "durationSeconds": 3.296,
+          "pcmSha256": "bacc0f3679db479d2f5ab11ecae1943e4dbf148b7da6594c9a88b0c5b13ef552",
+          "native": {
+            "tokens": [
+              1,
+              1724,
+              596,
+              4234,
+              508,
+              437,
+              363,
+              366,
+              29973,
+              2
+            ],
+            "text": "What your country can do for you?",
+            "validSamples": 52736,
+            "inputShape": [
+              1,
+              52800
+            ]
+          },
+          "generateSeconds": 0.154
+        },
+        {
+          "requestId": 6,
+          "frames": 54784,
+          "durationSeconds": 3.424,
+          "pcmSha256": "fa5d3be9feae85925ce8857124fe1972dbbdbedf31162305a28eac783e051bcb",
+          "native": {
+            "tokens": [
+              1,
+              1094,
+              825,
+              366,
+              508,
+              437,
+              363,
+              596,
+              4234,
+              29889,
+              2
+            ],
+            "text": "As what you can do for your country.",
+            "validSamples": 54784,
+            "inputShape": [
+              1,
+              54800
+            ]
+          },
+          "generateSeconds": 0.176
+        }
+      ],
+      "nativeJoinedInRequestOrder": "And so my fellow Americans. Ask not! What your country can do for you? As what you can do for your country.",
+      "nativeJoinedMatchesBrowserTranscript": false,
+      "nonemptySegmentCount": 4,
+      "segmentCount": 4
+    }
+  ],
+  "elapsedSeconds": 2.223
+}

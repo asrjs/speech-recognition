@@ -2,11 +2,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
+import shutil
+import sys
+import tempfile
 
 import torch
 
-from canary_common import DEFAULT_MODEL_ID, exported_tokenizer_payload, load_model, runtime_config_payload
+from canary_common import (
+    DEFAULT_MODEL_ID,
+    PromptSettings,
+    encode_prompt,
+    exported_tokenizer_payload,
+    load_model,
+    parse_supported_languages,
+    runtime_config_payload,
+)
 
 
 class CanaryPreprocessorWrapper(torch.nn.Module):
@@ -65,18 +77,66 @@ class CanaryDecoderWrapper(torch.nn.Module):
         return logits[:, -1, :]
 
 
+def publish_graph(
+    raw_path: Path,
+    output_path: Path,
+    staging_dir: Path,
+    allow_external_data: bool = True,
+) -> str | None:
+    """Validate and publish one graph, consolidating any external weights."""
+    if raw_path.name != output_path.name:
+        raise ValueError("Canary graph source and output basenames must match.")
+    tools_dir = Path(__file__).resolve().parents[3]
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+
+    import onnx
+    from onnx_artifacts import external_ranges
+    from repack_onnx_external_data import range_hash, repack
+
+    graph = onnx.load(str(raw_path), load_external_data=False)
+    references = list(external_ranges(graph, raw_path))
+    if references:
+        if not allow_external_data:
+            raise ValueError(f"External data is not supported for {raw_path.name}.")
+        packed_dir = staging_dir / f"repack-{raw_path.stem}"
+        receipt = repack(raw_path, packed_dir, range_hash(raw_path))
+        packed_graph = packed_dir / raw_path.name
+        packed_data = packed_dir / receipt["external_data"]["name"]
+        output_data = output_path.with_name(receipt["external_data"]["name"])
+        if output_path.exists() or output_data.exists():
+            raise FileExistsError(f"Canary graph output already exists: {output_path}")
+        os.replace(packed_graph, output_path)
+        os.replace(packed_data, output_data)
+        # repack() checked this graph and its external data before these same-volume moves.
+        return output_data.name
+
+    onnx.checker.check_model(str(raw_path))
+    if output_path.exists():
+        raise FileExistsError(f"Canary graph output already exists: {output_path}")
+    shutil.copy2(raw_path, output_path)
+    return None
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Export Canary 180M Flash into ONNX wrappers usable by @asrjs/speech-recognition.",
+        description="Export Canary AED ONNX wrappers usable by @asrjs/speech-recognition.",
     )
     parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
+    parser.add_argument("--checkpoint-path", type=Path, help="Restore a local .nemo file without using the Hub cache.")
+    parser.add_argument(
+        "--supported-languages",
+        help="Comma-separated model-supported language codes; required for unified CanaryBPE tokenizers.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
     parser.add_argument("--opset", type=int, default=17)
     parser.add_argument("--skip-preprocessor", action="store_true")
     parser.add_argument("--skip-tokenizer", action="store_true")
     parser.add_argument("--skip-config", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.supported_languages = parse_supported_languages(args.supported_languages)
+    return args
 
 
 def export_preprocessor(
@@ -101,6 +161,7 @@ def export_preprocessor(
         },
         opset_version=opset,
         do_constant_folding=True,
+        external_data=True,
     )
 
 
@@ -122,6 +183,7 @@ def export_encoder(wrapper: torch.nn.Module, output_path: Path, opset: int, mel_
         },
         opset_version=opset,
         do_constant_folding=True,
+        external_data=True,
     )
 
 
@@ -130,8 +192,9 @@ def export_decoder(
     output_path: Path,
     opset: int,
     decoder_hidden_size: int,
+    prompt_ids: torch.Tensor,
 ) -> None:
-    dummy_input_ids = torch.tensor([[7, 4, 16, 62, 62, 5, 9, 11, 13]], dtype=torch.long)
+    dummy_input_ids = prompt_ids.reshape(1, -1).to(dtype=torch.long)
     dummy_encoder_states = torch.randn(1, 40, decoder_hidden_size, dtype=torch.float32)
     dummy_encoder_mask = torch.ones(1, 40, dtype=torch.float32)
     torch.onnx.export(
@@ -148,14 +211,17 @@ def export_decoder(
         },
         opset_version=opset,
         do_constant_folding=True,
+        external_data=True,
     )
 
 
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if any(args.output_dir.iterdir()):
+        raise FileExistsError(f"Canary output directory must be empty: {args.output_dir}")
 
-    model = load_model(args.model_id, args.device)
+    model = load_model(args.model_id, args.device, args.checkpoint_path)
     model.eval()
 
     preprocessor_path = args.output_dir / "nemo128.onnx"
@@ -164,49 +230,74 @@ def main() -> None:
     tokenizer_path = args.output_dir / "tokenizer.json"
     config_path = args.output_dir / "config.json"
 
-    if not args.skip_preprocessor:
-        try:
-            export_preprocessor(
-                CanaryPreprocessorWrapper(model).eval(),
-                preprocessor_path,
-                args.opset,
-                int(model.cfg.preprocessor.sample_rate),
-            )
-            print(f"Exported preprocessor to {preprocessor_path}")
-        except Exception as error:  # noqa: BLE001
-            print(
-                "WARNING: Preprocessor export failed. "
-                "Current PyTorch ONNX export does not reliably support the NeMo STFT path in this env. "
-                "Reuse a shared 128-bin NeMo preprocessor artifact such as nemo128.onnx if needed."
-            )
-            print(f"Preprocessor export error: {error}")
+    with tempfile.TemporaryDirectory(prefix="canary-onnx-raw-", dir=args.output_dir) as temporary:
+        staging_dir = Path(temporary)
+        raw_dir = staging_dir / "raw"
+        raw_dir.mkdir()
+        raw_preprocessor = raw_dir / "nemo128.onnx"
+        raw_encoder = raw_dir / "encoder-model.onnx"
+        raw_decoder = raw_dir / "decoder-model.onnx"
 
-    export_encoder(
-        CanaryEncoderWrapper(model).eval(),
-        encoder_path,
-        args.opset,
-        int(model.cfg.preprocessor.features),
-    )
-    print(f"Exported encoder to {encoder_path}")
+        if not args.skip_preprocessor:
+            try:
+                export_preprocessor(
+                    CanaryPreprocessorWrapper(model).eval(),
+                    raw_preprocessor,
+                    args.opset,
+                    int(model.cfg.preprocessor.sample_rate),
+                )
+                publish_graph(raw_preprocessor, preprocessor_path, staging_dir, allow_external_data=False)
+                print(f"Exported preprocessor to {preprocessor_path}")
+            except Exception as error:  # noqa: BLE001
+                print(
+                    "WARNING: Preprocessor export failed. "
+                    "Current PyTorch ONNX export does not reliably support the NeMo STFT path in this env. "
+                    "Reuse a shared 128-bin NeMo preprocessor artifact such as nemo128.onnx if needed."
+                )
+                print(f"Preprocessor export error: {error}")
 
-    export_decoder(
-        CanaryDecoderWrapper(model).eval(),
-        decoder_path,
-        args.opset,
-        int(model.cfg.model_defaults.lm_dec_hidden),
-    )
-    print(f"Exported decoder to {decoder_path}")
+        export_encoder(
+            CanaryEncoderWrapper(model).eval(),
+            raw_encoder,
+            args.opset,
+            int(model.cfg.preprocessor.features),
+        )
+        encoder_external_data = publish_graph(raw_encoder, encoder_path, staging_dir)
+        print(f"Exported encoder to {encoder_path}")
+
+        export_decoder(
+            CanaryDecoderWrapper(model).eval(),
+            raw_decoder,
+            args.opset,
+            int(model.cfg.model_defaults.lm_dec_hidden),
+            encode_prompt(model, PromptSettings()).detach().cpu(),
+        )
+        decoder_external_data = publish_graph(raw_decoder, decoder_path, staging_dir)
+        print(f"Exported decoder to {decoder_path}")
 
     if not args.skip_tokenizer:
         tokenizer_path.write_text(
-            json.dumps(exported_tokenizer_payload(model), indent=2, ensure_ascii=False),
+            json.dumps(
+                exported_tokenizer_payload(model, args.supported_languages),
+                indent=2,
+                ensure_ascii=False,
+            ),
             encoding="utf-8",
         )
         print(f"Wrote tokenizer metadata to {tokenizer_path}")
 
     if not args.skip_config:
         config_path.write_text(
-            json.dumps(runtime_config_payload(args.model_id, model), indent=2, ensure_ascii=False),
+            json.dumps(
+                runtime_config_payload(
+                    args.model_id,
+                    model,
+                    args.supported_languages,
+                    {"encoder": encoder_external_data, "decoder": decoder_external_data},
+                ),
+                indent=2,
+                ensure_ascii=False,
+            ),
             encoding="utf-8",
         )
         print(f"Wrote runtime config to {config_path}")

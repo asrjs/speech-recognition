@@ -1,4 +1,6 @@
 import type { FireRedAssetCache, FireRedAssetCacheValue } from '../types.js';
+import { getDefaultIndexedDbAssetCache } from '../../../io/cache.js';
+import { SharedAssetCacheBridge } from './shared-asset-cache.js';
 
 const DB_NAME = 'firered-vad-web-cache';
 const STORE_NAME = 'asset-cache';
@@ -28,7 +30,10 @@ interface IdbDbLike {
   readonly version?: number;
   readonly objectStoreNames: { contains(name: string): boolean };
   createObjectStore(name: string): unknown;
-  transaction(names: string[], mode: 'readonly' | 'readwrite'): { objectStore(name: string): IdbStoreLike };
+  transaction(
+    names: string[],
+    mode: 'readonly' | 'readwrite',
+  ): { objectStore(name: string): IdbStoreLike };
   close?(): void;
 }
 
@@ -131,10 +136,15 @@ export class IndexedDbAssetCache implements FireRedAssetCache {
     }
     const db = await this.getDb();
     const bytes = value.bytes.slice();
-    const blob = new Blob([bytes.buffer], { type: value.contentType ?? 'application/octet-stream' });
+    const blob = new Blob([bytes.buffer], {
+      type: value.contentType ?? 'application/octet-stream',
+    });
     try {
       await new Promise<void>((resolve, reject) => {
-        const request = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME).put(blob, key);
+        const request = db
+          .transaction([STORE_NAME], 'readwrite')
+          .objectStore(STORE_NAME)
+          .put(blob, key);
         request.onerror = () => reject(new Error('Failed to write to IndexedDB.'));
         request.onsuccess = () => resolve();
       });
@@ -148,13 +158,60 @@ export class IndexedDbAssetCache implements FireRedAssetCache {
   }
 }
 
-let defaultBrowserCache: IndexedDbAssetCache | null = null;
+let defaultBrowserCache: FireRedAssetCache | null = null;
 const defaultMemoryCache = new MemoryAssetCache();
+
+let legacyCachePromise: Promise<FireRedAssetCache | null> | null = null;
+
+function getExistingLegacyCache(): Promise<FireRedAssetCache | null> {
+  if (!legacyCachePromise) legacyCachePromise = createExistingLegacyCache();
+  return legacyCachePromise;
+}
+
+async function createExistingLegacyCache(): Promise<FireRedAssetCache | null> {
+  if (!hasIndexedDb() || typeof indexedDB.databases !== 'function') return null;
+  try {
+    const databases = await indexedDB.databases();
+    if (!databases.some((database) => database.name === DB_NAME)) return null;
+    return {
+      async get(key) {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          if (!db.objectStoreNames.contains(STORE_NAME)) return null;
+          const blob = await new Promise<Blob | undefined>((resolve, reject) => {
+            const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
+            request.onsuccess = () => resolve(request.result as Blob | undefined);
+            request.onerror = () => reject(request.error);
+          });
+          if (!blob) return null;
+          return {
+            bytes: new Uint8Array(await blob.arrayBuffer()),
+            contentType: blob.type || undefined,
+          };
+        } finally {
+          db.close();
+        }
+      },
+      async set() {
+        // Compatibility with the cache interface; legacy data is intentionally read-only.
+      },
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function getDefaultAssetCache(preferPersistent = true): FireRedAssetCache {
   if (preferPersistent && hasIndexedDb()) {
     if (!defaultBrowserCache) {
-      defaultBrowserCache = new IndexedDbAssetCache();
+      const shared = getDefaultIndexedDbAssetCache();
+      defaultBrowserCache = shared
+        ? new SharedAssetCacheBridge(shared, getExistingLegacyCache)
+        : new IndexedDbAssetCache();
     }
     return defaultBrowserCache;
   }

@@ -1,0 +1,128 @@
+{
+  "scope": "parent independent local source/audio/gold hashes, native IDs/transcripts and declared comparison checks",
+  "fileHashesChecked": 26,
+  "files": [
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\model.safetensors",
+      "sha256": "03f61725f0c799624a4408e79ba3b0b3f43e9b54e994b1ba23949ae7b5a4a698"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\config.json",
+      "sha256": "f964513aa89375d027292f1c47e1729bd05ec7852d4c6c1f68720b05b39ea33a"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\preprocessor_config.json",
+      "sha256": "c1b0d9110224c2a196b06088803b958c0ee2df56234a85f01dcd38f27c8514f3"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\processor_config.json",
+      "sha256": "6b11a5e6b9e6782cba8ed8fc66eebe0aa6e3427b13032282cc7d68107e5a1320"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\tokenizer.json",
+      "sha256": "6d74a85891527e9427cc68f27dfa4b4a90b279ff565aeddf58e90ec88246d84a"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\tokenizer_config.json",
+      "sha256": "939fbf4fd276db0fff0cb7f89e7e29e1b1835c099c587b51450feba023f061d8"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--google--medasr\\snapshots\\7383e5e461baa820bdf9060652fe51b333bafba5\\added_tokens.json",
+      "sha256": "fc7d7435d19f28c8358be8abd65490b565c9944fedaaac313b2552b24e86eafc"
+    },
+    {
+      "path": "N:\\github\\ysdede\\medasr.js\\medasr-onnx\\model.onnx",
+      "sha256": "da364b58168d177cc08f274f4b8e1560322777a04ef712556c09f09c8708520c"
+    },
+    {
+      "path": "N:\\github\\ysdede\\medasr.js\\medasr-onnx\\model.onnx.data",
+      "sha256": "8638de0ecde3ef083775d29a782000c54f5bb518b10f93c506c0f10dd198d038"
+    },
+    {
+      "path": "N:\\github\\ysdede\\medasr.js\\medasr-onnx\\tokens.txt",
+      "sha256": "8bd3840ffebc3cb5f7e67cd1a3f841f11cec38078149c803fa1d6b565985a5d6"
+    },
+    {
+      "path": "N:\\github\\ysdede\\medasr.js\\medasr-onnx\\config.json",
+      "sha256": "1c798fb7117e66a487f34a2f86d8f50a9eee8d3cfa8cdfaf875e19a8a25092ab"
+    },
+    {
+      "path": "N:\\github\\ysdede\\medasr.js\\medasr-onnx\\preprocessor_config.json",
+      "sha256": "786407ebcc33c73600d39f71fbd32a4658d0296d239dce0f7bcd7ff627d56df7"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.wav",
+      "sha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.label.json",
+      "sha256": "e5b1a27f8ba65adcd61863685c34679997132b176e26a3ab7fbbcce7d12e3b79"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\model.safetensors",
+      "sha256": "928d40a16a729e2afaacdacc13627252c891d0ccfe6b99da8c7dd8df66b92cc5"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\config.json",
+      "sha256": "c6fca53c73fd1378d3ec49a21b87de402032fc2e0bc1ca2eed457428c5d15d54"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\tokenizer.json",
+      "sha256": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\config.json",
+      "sha256": "8c8c02e416aaca6f258fd270eec4d646e8ad60a7a2bc6516f37cef9f21589df5"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\preprocessor_config.json",
+      "sha256": "94c00f2bccbdbf4891a1ed8be371e59debaedd03d64f5e8313cedfa4c60da22b"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\pytorch_model.bin",
+      "sha256": "008d69c82bf45c82ec5485e550abc86ddabefe75080f22e1ebfdc1699889d82e"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\special_tokens_map.json",
+      "sha256": "50eb73d51191696209d30d42d6ede50e57e7a542ca1db12df714b2c0aa3da8e2"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\tokenizer_config.json",
+      "sha256": "573f3d46704a5482552885e2ca828fdcb2df1fbe90059a4d18ac2ee15820ca31"
+    },
+    {
+      "path": "C:\\Users\\steam\\.cache\\huggingface\\hub\\models--mpoyraz--wav2vec2-xls-r-300m-cv7-turkish\\snapshots\\708639f50559d7970f462e13ec64d3f059ca89f6\\vocab.json",
+      "sha256": "6641ad4761f75bbba7ca2591b1eaef57d1ab444762bf6a51f2ddbd70bfe3ee2f"
+    },
+    {
+      "path": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\fixtures\\common_voice_tr_38277367.tr.wav",
+      "sha256": "9cbbc554318fa4d06cdf3be659485cb09bdbf82dacd8d68fa1d45a78eb4b1c34"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\common_voice_tr_38277367.tr.txt",
+      "sha256": "703f6299e65713656d7c5e3e5bdf4de270b381a82e184cfc24832dbe887eaa88"
+    }
+  ],
+  "medasr": {
+    "fixtureCanonicalWordsEqual": true,
+    "nativeOrtFrameAndTokenIdsEqual": true,
+    "browser": "NOT_YET_VERIFIED_ON_MEDICAL_FIXTURE",
+    "receiptFormatRepair": "original has literal backslash-n after complete JSON; raw preserved, only trailer converted to newline",
+    "originalSha256": "2a27863782d27daf3649fc8803ace8f59219dbb1866a622cee18ccb4e3b61c04",
+    "validatedSha256": "78b53366953faa0135ddf005a39d85446499048743d5c02c0de884bad7df2bcb"
+  },
+  "parakeetCtc": {
+    "freshNativeAskKQualityMismatch": true,
+    "savedOracle34TokenIdsEqual": true
+  },
+  "trXlsr": {
+    "freshNativeOkulmazQualityMismatch": true,
+    "browserWordsEqual": true,
+    "numericNativeBrowserParity": "NOT_CLAIMED"
+  },
+  "physicalMicrophone": "UNVERIFIED"
+}

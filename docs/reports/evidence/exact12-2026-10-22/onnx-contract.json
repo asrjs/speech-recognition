@@ -1,0 +1,147 @@
+{
+  "encoder-model.onnx": {
+    "sha256": "98a74b21b4cc0017c1e7030319a4a96f4a9506e50f0708f3a516d02a77c96bb1",
+    "inputs": [
+      {
+        "name": "audio_signal",
+        "dims": [
+          "audio_signal_dynamic_axes_1",
+          128,
+          "audio_signal_dynamic_axes_2"
+        ]
+      },
+      {
+        "name": "length",
+        "dims": [
+          "length_dynamic_axes_1"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "dims": [
+          "Transposeoutputs_dim_0",
+          1024,
+          "Transposeoutputs_dim_2"
+        ]
+      },
+      {
+        "name": "encoded_lengths",
+        "dims": [
+          "length_dynamic_axes_1"
+        ]
+      }
+    ]
+  },
+  "encoder-model.fp16.onnx": {
+    "sha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+    "inputs": [
+      {
+        "name": "audio_signal",
+        "dims": [
+          "audio_signal_dynamic_axes_1",
+          128,
+          "audio_signal_dynamic_axes_2"
+        ]
+      },
+      {
+        "name": "length",
+        "dims": [
+          "length_dynamic_axes_1"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "dims": [
+          "Transposeoutputs_dim_0",
+          1024,
+          "Transposeoutputs_dim_2"
+        ]
+      },
+      {
+        "name": "encoded_lengths",
+        "dims": [
+          "length_dynamic_axes_1"
+        ]
+      }
+    ]
+  },
+  "decoder_joint-model.onnx": {
+    "sha256": "e978ddf6688527182c10fde2eb4b83068421648985ef23f7a86be732be8706c1",
+    "inputs": [
+      {
+        "name": "encoder_outputs",
+        "dims": [
+          "encoder_outputs_dynamic_axes_1",
+          1024,
+          "encoder_outputs_dynamic_axes_2"
+        ]
+      },
+      {
+        "name": "targets",
+        "dims": [
+          "targets_dynamic_axes_1",
+          "targets_dynamic_axes_2"
+        ]
+      },
+      {
+        "name": "target_length",
+        "dims": [
+          "target_length_dynamic_axes_1"
+        ]
+      },
+      {
+        "name": "input_states_1",
+        "dims": [
+          2,
+          "input_states_1_dynamic_axes_1",
+          640
+        ]
+      },
+      {
+        "name": "input_states_2",
+        "dims": [
+          2,
+          "input_states_2_dynamic_axes_1",
+          640
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "dims": [
+          "Addoutputs_dim_0",
+          "Addoutputs_dim_1",
+          "Addoutputs_dim_2",
+          8198
+        ]
+      },
+      {
+        "name": "prednet_lengths",
+        "dims": [
+          "target_length_dynamic_axes_1"
+        ]
+      },
+      {
+        "name": "output_states_1",
+        "dims": [
+          2,
+          "Concatoutput_states_1_dim_1",
+          640
+        ]
+      },
+      {
+        "name": "output_states_2",
+        "dims": [
+          2,
+          "Concatoutput_states_2_dim_1",
+          640
+        ]
+      }
+    ]
+  }
+}

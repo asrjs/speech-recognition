@@ -1,0 +1,17 @@
+[
+  {
+    "framework": "react",
+    "startDisabledBeforeLoad": true,
+    "stopDisabledBeforeLoad": true
+  },
+  {
+    "framework": "svelte",
+    "startDisabledBeforeLoad": true,
+    "stopDisabledBeforeLoad": true
+  },
+  {
+    "framework": "vue",
+    "startDisabledBeforeLoad": true,
+    "stopDisabledBeforeLoad": true
+  }
+]

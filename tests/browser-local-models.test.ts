@@ -184,11 +184,13 @@ describe('browser local model helpers', () => {
       await Promise.all(resolved.assetHandles.map((handle) => handle.dispose()));
     }
 
-    await expect(adapter.resolveEntries({
-      modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
-      entries,
-      decoderQuant: 'fp32',
-    } as never)).rejects.toThrow(/requested Qwen fp32 decoder pair/i);
+    await expect(
+      adapter.resolveEntries({
+        modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
+        entries,
+        decoderQuant: 'fp32',
+      } as never),
+    ).rejects.toThrow(/requested Qwen fp32 decoder pair/i);
   });
 
   it('loads through the public local-entry API and passes arbitrary PCM into the Qwen family', async () => {
@@ -199,7 +201,11 @@ describe('browser local model helpers', () => {
       'decoder-fp16.onnx.data',
       'tokenizer/tokenizer.json',
     ]);
-    const receivedAudio: Array<{ sampleRate: number; numberOfFrames: number; channels: readonly Float32Array[] }> = [];
+    const receivedAudio: Array<{
+      sampleRate: number;
+      numberOfFrames: number;
+      channels: readonly Float32Array[];
+    }> = [];
     const executor: Qwen3AsrExecutor = {
       async transcribe(audio) {
         receivedAudio.push(audio);
@@ -207,7 +213,9 @@ describe('browser local model helpers', () => {
           utteranceText: 'arbitrary clip',
           language: 'English',
           isFinal: true,
-          segments: [{ index: 0, text: 'arbitrary clip', startTime: 0, endTime: audio.durationSeconds }],
+          segments: [
+            { index: 0, text: 'arbitrary clip', startTime: 0, endTime: audio.durationSeconds },
+          ],
         };
       },
       dispose() {},
@@ -223,11 +231,14 @@ describe('browser local model helpers', () => {
         {} as never,
       );
       const family = createQwen3AsrModelFamily({ dependencies: { executor } });
-      const model = await family.createModel(resolvedRequest as never, {
-        runtime: {} as never,
-        backend: { id: loadOptions.backend ?? 'wasm' } as never,
-        hooks: {},
-      } as never);
+      const model = await family.createModel(
+        resolvedRequest as never,
+        {
+          runtime: {} as never,
+          backend: { id: loadOptions.backend ?? 'wasm' } as never,
+          hooks: {},
+        } as never,
+      );
       const session = await model.createSession();
       return {
         runtime: {} as never,
@@ -256,15 +267,20 @@ describe('browser local model helpers', () => {
           modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
           preset: 'qwen3-asr',
           backend: 'wasm',
-          options: { source: { kind: 'direct', artifacts: expect.objectContaining({
-            encoderUrl: expect.stringMatching(/^blob:/),
-            decoderUrl: expect.stringMatching(/^blob:/),
-            decoderStepUrl: expect.stringMatching(/^blob:/),
-            decoderPrefillDataUrl: expect.stringMatching(/^blob:/),
-            decoderStepDataUrl: expect.stringMatching(/^blob:/),
-            decoderPrefillDataPath: 'decoder-fp16.onnx.data',
-            decoderStepDataPath: 'decoder-fp16.onnx.data',
-          }) } },
+          options: {
+            source: {
+              kind: 'direct',
+              artifacts: expect.objectContaining({
+                encoderUrl: expect.stringMatching(/^blob:/),
+                decoderUrl: expect.stringMatching(/^blob:/),
+                decoderStepUrl: expect.stringMatching(/^blob:/),
+                decoderPrefillDataUrl: expect.stringMatching(/^blob:/),
+                decoderStepDataUrl: expect.stringMatching(/^blob:/),
+                decoderPrefillDataPath: 'decoder-fp16.onnx.data',
+                decoderStepDataPath: 'decoder-fp16.onnx.data',
+              }),
+            },
+          },
         }),
       );
     } finally {
@@ -296,7 +312,7 @@ describe('browser local model helpers', () => {
 
   it('rejects local inspection for built-in models without local-folder support', () => {
     expect(() =>
-      inspectSpeechModelLocalEntries('google/medasr', createSpeechModelLocalEntries([])),
+      inspectSpeechModelLocalEntries('openai/whisper-base', createSpeechModelLocalEntries([])),
     ).toThrow('does not support local folder loading');
   });
 

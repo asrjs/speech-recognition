@@ -28,12 +28,12 @@ export const MEDASR_PRESET_MANIFESTS: readonly MedAsrPresetManifest[] = [
     },
     config: {
       languages: ['en'],
-      vocabularySize: 32,
+      vocabularySize: 512,
       nMels: 128,
       featureHopSeconds: 0.01,
       tokenizer: {
         kind: 'sentencepiece',
-        blankTokenId: 31,
+        blankTokenId: 0,
       },
     },
     source: {

@@ -27,6 +27,13 @@ export function createWhisperPresetFactory(
       const manifestSource = options.useManifestSource
         ? resolveWhisperArtifactSource(modelId)
         : undefined;
+      const source = request.options?.source ?? manifestSource;
+
+      if (options.useManifestSource && !source) {
+        throw new Error(
+          `No verified Whisper artifact source is registered for "${modelId}". Add a verified manifest or provide options.source.`,
+        );
+      }
 
       return {
         family: 'whisper-seq2seq',
@@ -42,7 +49,7 @@ export function createWhisperPresetFactory(
             ...manifest?.config,
             ...request.options?.config,
           },
-          source: request.options?.source ?? manifestSource,
+          source,
         },
       };
     },

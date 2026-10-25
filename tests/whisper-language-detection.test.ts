@@ -135,6 +135,7 @@ describe('selectWhisperLanguageFromLogits', () => {
     const logits = new Float32Array(vocabSize);
     logits.fill(-10);
     logits[50268] = 9; // <|tr|>
+    let cacheBranchValue: number | undefined;
 
     const executor = new WhisperOnnxExecutor(
       'mock-whisper',
@@ -167,7 +168,8 @@ describe('selectWhisperLanguageFromLogits', () => {
           },
         },
         decoderSession: {
-          async run(_feeds: Record<string, unknown>) {
+          async run(feeds: Record<string, { readonly data?: ArrayBufferView }>) {
+            cacheBranchValue = Number((feeds.use_cache_branch?.data as Uint8Array | undefined)?.[0]);
             return {
               logits: { data: logits, dims: [1, 1, vocabSize] },
               'present.0.decoder.key': { data: new Float32Array([1]), dims: [1, 1, 1, 1] },
@@ -191,6 +193,7 @@ describe('selectWhisperLanguageFromLogits', () => {
     );
 
     expect(language).toBe('tr');
+    expect(cacheBranchValue).toBe(0);
   });
 
   it('falls back from unresolved auto language to English, not Turkish or <|auto|>', () => {

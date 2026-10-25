@@ -1,10 +1,39 @@
-import { CANARY_180M_FLASH_DOCS, DEFAULT_MODEL, resolveCanaryArtifactSource } from './manifest.js';
+import {
+  CANARY_180M_FLASH_DOCS,
+  CANARY_1B_V2_DECODER_LAYERS,
+  CANARY_1B_V2_ENCODER_LAYERS,
+  CANARY_1B_V2_LANGUAGES,
+  CANARY_1B_V2_VOCABULARY_SIZE,
+  DEFAULT_MODEL,
+  resolveCanaryArtifactSource,
+} from './manifest.js';
 
 export const LANGUAGE_NAMES = {
+  bg: 'Bulgarian',
+  hr: 'Croatian',
+  cs: 'Czech',
+  da: 'Danish',
+  nl: 'Dutch',
   en: 'English',
-  de: 'German',
-  es: 'Spanish',
+  et: 'Estonian',
+  fi: 'Finnish',
   fr: 'French',
+  de: 'German',
+  el: 'Greek',
+  hu: 'Hungarian',
+  it: 'Italian',
+  lv: 'Latvian',
+  lt: 'Lithuanian',
+  mt: 'Maltese',
+  pl: 'Polish',
+  pt: 'Portuguese',
+  ro: 'Romanian',
+  sk: 'Slovak',
+  sl: 'Slovenian',
+  es: 'Spanish',
+  sv: 'Swedish',
+  ru: 'Russian',
+  uk: 'Ukrainian',
 } as const;
 
 export interface CanaryModelConfig {
@@ -17,6 +46,7 @@ export interface CanaryModelConfig {
   readonly featuresSize: number;
   readonly encoderLayers: number;
   readonly decoderLayers: number;
+  readonly promptFormat: 'canary' | 'canary2';
 }
 
 const defaultSource = resolveCanaryArtifactSource(DEFAULT_MODEL);
@@ -35,6 +65,7 @@ export const MODELS = {
     featuresSize: 128,
     encoderLayers: CANARY_180M_FLASH_DOCS.architecture.encoderLayers,
     decoderLayers: CANARY_180M_FLASH_DOCS.architecture.decoderLayers,
+    promptFormat: 'canary2',
   },
   'nvidia/canary-1b': {
     repoId: 'nvidia/canary-1b',
@@ -42,21 +73,23 @@ export const MODELS = {
     languages: ['en', 'de', 'es', 'fr'],
     defaultSourceLanguage: 'en',
     defaultTargetLanguage: 'en',
-    vocabSize: 5248,
+    vocabSize: 4128,
     featuresSize: 128,
-    encoderLayers: 17,
-    decoderLayers: 4,
+    encoderLayers: 24,
+    decoderLayers: 24,
+    promptFormat: 'canary',
   },
   'nvidia/canary-1b-v2': {
     repoId: 'nvidia/canary-1b-v2',
     displayName: 'Canary 1B v2 (Multilingual AED)',
-    languages: ['en', 'de', 'es', 'fr'],
+    languages: CANARY_1B_V2_LANGUAGES,
     defaultSourceLanguage: 'en',
     defaultTargetLanguage: 'en',
-    vocabSize: 5248,
+    vocabSize: CANARY_1B_V2_VOCABULARY_SIZE,
     featuresSize: 128,
-    encoderLayers: 17,
-    decoderLayers: 4,
+    encoderLayers: CANARY_1B_V2_ENCODER_LAYERS,
+    decoderLayers: CANARY_1B_V2_DECODER_LAYERS,
+    promptFormat: 'canary2',
   },
 } satisfies Record<string, CanaryModelConfig>;
 

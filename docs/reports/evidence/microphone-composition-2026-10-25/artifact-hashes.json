@@ -1,0 +1,32 @@
+[
+  {
+    "path": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\encoder-model.fp16.onnx",
+    "bytes": 1238960452,
+    "sha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717"
+  },
+  {
+    "path": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\decoder_joint-model.int8.onnx",
+    "bytes": 18202004,
+    "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"
+  },
+  {
+    "path": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx\\vocab.txt",
+    "bytes": 102132,
+    "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742"
+  },
+  {
+    "path": "N:\\github\\asrjs\\speech-recognition\\dist\\runtime\\speech-controller.js",
+    "bytes": 25871,
+    "sha256": "157ebebb20033d10d62cf02f42319d0892276f8d2be7355a8df4029bd027e978"
+  },
+  {
+    "path": "N:\\github\\asrjs\\speech-recognition\\dist\\runtime\\browser-controller.js",
+    "bytes": 34697,
+    "sha256": "e29164a77eda9e2842af61c01eaa3f133760c94869191f545ae673d72d1d787a"
+  },
+  {
+    "path": "N:\\github\\asrjs\\speech-recognition\\dist\\runtime\\realtime.js",
+    "bytes": 21561,
+    "sha256": "a3a11997fc8200e73242847eca8dbebcf3303d54e26e242e79223bc9be293234"
+  }
+]

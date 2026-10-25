@@ -1,0 +1,98 @@
+{
+  "scope": "Actual Chrome IndexedDB and public asset provider, deterministic 64 KiB fixture; not model inference or cross-site sharing",
+  "payloadSha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+  "fixtureNetworkRequests": 1,
+  "apps": [
+    {
+      "app": "showcase",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "network",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "playground",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "realtime",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "benchmark",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "examples/react",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "examples/svelte",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    },
+    {
+      "app": "examples/vue",
+      "origin": "http://127.0.0.1:4190",
+      "bytes": 65536,
+      "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+      "source": "cache",
+      "keys": [
+        "hf-asset-v1:[\"asrjs/cache-fixture\",\"main\",\"onnx/encoder.onnx\"]"
+      ],
+      "pageErrors": []
+    }
+  ],
+  "legacy": {
+    "legacyBytes": [
+      11,
+      22,
+      33
+    ],
+    "legacyCopied": false,
+    "fireRedBytes": [
+      44,
+      55
+    ],
+    "fireRedCopied": false
+  },
+  "differentPortIsolated": true
+}

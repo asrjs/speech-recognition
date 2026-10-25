@@ -1,16 +1,17 @@
 # Agent entrypoint — all coding harnesses
 
-Updated: 2026-10-08. This is the startup router, not another task queue.
+Updated: 2026-10-25. This is the startup router, not another task queue.
 Use it with Codex, OMP or another repository-aware harness.
 
 ## Read order and authority
 
 1. Read the project-root `AGENTS.md` when present, and
    [AGENT_SAFETY_RULES.md](AGENT_SAFETY_RULES.md) completely before editing.
-2. Read [ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and
-   [reports/deep-review-2026-10-17.md](reports/deep-review-2026-10-17.md) first.
-   These contain the active 7 task cards (T1–T7), current sprint roadmap, and
-   the required 3-tier verification gate (`Gate-A`, `Gate-B`, `Gate-C`).
+2. Read [PROJECT_CHARTER.md](PROJECT_CHARTER.md) and the
+   [documentation index](README.md) first. The product is an easy-to-integrate
+   offline and streaming speech library for browser and Node/Bun developers.
+   [ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and the dated review are historical
+   work records; verify task status before resuming them.
 3. Read the [engineering tool map](../tools/README.md#task-to-tool-map).
    For model ports, feature extraction, inference or parity work, read the
    project-local [Model Debugging Skill](../tools/model-debugging/SKILL.md).
@@ -67,7 +68,7 @@ archived recommended goal retain useful history. Their old branches, agent
 names, resume prompts, queue entries and PASS claims do not direct current work.
 Follow them only when the user explicitly resumes that historical scope, after
 checking source/build/artifact freshness. Do not check out an old branch because
-a historical handoff says to do so. The current model order is Orukeet, then
+a historical handoff says to do so. The October 8 model order was Orukeet, then
 Parakeet TDT students/distills and quantized/faster derivatives, then ranked
 non-NVIDIA candidates. Full-size community TDT variants are eligible for measured
 speed/memory/quality benefit; Parakeet CTC is on hold and Nemotron remains paused.
@@ -94,15 +95,24 @@ changes. Do not resume Nemotron, relax parity gates, repeat completed controls,
 push/publish/upload, install globally or download large weights without authority.
 ```
 
-## Current focus overlay
+## Current product focus (2026-10-25)
 
-Active sprint (2026-10-17): read
+The user reaffirmed library design, public API, developer documentation and
+project organization as the priority. Preserve established Parakeet TDT and
+Whisper custom-graph paths. Shared VAD, capture, waveform and streaming
+components support this product; a model test matrix is supporting evidence,
+not the product roadmap. Start from the README and charter, then select a
+bounded task matching the latest user request.
+
+## Historical focus overlays
+
+Historical sprint (2026-10-17): read
 [ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and
 [reports/deep-review-2026-10-17.md](reports/deep-review-2026-10-17.md)
 for the active 7 task cards (T1–T7), 3-tier verification gates, and strategic roadmap.
 Also refer to [HANDOFF-subagents-2026-10-17.md](reports/HANDOFF-subagents-2026-10-17.md).
 
-Latest user scope (2026-10-08): **do not work on Parakeet CTC now**. Resume
+Historical user scope (2026-10-08): **do not work on Parakeet CTC now**. Resume
 Parakeet TDT distills, quantized/faster derivatives and the recorded 2026
 non-NVIDIA speech candidates. Read the active P10 checklist at the top of
 [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md) and C52 in

@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-24T16:14:23.056135+00:00",
+  "status": "REPACKED_BYTE_IDENTICAL_UNVALIDATED",
+  "source_graph": {
+    "path": "N:\\models\\onnx\\nemo\\nemotron-3.5-asr-streaming-fp32-nemo\\decoder.onnx",
+    "sha256": "523cb8402312720e458286d793118e43245e07739e44321dcbc5f9bdc993de44"
+  },
+  "output_dir": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\decoder-packed",
+  "block_bytes": 8388608,
+  "policy": "copy_each_reference; remove external checksum/basepath; preserve inline tensors",
+  "external_tensor_count": 7,
+  "source_external_file_count": 1,
+  "ranges": [
+    {
+      "tensor": "decoder.prediction.embed.weight",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 59760640,
+      "length": 33505280,
+      "destination_offset": 0,
+      "sha256": "5c69af049bd5d0e3017f31d77c42ab040e3441670b46abef5be93f719269e59d"
+    },
+    {
+      "tensor": "onnx::LSTM_181",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 93265920,
+      "length": 6553600,
+      "destination_offset": 33505280,
+      "sha256": "214859a11ac7247973bdf36042532b74bf957c54a3e8b7ca1a8ac3824f9d6aee"
+    },
+    {
+      "tensor": "onnx::LSTM_182",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 99819520,
+      "length": 6553600,
+      "destination_offset": 40058880,
+      "sha256": "94e837501438a7daec789d0fb09d8025c309625d322f971aa248ade1d96c4150"
+    },
+    {
+      "tensor": "onnx::LSTM_183",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 106373120,
+      "length": 20480,
+      "destination_offset": 46612480,
+      "sha256": "44cc0c3137686762bf55212229a83bb1b823cd0941887f3f95effa03472139ce"
+    },
+    {
+      "tensor": "onnx::LSTM_201",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 106393600,
+      "length": 6553600,
+      "destination_offset": 46632960,
+      "sha256": "073b0d1522ac1af5ac4074ff965463a2b71dab24ac4856d119ba9dd1bfc42f48"
+    },
+    {
+      "tensor": "onnx::LSTM_202",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 112947200,
+      "length": 6553600,
+      "destination_offset": 53186560,
+      "sha256": "15d825fb734e2e788c90035fbb67103a2754c29757fc5e4565d303258a1a1c3c"
+    },
+    {
+      "tensor": "onnx::LSTM_203",
+      "source_location": "decoder.onnx.data",
+      "source_offset": 119500800,
+      "length": 20480,
+      "destination_offset": 59740160,
+      "sha256": "f383ee270cfa901d8e501337e41a715d924a9f14cc889767d3f0093894bf52a0"
+    }
+  ],
+  "companions": [],
+  "numerical_parity": "UNTESTED",
+  "graph": {
+    "name": "decoder.onnx",
+    "bytes": 5211,
+    "sha256": "c43881b076fa5d6d26514cf7c03f529990fe0839b88b035668724ab8656c57b9"
+  },
+  "external_data": {
+    "name": "decoder.onnx.data",
+    "bytes": 59760640,
+    "sha256": "4f2ced2289e1a62f7576ae9b42a97b972bdbc001eca8b41c4cc4c2421c0982eb"
+  }
+}

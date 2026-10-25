@@ -17,6 +17,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List
 
 import onnx
@@ -224,6 +225,17 @@ def validate_manifest(export_dir: Path, model_id: str, expected_layers: int, exp
     has_align = "decoder_align" in artifacts
     align_note = " (without decoder_align)" if not has_align else ""
     print(f"  ✓ manifest.json — layers={expected_layers}, heads={expected_heads}, {len(artifacts)} artifacts{align_note}")
+
+
+def test_generation_config_value_prefers_checkpoint_value():
+    """Manifest metadata must match generation_config when it differs from config.json."""
+    from export_whisper import _generation_config_value
+
+    model_config = SimpleNamespace(pad_token_id=50256, bos_token_id=50256)
+    generation_config = SimpleNamespace(pad_token_id=50257)
+    assert _generation_config_value("pad_token_id", generation_config, model_config) == 50257
+    assert _generation_config_value("bos_token_id", generation_config, model_config) == 50256
+    assert _generation_config_value("pad_token_id", SimpleNamespace(pad_token_id=None), model_config) == 50256
 
 
 def test_export_all_4graph():

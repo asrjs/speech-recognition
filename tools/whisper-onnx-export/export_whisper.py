@@ -61,6 +61,28 @@ from onnxruntime.quantization import quantize_dynamic, QuantType
 _DEFAULT_EXTERNAL_DATA_THRESHOLD = 100 * 1024 * 1024  # 100 MB
 
 
+def _resolve_external_data_policy(
+    strategy: str,
+    requested_threshold: int,
+    *,
+    large_model: bool,
+) -> tuple[bool, int]:
+    """Resolve external-data use and initializer threshold for an export.
+
+    Large-model auto exports must externalize every initializer: ONNX applies
+    ``size_threshold`` per tensor, so the default 100 MB can leave many large
+    weights inline.  Explicit ``never`` remains inline and ``always`` retains
+    its established all-initializer external layout.
+    """
+    if strategy == "never":
+        return False, requested_threshold
+    if strategy == "always":
+        return True, 0
+    if strategy == "auto":
+        return large_model, 0 if large_model else requested_threshold
+    raise ValueError(f"Unknown external-data strategy: {strategy!r}")
+
+
 def _model_size_estimate(model: onnx.ModelProto) -> int:
     """Rough byte estimate of a ModelProto's initializer data.
 
@@ -843,6 +865,12 @@ def get_required_alignment_heads(model: WhisperForConditionalGeneration) -> List
     )
 
 
+def _generation_config_value(name: str, generation_config: Any, model_config: Any) -> Any:
+    """Prefer checkpoint generation metadata, falling back to model config."""
+    value = getattr(generation_config, name, None)
+    return value if value is not None else getattr(model_config, name, None)
+
+
 def parse_manual_alignment_heads(value: str | None) -> List[Tuple[int, int]] | None:
     if not value:
         return None
@@ -1215,35 +1243,29 @@ def export_all(
     print(f"  layers={num_layers}  heads={num_heads}  head_dim={head_dim}")
     print(f"  mel_bins={num_mel_bins}  max_source={max_source_positions}  max_target={max_target_positions}")
     print(f"  alignment_heads={alignment_heads}")
-    effective_external_data_threshold = (
-        0 if external_data == "always" else external_data_threshold
-    )
-    print(f"  dtype={dtype}  external_data={external_data}"
-          f"  threshold={effective_external_data_threshold / 1024 / 1024:.0f}MB"
-          f"  one_file={external_data_one_file}")
-    print()
-
     # ---- External data resolution ----
-    # "auto" → use external data for models likely to exceed threshold
+    # "auto" → use external data for large geometry and externalize all initializers
     # "always" → force external data for all graphs
     # "never" → inline weights (DANGEROUS for large models)
-    use_external_data: bool
-    if external_data == "never":
-        use_external_data = False
-    elif external_data == "always":
-        use_external_data = True
-        # ``onnx.save_model(size_threshold=...)`` externalizes only tensors
-        # above the threshold.  ``always`` is the explicit artifact-layout
-        # contract, so use zero to externalize every initializer, including
-        # the many sub-100 MB encoder weights.
-        external_data_threshold = effective_external_data_threshold
-    else:  # "auto"
+    if external_data == "auto":
         # Enable external data if the model has enough parameters to risk
         # exceeding the 2 GB protobuf limit.  Check both encoder and decoder
         # layers — encoder may be large even when decoder is small (e.g.,
         # large-v3-turbo: 32 encoder layers, 4 decoder layers).
         enc_layers = getattr(cfg, "encoder_layers", num_layers)
-        use_external_data = max(num_layers, enc_layers) >= 24
+        large_model = max(num_layers, enc_layers) >= 24
+    else:
+        large_model = False
+    use_external_data, external_data_threshold = _resolve_external_data_policy(
+        external_data,
+        external_data_threshold,
+        large_model=large_model,
+    )
+
+    print(f"  dtype={dtype}  external_data={external_data}"
+          f"  threshold={external_data_threshold / 1024 / 1024:.0f}MB"
+          f"  one_file={external_data_one_file}")
+    print()
 
     # Auto-detect validate_path_only if not explicitly set
     if validate_path_only is None:
@@ -1503,13 +1525,12 @@ def export_all(
     generation_cfg = getattr(model, "generation_config", None)
 
     def generation_value(name: str):
-        value = getattr(generation_cfg, name, None)
-        return value if value is not None else getattr(cfg, name, None)
+        return _generation_config_value(name, generation_cfg, cfg)
 
     special_tokens = {
         "eos_token_id": cfg.eos_token_id,
         "bos_token_id": cfg.bos_token_id,
-        "pad_token_id": cfg.pad_token_id,
+        "pad_token_id": generation_value("pad_token_id"),
         "decoder_start_token_id": cfg.decoder_start_token_id,
         "forced_decoder_ids": generation_value("forced_decoder_ids"),
         "suppress_tokens": generation_value("suppress_tokens"),
@@ -1688,7 +1709,8 @@ def main():
     parser.add_argument(
         "--external-data-threshold", type=int, default=_DEFAULT_EXTERNAL_DATA_THRESHOLD,
         help=f"Size threshold in bytes for external data (default: {_DEFAULT_EXTERNAL_DATA_THRESHOLD}). "
-             "Initializers above this size are stored in the .data file.",
+             "Applied per initializer. Large-model 'auto' and 'always' use 0 so all initializers "
+             "are external; small-model 'auto' uses this threshold. 'never' stays inline.",
     )
     parser.add_argument(
         "--external-data-one-file", type=str, default="true",

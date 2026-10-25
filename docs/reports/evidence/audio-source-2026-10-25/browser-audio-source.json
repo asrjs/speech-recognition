@@ -1,0 +1,25 @@
+{
+  "loads": 4,
+  "disposals": 4,
+  "inputs": [
+    {
+      "sampleRate": 8000,
+      "frames": 2000
+    },
+    {
+      "sampleRate": 8000,
+      "frames": 2000
+    },
+    {
+      "sampleRate": 8000,
+      "frames": 2000
+    },
+    {
+      "sampleRate": 8000,
+      "frames": 2000
+    }
+  ],
+  "contextsClosed": 5,
+  "decodeFailed": true,
+  "scope": "Real browser audio decoding; mocked model loading and inference. No weights."
+}

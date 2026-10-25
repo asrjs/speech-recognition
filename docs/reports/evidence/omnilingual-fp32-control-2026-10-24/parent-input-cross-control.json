@@ -1,0 +1,44 @@
+{
+  "scope": "same CPU runtime discriminating input control, not quality acceptance",
+  "runtime": "1.29.0",
+  "models": {
+    "int8": {
+      "inputDifference": {
+        "maxAbs": 1.8739738464355469,
+        "meanAbs": 0.0591774560968061,
+        "changedFrames": [
+          52
+        ],
+        "argmaxAgreement": 0.9981785063752276,
+        "atol": 0.001,
+        "rtol": 0.0001,
+        "allclose": false
+      },
+      "runtimeDifferenceOnExactMetaInput": {
+        "maxAbs": 4.527950048446655,
+        "meanAbs": 0.06833289519057789,
+        "changedFrames": [
+          52,
+          65,
+          75
+        ]
+      }
+    },
+    "fp32": {
+      "inputDifference": {
+        "maxAbs": 0.00013208389282226562,
+        "meanAbs": 2.2478337837896847e-06,
+        "changedFrames": [],
+        "argmaxAgreement": 1.0,
+        "atol": 0.001,
+        "rtol": 0.0001,
+        "allclose": true
+      },
+      "runtimeDifferenceOnExactMetaInput": {
+        "maxAbs": 0.0001373291015625,
+        "meanAbs": 1.910004535444518e-06,
+        "changedFrames": []
+      }
+    }
+  }
+}

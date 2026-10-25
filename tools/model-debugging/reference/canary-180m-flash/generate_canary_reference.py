@@ -20,6 +20,7 @@ from canary_common import (
     load_model,
     manual_decode,
     numpy_payload,
+    parse_supported_languages,
     resolve_device,
     runtime_config_payload,
     tensor_payload,
@@ -28,11 +29,16 @@ from canary_common import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate PyTorch reference tensors/tokens/text for Canary 180M Flash parity work.",
+        description="Generate PyTorch reference tensors/tokens/text for Canary AED parity work.",
     )
     parser.add_argument("--audio", type=Path, default=DEFAULT_AUDIO)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
+    parser.add_argument("--checkpoint-path", type=Path, help="Restore a local .nemo file without using the Hub cache.")
+    parser.add_argument(
+        "--supported-languages",
+        help="Comma-separated model-supported language codes; required for unified CanaryBPE tokenizers.",
+    )
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="cpu")
     parser.add_argument("--source-lang", default="en")
     parser.add_argument("--target-lang", default="en")
@@ -43,7 +49,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-timestamp", action="store_true")
     parser.add_argument("--enable-diarize", action="store_true")
     parser.add_argument("--skip-nemo-greedy-check", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.supported_languages = parse_supported_languages(args.supported_languages)
+    return args
 
 
 def build_prompt_settings(args: argparse.Namespace) -> PromptSettings:
@@ -95,7 +103,7 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
     device = resolve_device(args.device)
-    model = load_model(args.model_id, device)
+    model = load_model(args.model_id, device, args.checkpoint_path)
     prompt_settings = build_prompt_settings(args)
 
     waveform, sample_rate = load_audio(audio_path, int(model.cfg.preprocessor.sample_rate))
@@ -130,7 +138,11 @@ def main() -> None:
             "input_samples": int(waveform.shape[0]),
             "duration_seconds": round(float(waveform.shape[0]) / float(sample_rate), 6),
         },
-        "runtime_config": runtime_config_payload(args.model_id, model),
+        "runtime_config": runtime_config_payload(
+            args.model_id,
+            model,
+            args.supported_languages,
+        ),
         "prompt": {
             "settings": {
                 "source_lang": prompt_settings.source_lang,

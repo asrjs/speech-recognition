@@ -72,7 +72,7 @@ export interface BenchmarkMemorySnapshot {
   readonly source: 'measure-user-agent-specific-memory' | 'unavailable';
   readonly scope: 'process' | 'unavailable';
   readonly bytes: number | null;
-  readonly reason?: 'unsupported' | 'measurement-failed' | 'invalid-result';
+  readonly reason?: 'unsupported' | 'measurement-failed' | 'invalid-result' | 'timeout';
 }
 
 export interface BenchmarkLifecycleRecord {

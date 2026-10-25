@@ -1,0 +1,102 @@
+{
+  "status": "PASS_PROCESSOR_PADDING_CONTRACT",
+  "scope": "Transformers 5 official AutoProcessor only; no model inference or browser claim",
+  "transformersVersion": "5.18.0",
+  "processorClass": "MoonshineStreamingProcessor",
+  "processorModule": "transformers.models.moonshine_streaming.processing_moonshine_streaming",
+  "snapshot": "N:\\github\\asrjs\\speech-recognition\\.cache\\moonshine-streaming-tiny",
+  "frameSamples": 80,
+  "maskSemantics": "MoonshineStreaming embedder uses mask.sum() // frame_len before conv; partial samples do not form an additional frontend frame.",
+  "cases": [
+    {
+      "samples": 8584,
+      "inputShape": [
+        1,
+        8640
+      ],
+      "paddedSamples": 8640,
+      "attentionMaskShape": [
+        1,
+        8640
+      ],
+      "attentionMaskValidSamples": 8584,
+      "completeFrontendFrames": 107,
+      "expectedEncoderFramesFromTwoStride2Convs": 27,
+      "paddedSuffixAllZero": true,
+      "validPrefixPreserved": true
+    },
+    {
+      "samples": 176003,
+      "inputShape": [
+        1,
+        176080
+      ],
+      "paddedSamples": 176080,
+      "attentionMaskShape": [
+        1,
+        176080
+      ],
+      "attentionMaskValidSamples": 176003,
+      "completeFrontendFrames": 2200,
+      "expectedEncoderFramesFromTwoStride2Convs": 550,
+      "paddedSuffixAllZero": true,
+      "validPrefixPreserved": true
+    },
+    {
+      "samples": 79,
+      "inputShape": [
+        1,
+        80
+      ],
+      "paddedSamples": 80,
+      "attentionMaskShape": [
+        1,
+        80
+      ],
+      "attentionMaskValidSamples": 79,
+      "completeFrontendFrames": 0,
+      "expectedEncoderFramesFromTwoStride2Convs": 0,
+      "paddedSuffixAllZero": true,
+      "validPrefixPreserved": true
+    },
+    {
+      "samples": 80,
+      "inputShape": [
+        1,
+        80
+      ],
+      "paddedSamples": 80,
+      "attentionMaskShape": [
+        1,
+        80
+      ],
+      "attentionMaskValidSamples": 80,
+      "completeFrontendFrames": 1,
+      "expectedEncoderFramesFromTwoStride2Convs": 1,
+      "paddedSuffixAllZero": true,
+      "validPrefixPreserved": true
+    },
+    {
+      "samples": 81,
+      "inputShape": [
+        1,
+        160
+      ],
+      "paddedSamples": 160,
+      "attentionMaskShape": [
+        1,
+        160
+      ],
+      "attentionMaskValidSamples": 81,
+      "completeFrontendFrames": 1,
+      "expectedEncoderFramesFromTwoStride2Convs": 1,
+      "paddedSuffixAllZero": true,
+      "validPrefixPreserved": true
+    }
+  ],
+  "sourceFiles": {
+    "processor": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\transformers5\\Lib\\site-packages\\transformers\\models\\moonshine_streaming\\processing_moonshine_streaming.py",
+    "embedderModeling": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\transformers5\\Lib\\site-packages\\transformers\\models\\moonshine_streaming\\modeling_moonshine_streaming.py"
+  },
+  "inputProbe": "constant 0.25 float32 samples; verifies padding is zero and valid prefix is preserved"
+}

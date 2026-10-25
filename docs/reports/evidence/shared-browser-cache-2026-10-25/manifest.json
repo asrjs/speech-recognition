@@ -1,0 +1,21 @@
+{
+  "scope": "Same-origin browser cache integration, synthetic 64 KiB fixture, no new model-accuracy claim",
+  "sdkPackage": "asrjs-speech-recognition-0.2.0-shared-cache-20261025.tgz",
+  "sdkSha256": "c0cec2731005f6d25a3a2d852af7060f51385e9fcc3aea4be0f60e87e269b722",
+  "libraryTests": {
+    "passed": 2011,
+    "skipped": 36
+  },
+  "frameworkTests": 10,
+  "demoTests": 93,
+  "files": {
+    "browser-cache-proof.json": "075600d805230a4f2b2961670bffa20a629c7d087ccbc4618575ac3dd1a34df4",
+    "browser-cache-proof.py": "13ab13df98c68c7e0e7bddaf6e578a19a430473ebf87a82beaa66829cd61dbb3",
+    "initial-tests-with-legacy-mock-failures.log": "e9ffaa7be96adb8c97723185d532cc2ab2f49a6d7976d5456c4ffeb5c03c4951",
+    "library-tests.log": "9696bcd838467dae3f071e80c37696b9972bc629fed0882f9bc2b7a0ba35e2bb",
+    "lint.log": "7f4cf53b41122d48326e5143303cb0c985bcdbc8a914eed152ecb28a5c9d2eaf",
+    "portal.png": "196e2c1aa59fc4a5284f37743237d8d705e9492f33f7f5d9aed0a349ce087b15",
+    "tests-with-import-timeout.log": "de770e87741fb709724a5b3d7ad0d2442d3ba4c0a01c7087b6017a9a0146a819",
+    "README.md": "ef4529ce321f9d740b095ad8f7e708edcd6adf78626fc3a7f20be5778c26e016"
+  }
+}

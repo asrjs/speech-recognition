@@ -287,6 +287,7 @@ export class StreamingSpeechDetector {
   private tenVadUnsubscribe: (() => void) | null = null;
   private lastDebugTraceAt = 0;
   private lastAcceptedLogicalEndFrame: number | null = null;
+  private lastFinalizedLogicalEndFrame = 0;
   private continuationAfterMaxDuration = false;
   private readonly initSignal?: { readonly aborted: boolean } | null;
   private startAbort: AbortController | null = null;
@@ -529,6 +530,7 @@ export class StreamingSpeechDetector {
       this.lastForegroundResult = null;
       this.lastError = null;
       this.lastAcceptedLogicalEndFrame = null;
+      this.lastFinalizedLogicalEndFrame = 0;
       this.continuationAfterMaxDuration = false;
       this.ringBuffer.reset();
       this.roughGate.reset();
@@ -615,8 +617,15 @@ export class StreamingSpeechDetector {
     const isHybrid = effectiveGateMode === 'hybrid';
     const isVadOnly = effectiveGateMode === STREAMING_GATE_MODES.VAD_ONLY;
 
+    // Retained history must not replay a finalized (even rejected) utterance.
+    const vadOnsetFrame = !this.activeSegment && (isHybrid || isVadOnly)
+      ? this.tenVad?.findFirstSpeechFrame(
+          Math.max(baseFrame, this.lastFinalizedLogicalEndFrame), nowFrame,
+        ) ?? null
+      : null;
     const vadOnsetSpeaking =
       (isHybrid || isVadOnly) &&
+      vadOnsetFrame !== null &&
       this.tenVad !== null &&
       (this.tenVad.getStatus().speaking ||
         this.tenVad.hasRecentSpeech(
@@ -627,19 +636,8 @@ export class StreamingSpeechDetector {
 
     if (!this.activeSegment) {
       if (isVadOnly) {
-        if (vadOnsetSpeaking) {
-          const firstSpeechFrame =
-            this.tenVad?.findFirstSpeechFrame(baseFrame, nowFrame) ??
-            Math.max(
-              baseFrame,
-              nowFrame -
-                durationMsToAlignedFrameCount(
-                  this.config.tenVadConfirmationWindowMs,
-                  this.sampleRate,
-                  'ceil',
-                  this.config.chunkDurationMs,
-                ),
-            );
+        if (vadOnsetSpeaking && vadOnsetFrame !== null) {
+          const firstSpeechFrame = vadOnsetFrame;
           this.activateSegment(firstSpeechFrame, nowFrame, 'ten-vad');
           this.recordDecision('Neural VAD speech start', {
             startFrame: firstSpeechFrame,
@@ -658,19 +656,8 @@ export class StreamingSpeechDetector {
           noiseFloor: Number(rough.noiseFloor.toFixed(5)),
           snr: Number(rough.snr.toFixed(2)),
         });
-      } else if (isHybrid && vadOnsetSpeaking) {
-        const firstSpeechFrame =
-          this.tenVad?.findFirstSpeechFrame(baseFrame, nowFrame) ??
-          Math.max(
-            baseFrame,
-            nowFrame -
-              durationMsToAlignedFrameCount(
-                this.config.tenVadConfirmationWindowMs,
-                this.sampleRate,
-                'ceil',
-                this.config.chunkDurationMs,
-              ),
-          );
+      } else if (isHybrid && vadOnsetSpeaking && vadOnsetFrame !== null) {
+        const firstSpeechFrame = vadOnsetFrame;
         this.activateSegment(firstSpeechFrame, nowFrame, 'ten-vad');
         this.recordDecision('Hybrid neural VAD speech start', {
           startFrame: firstSpeechFrame,
@@ -744,11 +731,12 @@ export class StreamingSpeechDetector {
         }
       } else if (isVadOnly) {
         const vadSpeaking =
-          this.tenVad?.hasRecentSpeech(
+          this.tenVad?.getStatus().speaking ||
+          (this.tenVad?.hasRecentSpeech(
             nowFrame,
             this.config.tenVadHangoverMs,
             this.sampleRate,
-          ) ?? false;
+          ) ?? false);
         if (vadSpeaking) {
           this.state = 'speaking';
           this.emitSpeechUpdate(nowFrame);
@@ -770,11 +758,12 @@ export class StreamingSpeechDetector {
         }
       } else if (isHybrid) {
         const vadSpeaking =
-          this.tenVad?.hasRecentSpeech(
+          this.tenVad?.getStatus().speaking ||
+          (this.tenVad?.hasRecentSpeech(
             nowFrame,
             this.config.tenVadHangoverMs,
             this.sampleRate,
-          ) ?? false;
+          ) ?? false);
         const isSpeaking = rough.isSpeech || vadSpeaking;
 
         if (isSpeaking) {
@@ -965,6 +954,7 @@ export class StreamingSpeechDetector {
     });
 
     this.activeSegment = null;
+    this.lastFinalizedLogicalEndFrame = bounds.logicalEndFrame;
     this.pendingSegmentStartFrame = null;
     this.state = 'listening';
 

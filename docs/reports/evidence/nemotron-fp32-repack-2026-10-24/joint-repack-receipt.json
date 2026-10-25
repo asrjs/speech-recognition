@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-24T16:14:23.104226+00:00",
+  "status": "REPACKED_BYTE_IDENTICAL_UNVALIDATED",
+  "source_graph": {
+    "path": "N:\\models\\onnx\\nemo\\nemotron-3.5-asr-streaming-fp32-nemo\\joint.onnx",
+    "sha256": "38678494d52a30d68f11799a9a74de2ceec1bb643f8247e70f3d0cbd411fdee8"
+  },
+  "output_dir": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\joint-packed",
+  "block_bytes": 8388608,
+  "policy": "copy_each_reference; remove external checksum/basepath; preserve inline tensors",
+  "external_tensor_count": 6,
+  "source_external_file_count": 1,
+  "ranges": [
+    {
+      "tensor": "joint.pred.bias",
+      "source_location": "joint.onnx.data",
+      "source_offset": 37822592,
+      "length": 2560,
+      "destination_offset": 0,
+      "sha256": "615a455d8da42696b02dd6a0954c70dd896db1a0652b4abb1567fbc82e52527d"
+    },
+    {
+      "tensor": "joint.enc.bias",
+      "source_location": "joint.onnx.data",
+      "source_offset": 37825152,
+      "length": 2560,
+      "destination_offset": 2560,
+      "sha256": "46c3fda2bdc4a523e1978c24767c1b22ddec8c511ebc28c3986437a0e2792536"
+    },
+    {
+      "tensor": "joint.joint_net.2.bias",
+      "source_location": "joint.onnx.data",
+      "source_offset": 37827712,
+      "length": 52352,
+      "destination_offset": 5120,
+      "sha256": "45db1e46fab056820a2a12b769f94e3afdaa901d7bc206accfb79da3555e5bb4"
+    },
+    {
+      "tensor": "onnx::MatMul_23",
+      "source_location": "joint.onnx.data",
+      "source_offset": 37880064,
+      "length": 2621440,
+      "destination_offset": 57472,
+      "sha256": "809039a37ba5e08a43a630db248e2aafefb8bf73e954c1765a834b1efd8e6d9c"
+    },
+    {
+      "tensor": "onnx::MatMul_24",
+      "source_location": "joint.onnx.data",
+      "source_offset": 40501504,
+      "length": 1638400,
+      "destination_offset": 2678912,
+      "sha256": "72a8e1288467f4ba2d594e028da00241356bc35093b29aaf2db86cfd7f4e9ce1"
+    },
+    {
+      "tensor": "onnx::MatMul_25",
+      "source_location": "joint.onnx.data",
+      "source_offset": 42139904,
+      "length": 33505280,
+      "destination_offset": 4317312,
+      "sha256": "861ec3ae5f75c7ed4f2478cb9524a210f73816c5a6a173cdc82de413dd770527"
+    }
+  ],
+  "companions": [],
+  "numerical_parity": "UNTESTED",
+  "graph": {
+    "name": "joint.onnx",
+    "bytes": 1792,
+    "sha256": "058bd26b4c542dba3574d2cba496e4bbee33211a66fba3eb9a77b224c2cb5f68"
+  },
+  "external_data": {
+    "name": "joint.onnx.data",
+    "bytes": 37822592,
+    "sha256": "5e96c9d54ee68a924f58fd734cd64ddf6fa0dd0f81c981ceb1a5bac5e860d74c"
+  }
+}

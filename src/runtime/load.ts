@@ -29,6 +29,7 @@ import {
   disposeStreamingTranscribersAndOwner,
 } from './operation-lease.js';
 import { createSpeechRuntime, type DefaultSpeechRuntime } from './session.js';
+import type { DecodeAudioSourceOptions } from './media.js';
 
 /**
  * App-facing convenience handle returned by `loadSpeechModel()`.
@@ -90,6 +91,48 @@ export interface TranscribeSpeechOptions<
   readonly transcribeOptions?: TTranscriptionOptions & { readonly responseFlavor?: TFlavor };
 }
 
+/** Browser File, Blob, or URL input for one-shot model transcription. */
+export interface TranscribeSpeechFromAudioSourceOptions<
+  TLoadOptions = unknown,
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TFlavor extends TranscriptResponseFlavor = 'canonical',
+> extends TranscribeSpeechOptions<TLoadOptions, TTranscriptionOptions, TFlavor> {
+  /** Decoding and downmix preferences; the sample rate comes from the loaded model. */
+  readonly audioOptions?: Omit<DecodeAudioSourceOptions, 'signal' | 'targetSampleRate'>;
+}
+
+async function withLoadedSpeechModel<
+  TLoadOptions,
+  TTranscriptionOptions extends BaseTranscriptionOptions,
+  TNative,
+  TResult,
+>(
+  loadOptions: LoadSpeechModelOptions<TLoadOptions>,
+  transcribe: (
+    loaded: LoadedSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>,
+  ) => Promise<TResult>,
+): Promise<TResult> {
+  const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
+  let failure: { error: unknown } | undefined;
+  try {
+    return await transcribe(loaded);
+  } catch (error) {
+    failure = { error };
+    throw error;
+  } finally {
+    try {
+      await loaded.dispose();
+    } catch (cleanupError) {
+      if (!failure) throw cleanupError;
+      throw new AggregateError(
+        [failure.error, cleanupError],
+        'Speech transcription and cleanup failed.',
+        { cause: failure.error },
+      );
+    }
+  }
+}
+
 /**
  * One-shot high-level helper for app code.
  *
@@ -108,29 +151,60 @@ export async function transcribeSpeech<
   options: TranscribeSpeechOptions<TLoadOptions, TTranscriptionOptions, TFlavor>,
 ): Promise<TranscriptResponse<TNative, TFlavor>> {
   const { transcribeOptions, ...loadOptions } = options;
-  const loaded = await loadSpeechModel<TLoadOptions, TTranscriptionOptions, TNative>(loadOptions);
+  return withLoadedSpeechModel<
+    TLoadOptions,
+    TTranscriptionOptions,
+    TNative,
+    TranscriptResponse<TNative, TFlavor>
+  >(loadOptions, (loaded) =>
+    loaded.transcribe(input, withInheritedTranscriptionSignal(transcribeOptions, options.signal)),
+  );
+}
 
-  let failure: { error: unknown } | undefined;
-  try {
-    return await loaded.transcribe(
-      input,
-      withInheritedTranscriptionSignal(transcribeOptions, options.signal),
-    );
-  } catch (error) {
-    failure = { error };
-    throw error;
-  } finally {
-    try {
-      await loaded.dispose();
-    } catch (cleanupError) {
-      if (!failure) throw cleanupError;
-      throw new AggregateError(
-        [failure.error, cleanupError],
-        'Speech transcription and cleanup failed.',
-        { cause: failure.error },
-      );
-    }
+/**
+ * Decodes a browser File, Blob or audio URL, resamples it to the loaded model's
+ * required rate, transcribes it, then releases the loaded model resources.
+ */
+export async function transcribeSpeechFromAudioSource<
+  TLoadOptions = unknown,
+  TTranscriptionOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
+  TNative = unknown,
+  TFlavor extends TranscriptResponseFlavor = 'canonical',
+>(
+  source: string | Blob,
+  options: TranscribeSpeechFromAudioSourceOptions<TLoadOptions, TTranscriptionOptions, TFlavor>,
+): Promise<TranscriptResponse<TNative, TFlavor>> {
+  const { transcribeOptions, audioOptions, ...loadOptions } = options;
+  const effectiveTranscribeOptions = withInheritedTranscriptionSignal(
+    transcribeOptions,
+    options.signal,
+  );
+  if (effectiveTranscribeOptions?.signal?.aborted) {
+    throw new PipelineAbortedError('audio-source-transcription');
   }
+  return withLoadedSpeechModel<
+    TLoadOptions,
+    TTranscriptionOptions,
+    TNative,
+    TranscriptResponse<TNative, TFlavor>
+  >(loadOptions, async (loaded) => {
+    const { decodeAudioSourceToMonoPcm } = await import('./media.js');
+    const inference =
+      loaded.model.info.inference ??
+      createDefaultModelInferenceLimits({
+        family: loaded.model.info.family,
+        modelId: loaded.model.info.modelId,
+      });
+    const audio = await decodeAudioSourceToMonoPcm(source, {
+      ...audioOptions,
+      targetSampleRate: inference.sampleRate,
+      signal: effectiveTranscribeOptions?.signal,
+    });
+    if (effectiveTranscribeOptions?.signal?.aborted) {
+      throw new PipelineAbortedError('audio-source-transcription');
+    }
+    return loaded.transcribeMonoPcm(audio.pcm, audio.sampleRate, effectiveTranscribeOptions);
+  });
 }
 
 /**

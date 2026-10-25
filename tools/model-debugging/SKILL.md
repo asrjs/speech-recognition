@@ -24,6 +24,34 @@ Qwen3-ASR, X-ASR, GigaAM and NeMo already have family-specific porting helpers.
 Read the official inference source and compare existing onnx-asr/sherpa ports.
 Use those ports as references, not replacements for the official oracle.
 
+For Whisper self-exports, inspect the actual decoder graph input names before
+reusing a reference runner or runtime feed builder. Some four-graph exports
+declare rank-one INT64 `cache_position`; bind it only when declared, starting
+at the decoder self-attention KV sequence length and advancing once per input
+token. Decoder initialization and alignment graphs have separate contracts.
+Preserve failures caused by missing runner inputs as invalid-harness evidence,
+then compare full native and ONNX token/text output with the corrected runner.
+An ONNX path check or successful session creation is structural acceptance only.
+
+Checkpoint generation metadata can override model-config defaults. The pinned
+original Whisper Large v3 checkpoint has model-config PAD 50256 but tokenizer
+and generation-config PAD 50257. Preserve both values in provenance and use the
+effective generation value in exported generation metadata. For a metadata-only
+repair, retain the original manifest and independently verify graph/sidecar
+hashes unchanged; do not claim that metadata equality alone proves ASR parity.
+
+On Windows, a restore that appears stuck may be retrying a denied Numba cache
+write. Capture periodic Python stacks before calling it a model incompatibility.
+The observed chain is `librosa` -> `numba.core.caching.ensure_cache_path` ->
+`tempfile._mkstemp_inner`; Windows can repeatedly retry when `os.access` reports
+writability but the actual file open is denied. Pass a process-local
+`NUMBA_CACHE_DIR` under writable task temporary storage before importing
+Torch/NeMo/librosa. Verify a temporary-file write there, preserve the failed
+attempt's logs, and retry with a bounded watchdog and periodic
+`faulthandler.dump_traceback_later` output. Do not change global environment
+settings or installed package files. This resolved the 2026-10-24 Canary export
+restore retry; successful restore alone is not export, inference or parity PASS.
+
 Check captured tensor shapes and layouts before reshaping arrays. Keep raw
 log-mel separate from normalized features. A failed import in the default
 Python interpreter does not prove that a model's local environment is absent.

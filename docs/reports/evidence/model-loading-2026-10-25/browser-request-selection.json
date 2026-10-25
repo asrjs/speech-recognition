@@ -1,0 +1,77 @@
+{
+  "loadRequests": [
+    {
+      "framework": "react",
+      "backend": "webgpu-hybrid",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.fp16.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    },
+    {
+      "framework": "react",
+      "backend": "wasm",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.int8.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    },
+    {
+      "framework": "svelte",
+      "backend": "webgpu-hybrid",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.fp16.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    },
+    {
+      "framework": "svelte",
+      "backend": "wasm",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.int8.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    },
+    {
+      "framework": "vue",
+      "backend": "webgpu-hybrid",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.fp16.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    },
+    {
+      "framework": "vue",
+      "backend": "wasm",
+      "firstEncoderRequest": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v2-onnx/resolve/main/encoder-model.int8.onnx",
+      "scope": "request selection only; all model asset traffic aborted",
+      "error": "Failed to fetch"
+    }
+  ],
+  "pageSmoke": [
+    {
+      "mount": "showcase",
+      "status": 200
+    },
+    {
+      "mount": "playground",
+      "status": 200
+    },
+    {
+      "mount": "realtime",
+      "status": 200
+    },
+    {
+      "mount": "benchmark",
+      "status": 200
+    },
+    {
+      "mount": "examples/react",
+      "status": 200
+    },
+    {
+      "mount": "examples/svelte",
+      "status": 200
+    },
+    {
+      "mount": "examples/vue",
+      "status": 200
+    }
+  ],
+  "realWeightInference": "NOT RUN"
+}

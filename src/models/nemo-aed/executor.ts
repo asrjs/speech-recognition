@@ -185,6 +185,24 @@ function resolveMaxNewTokens(
   return Math.max(1, Math.min(normalized, remainingBudget));
 }
 
+function createNemoAedComponentSession(
+  ort: OrtModuleLike,
+  url: string,
+  options: {
+    readonly backendId: string;
+    readonly enableProfiling?: boolean;
+    readonly filename?: string;
+    readonly externalDataUrl?: string;
+  },
+): Promise<OrtSessionLike> {
+  return createOrtSession(ort, url, {
+    backendId: options.backendId,
+    enableProfiling: options.enableProfiling,
+    externalDataUrl: options.externalDataUrl,
+    externalDataPath: options.filename ? `${options.filename}.data` : undefined,
+  });
+}
+
 export class OrtNemoAedExecutor implements NemoAedExecutor {
   private readonly sourceOptions: NemoAedModelOptions['source'];
   private readonly loadStatePromise?: Promise<LoadedExecutorState>;
@@ -287,9 +305,11 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
 
     let encoderSession: OrtSessionLike;
     try {
-      encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
+      encoderSession = await createNemoAedComponentSession(ort, artifacts.encoderUrl, {
         backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        filename: artifacts.encoderFilename,
+        externalDataUrl: artifacts.encoderDataUrl,
       });
     } catch (error) {
       rethrowIfAssetAborted(error);
@@ -312,9 +332,11 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
         this.backendId,
       );
       artifacts = await this.materializeHuggingFaceArtifacts(fallbackResolved.artifacts);
-      encoderSession = await createOrtSession(ort, artifacts.encoderUrl, {
+      encoderSession = await createNemoAedComponentSession(ort, artifacts.encoderUrl, {
         backendId: resolved.encoderBackendForOrt,
         enableProfiling: resolved.enableProfiling,
+        filename: artifacts.encoderFilename,
+        externalDataUrl: artifacts.encoderDataUrl,
       });
       warnings.push({
         code: 'nemo-aed.encoder-fp16-fallback',
@@ -331,41 +353,50 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
 
     let decoderSession: OrtSessionLike;
     try {
-      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.decoderBackendForOrt,
-        enableProfiling: resolved.enableProfiling,
-      });
-    } catch (error) {
-      rethrowIfAssetAborted(error);
-      const source = this.sourceOptions;
-      const implicitFp16Decoder =
-        source.kind === 'huggingface' &&
-        !source.decoderQuant &&
-        resolved.decoderBackendForOrt === 'webgpu' &&
-        getDefaultNemoAedWeightSetup(resolved.decoderBackendForOrt).decoderDefault === 'fp16';
+      try {
+        decoderSession = await createNemoAedComponentSession(ort, artifacts.decoderUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          enableProfiling: resolved.enableProfiling,
+          filename: artifacts.decoderFilename,
+          externalDataUrl: artifacts.decoderDataUrl,
+        });
+      } catch (error) {
+        rethrowIfAssetAborted(error);
+        const source = this.sourceOptions;
+        const implicitFp16Decoder =
+          source.kind === 'huggingface' &&
+          !source.decoderQuant &&
+          resolved.decoderBackendForOrt === 'webgpu' &&
+          getDefaultNemoAedWeightSetup(resolved.decoderBackendForOrt).decoderDefault === 'fp16';
 
-      if (!implicitFp16Decoder) {
-        throw error;
+        if (!implicitFp16Decoder) {
+          throw error;
+        }
+
+        const fallbackResolved = resolveNemoAedArtifacts(
+          {
+            ...source,
+            decoderQuant: 'fp32',
+          } satisfies NemoAedArtifactSource,
+          this.backendId,
+        );
+        artifacts = await this.materializeHuggingFaceArtifacts(fallbackResolved.artifacts);
+        decoderSession = await createNemoAedComponentSession(ort, artifacts.decoderUrl, {
+          backendId: resolved.decoderBackendForOrt,
+          enableProfiling: resolved.enableProfiling,
+          filename: artifacts.decoderFilename,
+          externalDataUrl: artifacts.decoderDataUrl,
+        });
+        warnings.push({
+          code: 'nemo-aed.decoder-fp16-fallback',
+          message:
+            'Default FP16 decoder weights could not be initialized on this WebGPU setup. Falling back to FP32 decoder weights.',
+          recoverable: true,
+        });
       }
-
-      const fallbackResolved = resolveNemoAedArtifacts(
-        {
-          ...source,
-          decoderQuant: 'fp32',
-        } satisfies NemoAedArtifactSource,
-        this.backendId,
-      );
-      artifacts = await this.materializeHuggingFaceArtifacts(fallbackResolved.artifacts);
-      decoderSession = await createOrtSession(ort, artifacts.decoderUrl, {
-        backendId: resolved.decoderBackendForOrt,
-        enableProfiling: resolved.enableProfiling,
-      });
-      warnings.push({
-        code: 'nemo-aed.decoder-fp16-fallback',
-        message:
-          'Default FP16 decoder weights could not be initialized on this WebGPU setup. Falling back to FP32 decoder weights.',
-        recoverable: true,
-      });
+    } catch (error) {
+      await releaseOrtSession(encoderSession);
+      throw error;
     }
 
     if (this.disposed) {

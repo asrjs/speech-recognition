@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "status": "CPU_REFERENCE_COMPLETED_NOT_RUNTIME_PASS",
+  "scope": "Official Transformers 5.18.0 whole-utterance MoonshineStreaming output, local-only CPU; distinguishes model response from ONNX streaming/runtime behavior. Not an ONNX export, browser, microphone, streaming-cache, or quality PASS.",
+  "source": {
+    "modelId": "moonshine-ai/moonshine-streaming-tiny",
+    "upstreamRevision": "f8e9dfd8c562",
+    "snapshot": "N:\\github\\asrjs\\speech-recognition\\.cache\\moonshine-streaming-tiny",
+    "modelSha256": "0ab3443dabd95a4afb35f0a26155428c03b7c3c450fa6923ffdac4510ba3d040",
+    "configSha256": "166861753adaf928ae99b3709bfb1da47cb76319be58f37c6f9b7a539ce371f0",
+    "tokenizerSha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+    "transformers": "5.18.0",
+    "torch": "2.14.1+cpu",
+    "device": "cpu",
+    "localFilesOnly": true
+  },
+  "inputs": [
+    {
+      "inputId": "original_jfk",
+      "path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+      "wavSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+      "durationSeconds": 11.0,
+      "processorInputShape": [
+        1,
+        176000
+      ],
+      "attentionMaskShape": [
+        1,
+        176000
+      ],
+      "attentionMaskValidSamples": 176000,
+      "energy": {
+        "rms": 0.14210149014087825,
+        "peakAbs": 0.78271484375,
+        "exactZeroFraction": 0.005255681818181818,
+        "windowRms1s": [
+          0.21285858081174483,
+          0.2283575940306117,
+          0.015510685424365178,
+          0.14753255400569995,
+          0.1305906499269012,
+          0.12684886897677003,
+          0.12383565662046023,
+          0.12906892303364723,
+          0.1393000872215752,
+          0.12129425682654643,
+          0.058338197441094704
+        ]
+      },
+      "tokens": [
+        1,
+        1126,
+        577,
+        29892,
+        590,
+        10404,
+        23035,
+        29892,
+        2244,
+        451,
+        825,
+        596,
+        4234,
+        508,
+        437,
+        363,
+        366,
+        29892,
+        2244,
+        825,
+        366,
+        508,
+        437,
+        363,
+        596,
+        4234,
+        29889,
+        2
+      ],
+      "tokenCount": 28,
+      "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "generateSeconds": 0.541
+    },
+    {
+      "inputId": "padded_21s_jfk",
+      "path": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261025\\moonshine-streaming-v17\\webgpu\\realtime\\jfk2.en-padded-5s.wav",
+      "wavSha256": "f712d5bee48ce06fa60c292c3bc21d1210bc5a39fdf25078b435c4c406c195df",
+      "effectivePcmSha256": "b8099f8b663d5f04e983aebfd6868f82d7da3d7feae52e3323ff165e416d36a9",
+      "durationSeconds": 21.0,
+      "processorInputShape": [
+        1,
+        336000
+      ],
+      "attentionMaskShape": [
+        1,
+        336000
+      ],
+      "attentionMaskValidSamples": 336000,
+      "energy": {
+        "rms": 0.10284550792394971,
+        "peakAbs": 0.78271484375,
+        "exactZeroFraction": 0.4789434523809524,
+        "windowRms1s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.21285858081174483,
+          0.2283575940306117,
+          0.015510685424365178,
+          0.14753255400569995,
+          0.1305906499269012,
+          0.12684886897677003,
+          0.12383565662046023,
+          0.12906892303364723,
+          0.1393000872215752,
+          0.12129425682654643,
+          0.058338197441094704,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "tokens": [
+        1,
+        2
+      ],
+      "tokenCount": 2,
+      "text": "",
+      "generateSeconds": 0.276
+    },
+    {
+      "inputId": "captured_mic_21s",
+      "path": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261025\\moonshine-streaming-v17\\webgpu\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.f32le",
+      "effectivePcmSha256": "feee1226e0d0191bd0276d0976198a39577ad22d590c03cdb7de503a39a1a95f",
+      "durationSeconds": 21.04,
+      "captureMetadata": {
+        "schemaVersion": 1,
+        "flow": "mic-manual-manual-none",
+        "requestId": 2,
+        "sampleRate": 16000,
+        "frames": 336640,
+        "pcmFormat": "mono-float32-little-endian",
+        "pcmBytes": 1346560,
+        "pcmSha256": "feee1226e0d0191bd0276d0976198a39577ad22d590c03cdb7de503a39a1a95f",
+        "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+        "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261025\\moonshine-streaming-v17\\webgpu\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.f32le"
+      },
+      "processorInputShape": [
+        1,
+        336640
+      ],
+      "attentionMaskShape": [
+        1,
+        336640
+      ],
+      "attentionMaskValidSamples": 336640,
+      "energy": {
+        "rms": 0.10256630363342316,
+        "peakAbs": 0.7821043133735657,
+        "exactZeroFraction": 0.4790725998098859,
+        "windowRms1s": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0017065861797346893,
+          0.23061322980274465,
+          0.210076990779108,
+          0.009409516744384675,
+          0.1678015197825962,
+          0.10204234721838402,
+          0.1495896367924636,
+          0.099267415061354,
+          0.1254869987661896,
+          0.14786715658679386,
+          0.1158483811939538,
+          0.04580085144411157,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "tokens": [
+        1,
+        2
+      ],
+      "tokenCount": 2,
+      "text": "",
+      "generateSeconds": 0.235
+    }
+  ],
+  "comparison": {
+    "paddedMatchesOriginal": false,
+    "captureMatchesOriginal": false,
+    "allTextsNonEmpty": false
+  }
+}

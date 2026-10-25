@@ -16,17 +16,29 @@ The source of truth is here. Keep it headless, framework-neutral, ESM-first, and
 
 The core package may own reusable browser/runtime primitives such as capture, resampling, ring buffers, chunking, VAD, rough gate, detector/controller logic, waveform renderers, canvas utilities, and snapshot-style monitor APIs. React/Vue/Svelte/Solid wrappers should stay in thin sibling packages if they are needed.
 
-## Implementation Apps
+## Maintained companion applications (2026-10-25)
+
+The maintained suite is the sibling `demos` repository: `apps/showcase`,
+`apps/playground`, `apps/realtime`, and `apps/benchmark`. They share
+`packages/demo-runtime` and `packages/ui`, consume the speech package, and
+use one theme/navigation system. Realtime is the current microphone,
+TEN-VAD/FireRed VAD and waveform integration surface.
+
+The standalone applications listed below document the evolution of the
+project. Their old resume points do not supersede the consolidated suite.
+See [the suite README](https://github.com/asrjs/demos) for current commands.
+
+## Historical implementation apps
 
 These apps exist because browser ASR behavior crosses many layers: microphone capture, chunking, model artifact loading, VAD, visualization, benchmarking, and realtime transcription. The library should remain reusable; the apps provide focused integration surfaces.
 
 ### `streaming-demo`
 
-Current main realtime integration app.
+Former standalone realtime integration app; maintained work now lives in `demos/apps/realtime`.
 
 Use this to test microphone streaming, waveform canvas rendering, rough gate behavior, TEN-VAD/FireRed VAD diagnostics, streaming ASR flows, local model folders, and Hugging Face model loading.
 
-Current resume point:
+Historical resume point:
 
 - waveform canvas, VAD markers, and energy triggering are the active realtime surface
 - rough-gate-first segmentation is the stable fallback path

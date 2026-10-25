@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { JSMelProcessor } from '../src/audio/js-mel.js';
+import { parseNemotronRnntConfig } from '../src/models/nemotron-rnnt/config.js';
 
 /**
  * Step 3b: verify the JS 128-bin mel frontend produces the correct shape
@@ -24,6 +25,44 @@ function readWavSamples(path: string): Float32Array {
 }
 
 describe('Nemotron 3.5 JS mel frontend (step 3b)', () => {
+  it('uses NeMo valid length and zeros the padded final frame from the model config', () => {
+    const config = parseNemotronRnntConfig('nemotron-3.5-asr-streaming-0.6b');
+    const samples = readWavSamples(join(FIXTURE_DIR, 'jfk-short.wav'));
+    const result = new JSMelProcessor({
+      nMels: config.melBins,
+      validLengthMode: config.preprocessorValidLengthMode,
+      normalization: config.preprocessorNormalization,
+    }).process(samples);
+
+    expect(result.frameCount).toBe(1101);
+    expect(result.length).toBe(1100);
+    for (let melBin = 0; melBin < config.melBins; melBin++) {
+      expect(result.features[melBin * result.frameCount + result.frameCount - 1]).toBe(0);
+    }
+  });
+
+  it.each([
+    { sampleCount: 15999, expectedValidLength: 99, expectedFrameCount: 100 },
+    { sampleCount: 16000, expectedValidLength: 100, expectedFrameCount: 101 },
+    { sampleCount: 16001, expectedValidLength: 100, expectedFrameCount: 101 },
+  ])(
+    'matches NeMo floor-based feature lengths for $sampleCount samples',
+    ({ sampleCount, expectedValidLength, expectedFrameCount }) => {
+      const config = parseNemotronRnntConfig('nemotron-3.5-asr-streaming-0.6b');
+      const result = new JSMelProcessor({
+        nMels: config.melBins,
+        validLengthMode: config.preprocessorValidLengthMode,
+        normalization: config.preprocessorNormalization,
+      }).process(new Float32Array(sampleCount));
+
+      expect(result.length).toBe(expectedValidLength);
+      expect(result.frameCount).toBe(expectedFrameCount);
+      for (let melBin = 0; melBin < config.melBins; melBin++) {
+        expect(result.features[melBin * result.frameCount + result.frameCount - 1]).toBe(0);
+      }
+    },
+  );
+
   it('produces 128-bin mel features with correct frame count on jfk-short.wav', () => {
     const samples = readWavSamples(join(FIXTURE_DIR, 'jfk-short.wav'));
     const processor = new JSMelProcessor({ nMels: 128, validLengthMode: 'onnx' });

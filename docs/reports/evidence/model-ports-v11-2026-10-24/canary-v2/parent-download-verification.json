@@ -1,0 +1,7 @@
+{
+  "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2.nemo",
+  "bytes": 6358958080,
+  "sha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094",
+  "elapsedSeconds": 14.76,
+  "scope": "parent independent original checkpoint byte verification; no restore/inference"
+}

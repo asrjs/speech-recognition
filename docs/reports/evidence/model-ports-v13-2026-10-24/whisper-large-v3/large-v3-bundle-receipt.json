@@ -1,0 +1,321 @@
+{
+  "model": {
+    "id": "openai/whisper-large-v3",
+    "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "source_files": {
+      "added_tokens.json": {
+        "size_bytes": 34648,
+        "sha256": "3c51f66c4c21f9e126970078f11ae77a78c74aee8df606ee9daba86e467108e0"
+      },
+      "config.json": {
+        "size_bytes": 1272,
+        "sha256": "ad0e8d1e46f4d01f7861a21509e5d0f977d6cc1f367a370603c92541d819807b"
+      },
+      "generation_config.json": {
+        "size_bytes": 3903,
+        "sha256": "fbdfa70135de9b1d31553393f14e80aaeb1936ea36576b2ba864055943c09d23"
+      },
+      "merges.txt": {
+        "size_bytes": 493869,
+        "sha256": "2df2990a395e35e8dfbc7511e08c12d56018d8d04691e0133e5d63b21e154dc6"
+      },
+      "model.safetensors": {
+        "size_bytes": 3087130976,
+        "sha256": "a8e94b85976e5864ba3e9525c7e6c83b2a1eca42d4b797a0c7c24d778e40fd95"
+      },
+      "normalizer.json": {
+        "size_bytes": 52666,
+        "sha256": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd"
+      },
+      "preprocessor_config.json": {
+        "size_bytes": 340,
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"
+      },
+      "special_tokens_map.json": {
+        "size_bytes": 2072,
+        "sha256": "1c70773c078cb2ca96e0fcff113102f1d3e2b1504272c3bb63b035d4a6700d87"
+      },
+      "tokenizer.json": {
+        "size_bytes": 2480617,
+        "sha256": "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca"
+      },
+      "tokenizer_config.json": {
+        "size_bytes": 282843,
+        "sha256": "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389"
+      },
+      "vocab.json": {
+        "size_bytes": 1036558,
+        "sha256": "e2aa043ef015641d363d8288e7c241c85e36a5c761fb303598e0710233344387"
+      }
+    },
+    "geometry": {
+      "encoder_layers": 32,
+      "decoder_layers": 32,
+      "d_model": 1280,
+      "num_mel_bins": 128,
+      "vocab_size": 51866
+    }
+  },
+  "metadata_contract": {
+    "source_config_pad_token_id": 50256,
+    "generation_config_pad_token_id": 50257,
+    "manifest_pad_token_id": 50257,
+    "original_manifest_sha256": "66842d977e106587bfe25244fc3f976f6919bc3fa5023e43913739f8bcf08a80",
+    "derived_manifest_sha256": "4fa8d01ed10375b4d7a09dcfa5385c5e8d8260f596ad0b76eb38829a2b690d10"
+  },
+  "artifacts": {
+    "decoder_align.onnx": {
+      "sha256": "98dc3603b0daaa98bfb5d2f4b1ba114fcbdca81db96b081def074faf404fc622",
+      "size": 1333125476
+    },
+    "decoder_align.onnx.data": {
+      "sha256": "30bd232b7a138f8c12623f4dc74a528683751d5c9816e9348b92abe110fd02ae",
+      "size": 132776960
+    },
+    "decoder_init.onnx": {
+      "sha256": "cff7cf63e9afd52b9bc7d00a68b5aa1cd07848dc49dcbe9a740d3d629451a0f6",
+      "size": 1681057757
+    },
+    "decoder_init.onnx.data": {
+      "sha256": "d2ffb83fbb738500320a79acfa1014575eafcc2f6aa6e321d25f9c088ef7dd94",
+      "size": 265553920
+    },
+    "decoder_step.onnx": {
+      "sha256": "79318815baee72eea03085e269f214eaafe53d1d66d6977d785272c96b555738",
+      "size": 1471279733
+    },
+    "decoder_step.onnx.data": {
+      "sha256": "30bd232b7a138f8c12623f4dc74a528683751d5c9816e9348b92abe110fd02ae",
+      "size": 132776960
+    },
+    "encoder_model.onnx": {
+      "sha256": "e851950b5ed4469139b41e154c0675df6e210425f96aa2ab958a79d2e9b5b692",
+      "size": 1274338448
+    }
+  },
+  "structural_audit": {
+    "tool": "audit_publish.py",
+    "passes": 50,
+    "failures": 0,
+    "onnx_checker": "all four path checks pass",
+    "ort_cpu_load": "all four sessions load"
+  },
+  "native_cpu_reference": {
+    "fixture": {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+      "sample_rate": 16000,
+      "duration_seconds": 11.0,
+      "num_samples": 176000
+    },
+    "result": {
+      "tokens": [
+        50258,
+        50259,
+        50360,
+        50364,
+        400,
+        370,
+        452,
+        7177,
+        6280,
+        11,
+        1029,
+        406,
+        437,
+        428,
+        1941,
+        393,
+        360,
+        337,
+        291,
+        11,
+        1029,
+        437,
+        291,
+        393,
+        360,
+        337,
+        428,
+        1941,
+        13,
+        50257
+      ],
+      "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    "timestamp_result": {
+      "tokens": [
+        50365,
+        400,
+        370,
+        452,
+        7177,
+        6280,
+        11,
+        50515,
+        50515,
+        1029,
+        406,
+        437,
+        428,
+        1941,
+        393,
+        360,
+        337,
+        291,
+        11,
+        50765,
+        50765,
+        1029,
+        437,
+        291,
+        393,
+        360,
+        337,
+        428,
+        1941,
+        13,
+        50915
+      ],
+      "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "timestamp_tokens": [
+        50365,
+        50515,
+        50515,
+        50765,
+        50765,
+        50915
+      ],
+      "num_segments": 1
+    },
+    "receipt": "jfk2-large-v3-native.json"
+  },
+  "split_ort_cpu_reference": {
+    "result": {
+      "tokens": [
+        50258,
+        50259,
+        50360,
+        50364,
+        400,
+        370,
+        452,
+        7177,
+        6280,
+        11,
+        1029,
+        406,
+        437,
+        428,
+        1941,
+        393,
+        360,
+        337,
+        291,
+        11,
+        1029,
+        437,
+        291,
+        393,
+        360,
+        337,
+        428,
+        1941,
+        13
+      ],
+      "generated": [
+        400,
+        370,
+        452,
+        7177,
+        6280,
+        11,
+        1029,
+        406,
+        437,
+        428,
+        1941,
+        393,
+        360,
+        337,
+        291,
+        11,
+        1029,
+        437,
+        291,
+        393,
+        360,
+        337,
+        428,
+        1941,
+        13
+      ],
+      "eos_stopped": true,
+      "alignment": {
+        "shape": [
+          1,
+          10,
+          29,
+          1500
+        ],
+        "text_shape": [
+          10,
+          25,
+          1500
+        ],
+        "attention_values": "logits",
+        "value_min": -13.698445320129395,
+        "value_max": 8.96623706817627
+      }
+    },
+    "receipt": "jfk2-large-v3-hf-ort.json",
+    "alignment": {
+      "shape": [
+        1,
+        10,
+        29,
+        1500
+      ],
+      "text_shape": [
+        10,
+        25,
+        1500
+      ],
+      "attention_values": "logits",
+      "value_min": -13.698445320129395,
+      "value_max": 8.96623706817627
+    },
+    "cache_position": {
+      "name": "cache_position",
+      "dtype": "int64",
+      "shape": [
+        1
+      ],
+      "first_value": 4,
+      "subsequent_value": "current decoder self-cache sequence length"
+    },
+    "parity": {
+      "token_prefix_exact_match": true,
+      "decoded_text_exact_match": true,
+      "native_eos_id": 50257,
+      "ort_stopped_at_eos": true
+    }
+  },
+  "focused_tests": {
+    "reference_helper_unittest": "3 passed",
+    "manifest_generation_precedence": "passed direct test",
+    "py_compile": "passed for exporter/reference/helpers/tests",
+    "git_diff_check": "passed"
+  },
+  "run_scope": {
+    "device": "CPU only",
+    "threads": 2,
+    "browser_or_gpu": "not run",
+    "model_upload": "not performed",
+    "large_artifact_copies": "none"
+  },
+  "failed_initial_attempt": {
+    "classification": "INVALID_HELPER",
+    "receipt": "jfk2-large-v3-initial-ort.invalid-helper.txt",
+    "cause": "legacy reference helper omitted decoder_step cache_position; corrected helper and reran successfully"
+  }
+}

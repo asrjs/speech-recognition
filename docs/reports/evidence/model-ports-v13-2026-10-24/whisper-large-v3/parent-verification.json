@@ -1,0 +1,12 @@
+{
+  "scope": "parent independent source weight SHA, seven graph/sidecar hashes, metadata-only manifest diff, full native/ORT content token comparison",
+  "sourceSha256": "a8e94b85976e5864ba3e9525c7e6c83b2a1eca42d4b797a0c7c24d778e40fd95",
+  "nativeReferenceSha256": "c630b4f6fcb09c576afb6236fbdff9fbd18a21de6aefb133550d323726029d24",
+  "canonicalNativeWordsEqual": true,
+  "contentTokenIdsEqual": true,
+  "rawTokenListsEqual": false,
+  "rawDifference": "native includes terminal EOS; ONNX helper omits it while eos_stopped=true",
+  "graphAndSidecarHashesChecked": 7,
+  "manifestOnlyDifference": "special_tokens.pad_token_id: 50256 -> 50257",
+  "browser": "NOT_YET_VERIFIED"
+}

@@ -1,0 +1,581 @@
+{
+  "status": "CPU_ONNX_STREAMING_EXECUTION_COMPLETED_NOT_PARITY_PASS",
+  "scope": "Exact graph folder staged by the browser v17 run; fp32 four-graph ONNX through MoonshineStreamingSession on byte-hash-verified exact captured PCM; CPU ORT only. No browser/WebGPU claim.",
+  "graphDir": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\native-moonshine-streaming-tiny",
+  "graphSha256": {
+    "encoder_model.onnx": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d",
+    "encoder_chunked_model.onnx": "0d8111a8060f80ce525620cbca2d8470752f9843563e4e0b1a9c506ca939c4a8",
+    "decoder_prefill_model.onnx": "4d8ec59834ba5e777aed82fa9bcdddfd1f6cf3a3ea1e201e92b08cc6357a8684",
+    "decoder_step_model.onnx": "8a8bd7177aa2232090f74192266f649e8ac68bfdbfa5c5c37dd2f97ce30dcfeb"
+  },
+  "captureDir": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261025\\moonshine-streaming-v17-mic-retest\\webgpu\\realtime\\mic-pcm-capture",
+  "officialReceipt": "N:\\github\\asrjs\\speech-recognition\\tmp\\moonshine-vad-native-cpu-2026-10-25.json",
+  "tokenizer": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\native-moonshine-streaming-tiny\\tokenizer.json",
+  "flows": [
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "browserText": "And so my fellow Americans. And... Knock! What your country can do for you? Ask what you can do for your country.",
+      "officialJoinedText": "And so my fellow Americans. Ask. Not! What your country can do for you? Ask what you can do for your country.",
+      "streamingOnnxJoinedText": "And so my fellow Americans. Ask. Not! What your country can do for you? Ask what you can do for your country.",
+      "officialJoinedEqualsStreamingOnnx": true,
+      "segments": [
+        {
+          "requestId": 7,
+          "pcmSha256": "50b4556043953b69e41655b16725bfb160015311dde37051c839043b2c43008b",
+          "frames": 33664,
+          "officialText": "And so my fellow Americans.",
+          "streamingOnnxText": "And so my fellow Americans.",
+          "officialTokenIds": [
+            1,
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 33664,
+          "expectedTailSamples": 33664,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            106,
+            320
+          ],
+          "inputDims": [
+            1,
+            33680
+          ],
+          "maskDims": [
+            1,
+            33680
+          ],
+          "maskCount": 33664,
+          "encoderFrames": 105,
+          "seconds": 1.648
+        },
+        {
+          "requestId": 8,
+          "pcmSha256": "416e37e56a629982e02e18f72408af9a810f418c8b9f69a44c4f1f68a8c10864",
+          "frames": 26112,
+          "officialText": "Ask.",
+          "streamingOnnxText": "Ask.",
+          "officialTokenIds": [
+            1,
+            26579,
+            29889,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            26579,
+            29889
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            26579,
+            29889,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 26112,
+          "expectedTailSamples": 26112,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            82,
+            320
+          ],
+          "inputDims": [
+            1,
+            26160
+          ],
+          "maskDims": [
+            1,
+            26160
+          ],
+          "maskCount": 26112,
+          "encoderFrames": 82,
+          "seconds": 0.189
+        },
+        {
+          "requestId": 9,
+          "pcmSha256": "890aac537400f0405847b6e57c4e5f5bfe25dd2d78cfc2a072aef4751cc2419e",
+          "frames": 8704,
+          "officialText": "Not!",
+          "streamingOnnxText": "Not!",
+          "officialTokenIds": [
+            1,
+            2216,
+            29991,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            2216,
+            29991
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            2216,
+            29991,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 8704,
+          "expectedTailSamples": 8704,
+          "tailMatchesOriginalAudio": true,
+          "decoderTrace": [
+            {
+              "stage": "prefill",
+              "argmax": 2216,
+              "kv": {
+                "type": "float32",
+                "dataType": "Float32Array",
+                "dims": [
+                  1,
+                  8,
+                  1,
+                  40
+                ]
+              }
+            },
+            {
+              "stage": "step",
+              "inputToken": 2216,
+              "argmax": 29991,
+              "kv": {
+                "type": "float32",
+                "dataType": "Float32Array",
+                "dims": [
+                  1,
+                  8,
+                  2,
+                  40
+                ]
+              }
+            },
+            {
+              "stage": "step",
+              "inputToken": 29991,
+              "argmax": 2,
+              "kv": {
+                "type": "float32",
+                "dataType": "Float32Array",
+                "dims": [
+                  1,
+                  8,
+                  3,
+                  40
+                ]
+              }
+            }
+          ],
+          "wholeOutputDims": [
+            1,
+            28,
+            320
+          ],
+          "inputDims": [
+            1,
+            8720
+          ],
+          "maskDims": [
+            1,
+            8720
+          ],
+          "maskCount": 8704,
+          "encoderFrames": 27,
+          "seconds": 0.269
+        },
+        {
+          "requestId": 10,
+          "pcmSha256": "97991d9fd1d0ed654ad5da858d79a69f034c4f92e5500f6621b72a7b8eb6c680",
+          "frames": 54016,
+          "officialText": "What your country can do for you?",
+          "streamingOnnxText": "What your country can do for you?",
+          "officialTokenIds": [
+            1,
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 51456,
+          "expectedTailSamples": 51456,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            161,
+            320
+          ],
+          "inputDims": [
+            1,
+            51520
+          ],
+          "maskDims": [
+            1,
+            51520
+          ],
+          "maskCount": 51456,
+          "encoderFrames": 169,
+          "seconds": 0.596
+        },
+        {
+          "requestId": 11,
+          "pcmSha256": "f07b5cff42dbd0bf04621cb47fc479a3074e740051a71c889b8b811a547e1e76",
+          "frames": 49408,
+          "officialText": "Ask what you can do for your country.",
+          "streamingOnnxText": "Ask what you can do for your country.",
+          "officialTokenIds": [
+            1,
+            26579,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            26579,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            26579,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 46848,
+          "expectedTailSamples": 46848,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            147,
+            320
+          ],
+          "inputDims": [
+            1,
+            46880
+          ],
+          "maskDims": [
+            1,
+            46880
+          ],
+          "maskCount": 46848,
+          "encoderFrames": 155,
+          "seconds": 0.351
+        }
+      ]
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "browserText": "And so my fellow Americans. Ask! Knock! What your country can do for you? Ask what you can do for your country.",
+      "officialJoinedText": "And so my fellow Americans. Ask not! What your country can do for you? As what you can do for your country.",
+      "streamingOnnxJoinedText": "And so my fellow Americans. Ask not! What your country can do for you? As what you can do for your country.",
+      "officialJoinedEqualsStreamingOnnx": true,
+      "segments": [
+        {
+          "requestId": 3,
+          "pcmSha256": "aeb729efdd9e0ab457946fe07ad9746591ba018b2660ec8c9dcec29e2818f2b6",
+          "frames": 36096,
+          "officialText": "And so my fellow Americans.",
+          "streamingOnnxText": "And so my fellow Americans.",
+          "officialTokenIds": [
+            1,
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            1126,
+            577,
+            590,
+            10404,
+            23035,
+            29889,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 36096,
+          "expectedTailSamples": 36096,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            113,
+            320
+          ],
+          "inputDims": [
+            1,
+            36160
+          ],
+          "maskDims": [
+            1,
+            36160
+          ],
+          "maskCount": 36096,
+          "encoderFrames": 113,
+          "seconds": 0.207
+        },
+        {
+          "requestId": 4,
+          "pcmSha256": "987acf31052c238a17e00041f3e0fe647138a98396306d97cbde2b054e337fcd",
+          "frames": 33536,
+          "officialText": "Ask not!",
+          "streamingOnnxText": "Ask not!",
+          "officialTokenIds": [
+            1,
+            26579,
+            451,
+            29991,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            26579,
+            451,
+            29991
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            26579,
+            451,
+            29991,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 33536,
+          "expectedTailSamples": 33536,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            105,
+            320
+          ],
+          "inputDims": [
+            1,
+            33600
+          ],
+          "maskDims": [
+            1,
+            33600
+          ],
+          "maskCount": 33536,
+          "encoderFrames": 105,
+          "seconds": 0.192
+        },
+        {
+          "requestId": 5,
+          "pcmSha256": "bacc0f3679db479d2f5ab11ecae1943e4dbf148b7da6594c9a88b0c5b13ef552",
+          "frames": 52736,
+          "officialText": "What your country can do for you?",
+          "streamingOnnxText": "What your country can do for you?",
+          "officialTokenIds": [
+            1,
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            1724,
+            596,
+            4234,
+            508,
+            437,
+            363,
+            366,
+            29973,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 50176,
+          "expectedTailSamples": 50176,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            157,
+            320
+          ],
+          "inputDims": [
+            1,
+            50240
+          ],
+          "maskDims": [
+            1,
+            50240
+          ],
+          "maskCount": 50176,
+          "encoderFrames": 165,
+          "seconds": 0.578
+        },
+        {
+          "requestId": 6,
+          "pcmSha256": "fa5d3be9feae85925ce8857124fe1972dbbdbedf31162305a28eac783e051bcb",
+          "frames": 54784,
+          "officialText": "As what you can do for your country.",
+          "streamingOnnxText": "As what you can do for your country.",
+          "officialTokenIds": [
+            1,
+            1094,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889,
+            2
+          ],
+          "streamingOnnxTokenIds": [
+            1094,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889
+          ],
+          "streamingOnnxTokenIdsWithSpecialTokens": [
+            1,
+            1094,
+            825,
+            366,
+            508,
+            437,
+            363,
+            596,
+            4234,
+            29889,
+            2
+          ],
+          "textEqual": true,
+          "tokenIdsEqualAfterExplicitBosEosNormalization": true,
+          "tailSamples": 52224,
+          "expectedTailSamples": 52224,
+          "tailMatchesOriginalAudio": true,
+          "wholeOutputDims": [
+            1,
+            164,
+            320
+          ],
+          "inputDims": [
+            1,
+            52240
+          ],
+          "maskDims": [
+            1,
+            52240
+          ],
+          "maskCount": 52224,
+          "encoderFrames": 171,
+          "seconds": 0.398
+        }
+      ]
+    }
+  ]
+}

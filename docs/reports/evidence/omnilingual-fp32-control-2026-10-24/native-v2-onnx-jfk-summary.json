@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "status": "SCOPED_COMPONENT_CONTROL_COMPLETE_QUALITY_FAIL",
+  "scope": "One-fixture native Meta v2 CPU oracle and exact local FP32/INT8 ONNX comparison; not broad model quality or browser/GPU acceptance.",
+  "source": {
+    "repository": "facebookresearch/omnilingual-asr",
+    "revision": "81f51e224ce9e74b02cc2a3eaf21b2d91d743455",
+    "card": "omniASR_CTC_300M_v2",
+    "checkpoint": "https://dl.fbaipublicfiles.com/mms/omniASR-CTC-300M-v2.pt",
+    "tokenizer": "https://dl.fbaipublicfiles.com/mms/omniASR_tokenizer_written_v2.model",
+    "identity": "official v2 card assets; hashes recorded after resolution/download",
+    "checkpointSha256": "8ce340ada22435d189908a8af67e3bb04899b6f2f5329d036248b9c3e38d2b50",
+    "tokenizerSha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e"
+  },
+  "onnxArtifactIdentity": "OpenVoiceOS pinned FP32 artifact is verified by bytes and close one-fixture numerical agreement with Meta v2; upstream conversion provenance beyond the repository card claim is not independently attested.",
+  "runtime": {
+    "python": "3.12.3",
+    "torch": "2.8.0+cpu",
+    "torchaudio": "2.8.0+cpu",
+    "onnxruntime": "1.30.0",
+    "device": "cpu",
+    "intraOpThreads": 2,
+    "interOpThreads": 1,
+    "cudaVisibleDevices": ""
+  },
+  "fixture": {
+    "path": "/mnt/n/github/asrjs/speech-recognition/tests/fixtures/jfk2.en.wav",
+    "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "bytes": 352078
+  },
+  "immutableGold": {
+    "sha256": "21f5f1997121e317bd7a9760206c119c353cb55b680b29993b9831d008a04df2",
+    "text": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+  },
+  "preprocessing": {
+    "contract": "Meta ASRInferencePipeline waveform path; decode/resample to mono 16 kHz, then torch layer_norm over the whole waveform.",
+    "epsilon": 1e-05,
+    "waveform": {
+      "shape": [
+        176000
+      ],
+      "sha256Float32LE": "ed1689e6d2515827b26aeb57f837915a6b34018693ea6df00d43adc6c0d6733d",
+      "mean": 7.521022027390245e-09,
+      "stdPopulation": 0.9997525215148926,
+      "min": -5.090773105621338,
+      "max": 5.506680011749268
+    },
+    "waveformArray": "native-v2-jfk-waveform.npy (pointer only; not included in this evidence folder)"
+  },
+  "native": {
+    "logitsShape": [
+      1,
+      549,
+      10288
+    ],
+    "sequenceLength": 549,
+    "elapsedSeconds": 4.032955512000001,
+    "transcript": "م"
+  },
+  "onnx": {
+    "fp32": {
+      "sha256": "32432a0afa53180d08553de33baec1a36a43141bded193a26bcf2bed0bcd9c13",
+      "logitsShape": [
+        1,
+        549,
+        10288
+      ],
+      "elapsedSeconds": 2.4134418450000226,
+      "frameCount": 549,
+      "transcript": "م",
+      "nativeComparison": {
+        "sameShape": true,
+        "logitsCount": 5648112,
+        "maxAbsDiff": 0.0004775524139404297,
+        "meanAbsDiff": 7.673735844589438e-06,
+        "cosineSimilarity": 0.9999999999989317,
+        "frameArgmaxAgreement": 1.0,
+        "frames": 549
+      }
+    },
+    "int8": {
+      "sha256": "38a6cc569d46eb382f27d85b3208b883e834ff281b2057a606ec79e4ae501545",
+      "logitsShape": [
+        1,
+        549,
+        10288
+      ],
+      "elapsedSeconds": 4.758202058000052,
+      "frameCount": 549,
+      "transcript": "م",
+      "nativeComparison": {
+        "sameShape": true,
+        "logitsCount": 5648112,
+        "maxAbsDiff": 7.789200067520142,
+        "meanAbsDiff": 0.2668237308958003,
+        "cosineSimilarity": 0.9989255136413655,
+        "frameArgmaxAgreement": 0.9963570127504554,
+        "frames": 549
+      }
+    }
+  },
+  "crossRuntimeControl": {
+    "scope": "same CPU runtime discriminating input control, not quality acceptance",
+    "runtime": "1.29.0",
+    "models": {
+      "int8": {
+        "inputDifference": {
+          "maxAbs": 1.8739738464355469,
+          "meanAbs": 0.0591774560968061,
+          "changedFrames": [
+            52
+          ],
+          "argmaxAgreement": 0.9981785063752276,
+          "atol": 0.001,
+          "rtol": 0.0001,
+          "allclose": false
+        },
+        "runtimeDifferenceOnExactMetaInput": {
+          "maxAbs": 4.527950048446655,
+          "meanAbs": 0.06833289519057789,
+          "changedFrames": [
+            52,
+            65,
+            75
+          ]
+        }
+      },
+      "fp32": {
+        "inputDifference": {
+          "maxAbs": 0.00013208389282226562,
+          "meanAbs": 2.2478337837896847e-06,
+          "changedFrames": [],
+          "argmaxAgreement": 1.0,
+          "atol": 0.001,
+          "rtol": 0.0001,
+          "allclose": true
+        },
+        "runtimeDifferenceOnExactMetaInput": {
+          "maxAbs": 0.0001373291015625,
+          "meanAbs": 1.910004535444518e-06,
+          "changedFrames": []
+        }
+      }
+    }
+  },
+  "independentArrayVerifier": {
+    "scope": "parent independent CPU replay; native JFK quality remains FAIL",
+    "preprocessing": {
+      "shape": [
+        176000
+      ],
+      "atol": 1e-06,
+      "rtol": 1e-06,
+      "allclose": true,
+      "maxAbs": 4.76837158203125e-07,
+      "meanAbs": 2.7264698598049686e-08,
+      "cosine": 0.9999999999999993
+    },
+    "logits": {
+      "fp32": {
+        "shape": [
+          549,
+          10288
+        ],
+        "atol": 0.001,
+        "rtol": 0.0001,
+        "allclose": true,
+        "maxAbs": 0.0004775524139404297,
+        "meanAbs": 7.673735844589438e-06,
+        "cosine": 0.9999999999989914,
+        "argmaxAgreement": 1.0
+      },
+      "int8": {
+        "shape": [
+          549,
+          10288
+        ],
+        "atol": 0.001,
+        "rtol": 0.0001,
+        "allclose": false,
+        "maxAbs": 7.789200067520142,
+        "meanAbs": 0.2668237308958003,
+        "cosine": 0.9989255136414366,
+        "argmaxAgreement": 0.9963570127504554
+      }
+    },
+    "sdkInt8Replay": {
+      "shape": [
+        549,
+        10288
+      ],
+      "atol": 0.001,
+      "rtol": 0.0001,
+      "allclose": false,
+      "maxAbs": 4.559768438339233,
+      "meanAbs": 0.05998982648538978,
+      "cosine": 0.999895108263846,
+      "argmaxAgreement": 0.9963570127504554
+    },
+    "runtime": {
+      "onnxruntime": "1.29.0",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "threads": 2
+    }
+  },
+  "sdkImplementation": {
+    "change": "v16 adds optional Omnilingual normalizationEpsilon and sets this family default to 1e-5; shared Wav2Vec2 default remains 1e-7.",
+    "regression": "tests/omnilingual-ctc-normalization.test.ts checks official Meta v2 waveform summary and the per-family override.",
+    "validation": "Library 1947 passed / 36 skipped; root imports 44; demo 68 passed / 4 builds. Live real-model v16 WASM retest across four demos was still running at report time and has no PASS."
+  },
+  "observedThresholds": {
+    "predeclaredByIndependentVerifier": {
+      "atol": 0.001,
+      "rtol": 0.0001
+    },
+    "fp32": "PASS allclose at the stated tolerance; exact argmax agreement on 549/549 frames; max abs difference 0.0004775524139404297; mean abs difference 7.673735844589438e-06.",
+    "int8": "FAIL allclose at the stated tolerance; argmax agreement 547/549 frames against native under the official waveform.",
+    "sdkWaveformAgainstMeta": "PASS allclose at atol=1e-6, rtol=1e-6; max abs difference 4.76837158203125e-7; mean abs difference 2.7264698598049686e-8."
+  },
+  "quality": {
+    "status": "FAIL_ON_THIS_FIXTURE",
+    "reason": "Native, FP32, and INT8 decodes all output the single Arabic character “م” instead of the immutable English JFK gold.",
+    "broadQuality": "UNVERIFIED"
+  },
+  "acceptance": {
+    "sampledFp32NativeNumerics": "PASS at atol=1e-3, rtol=1e-4; single fixture only",
+    "sampledInt8NativeNumerics": "FAIL at atol=1e-3, rtol=1e-4",
+    "immutableGoldQuality": "FAIL",
+    "browserOrGpu": "NOT_RUN"
+  }
+}

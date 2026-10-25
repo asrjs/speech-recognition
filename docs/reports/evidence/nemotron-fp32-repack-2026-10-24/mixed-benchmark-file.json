@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "app": "benchmark",
+  "modelId": "nemotron-3.5-asr-streaming-0.6b",
+  "source": "local",
+  "descriptorSources": [
+    "huggingface",
+    "local"
+  ],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu-hybrid",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": "fp16",
+  "requestedDecoderQuant": "fp32",
+  "requestedComponentBackends": [],
+  "modelDir": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\mixed-fp16-named",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "FAIL",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "MISMATCH",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-24 19:24:24.902624 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-24 19:24:24.904974 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 26933,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T19:24:14+0300",
+  "testBrowserProfile": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\nemotron-gpu-profile",
+  "actualComponentBackends": [],
+  "actualEncoderQuant": "fp16",
+  "actualDecoderQuant": "fp32",
+  "actualBackend": "webgpu-hybrid",
+  "activeStage": "file-flow-running",
+  "loadPageText": "A\nASRJS\nBenchmark\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nnvidia / blackwell\nModel ready (Local)\n0 valid runs\n⚙ Benchmark Setup\n📊 Overview & Sweet-Spot\n📈 Interactive Charts\n⚖ Compare & Pivot\n🗂 Run Data & Export\n1. MODEL & RUNTIME\nUniversal Catalog\nHuggingFace Hub\nLocal Folder\nPick Local Model Directory\n7 local files\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nExecution Backend\nWebGPU Hybrid (WebGPU enc + WASM dec)\nWebGPU Pure\nWASM Pure (CPU)\nEncoder Quant\nfp16\nDecoder Quant\nfp32\nPreprocessor\nJS (Pure WebMel)\nONNX (nemo128.onnx)\nWASM Threads\nLoading Model...\n\nnemotron-3.5-asr-streaming-0.6b · webgpu-hybrid · local\n\n2. AUDIO SOURCE & SAMPLING PLAN\nHuggingFace Dataset\nLocal Duration Catalog\nHuggingFace Dataset ID\nConfig\ndefault\nSplit\ntest\ntrain\nvalidation\nOffset\nSamples\nRefresh Splits\nPreview Samples (0)\n\nReady: ysdede/parrot-radiology-asr-en (default/test)\n\n3. BENCHMARK EXECUTION & SNAPSHOTS\nRepeats\nWarmups\nRandom Seed\nSeeded Random Sampling\nBoost Repeats for Long Audio (≥30s → 2x)\n▶ Start Benchmark\nStop\nSave Snapshot\nExport JSON\nExport CSV\nClear Runs\n\nReady\n\nHardware & Lifecycle Telemetry\nWEBGPU ADAPTER\nnvidia / blackwell\nCPU CONCURRENCY\n12 logical cores\nDEVICE MEMORY\n32 GiB\nLAST MODEL LOAD TIME\n-\nLAST LOAD HEAP DELTA\n-\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "nemotron-3.5-asr-streaming-0.6b",
+  "benchmarkRun": {
+    "id": "batch-1792859068436-0-0",
+    "batchId": "batch-1792859068436",
+    "startedAt": "2026-10-24T16:24:28.472Z",
+    "finishedAt": "2026-10-24T16:24:33.478Z",
+    "sampleKey": "jfk2.en.wav (11.0s)",
+    "sampleOrder": 1,
+    "rowIndex": 0,
+    "repeatIndex": 1,
+    "audioDurationSec": 11,
+    "transcription": "And so my fellow Americans ask not what your country can do for you at what you can do for your country",
+    "referenceText": "",
+    "exactMatchToFirst": true,
+    "similarityToFirst": 1,
+    "wer": null,
+    "cer": null,
+    "referenceSimilarity": null,
+    "metrics": {
+      "preprocess_ms": 32.84,
+      "encode_ms": 4103.435,
+      "decode_ms": 861.955,
+      "tokenize_ms": 0,
+      "total_ms": 4999.34,
+      "rtf": 0.4544854545454546,
+      "rtfx": 2.2002904383378605
+    },
+    "rtfx": 2.2002904383378605,
+    "modelKey": "nemotron-3.5-asr-streaming-0.6b",
+    "backend": "webgpu-hybrid",
+    "encoderQuant": "fp16",
+    "decoderQuant": "fp32",
+    "preprocessorBackend": "js",
+    "error": ""
+  },
+  "transcript": "And so my fellow Americans ask not what your country can do for you at what you can do for your country",
+  "verificationErrors": [
+    "Transcript is partial, duplicated, or differs from exact oracle"
+  ],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-24T19:24:33+0300"
+}

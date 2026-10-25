@@ -338,17 +338,21 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
 });
 
 describe('nemo-tdt executor decode loop', () => {
-  it('uses the v3 export contract for 150 valid frames in a 151-frame output', async () => {
-    const preset = resolveParakeetPresetManifest('parakeet-tdt-0.6b-v3');
+  it.each([
+    ['parakeet-tdt-0.6b-v3', 150, 151],
+    ['parakeet-tdt-0.6b-v2', 26, 27],
+    ['parakeet-tdt-0.6b-v2', 41, 42],
+  ] as const)('uses %s BDT layout for %i valid frames in a %i-frame output', async (modelId, frameCount, paddedFrames) => {
+    const preset = resolveParakeetPresetManifest(modelId);
     const harness = createExecutorHarness({
       config: { ...preset?.config, vocabularySize: 3 },
-      frameCount: 150, featureSize: 1024, paddedFrames: 151, encodedLengths: [150],
-      logits: Array.from({ length: 150 }, () => ({ logits: [10, 0, 0, 0, 10, 0] })),
+      frameCount, featureSize: 1024, paddedFrames, encodedLengths: [frameCount],
+      logits: Array.from({ length: frameCount }, () => ({ logits: [10, 0, 0, 0, 10, 0] })),
     });
     try {
       await harness.executor.transcribe(createAudio(), {}, {} as never);
-      expect(harness.decoderSession.encoderFeedDims).toEqual(Array.from({ length: 150 }, () => [1, 1024, 1]));
-      expect(harness.decoderSession.encoderFeedValues).toEqual(Array.from({ length: 150 }, (_, frame) =>
+      expect(harness.decoderSession.encoderFeedDims).toEqual(Array.from({ length: frameCount }, () => [1, 1024, 1]));
+      expect(harness.decoderSession.encoderFeedValues).toEqual(Array.from({ length: frameCount }, (_, frame) =>
         Array.from(Float32Array.from({ length: 8 }, (_, feature) => frame + feature / 10))));
     } finally {
       await harness.executor.dispose();

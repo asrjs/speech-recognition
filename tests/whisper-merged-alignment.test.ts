@@ -194,11 +194,94 @@ describe('merged Whisper alignment boundaries', () => {
     expect(Array.from(inputIds, Number)).toEqual([50258, 50259, 50359, 50363, 11, 12, 50257]);
     expect(feedsSeen.encoder_hidden_states.type).toBe('float16');
     expect(feedsSeen['past_key_values.0.decoder.key'].dims).toEqual([1, 1, 0, 4]);
-    expect(feedsSeen.use_cache_branch.data).toEqual(new Uint8Array([1]));
+    // Verified from the official Base merged-int8 ONNX graph: use_cache_branch is
+    // the If condition; else (false) consumes fresh encoder features, while then
+    // (true) reads past_key_values. SHA256: cf9a8d5bcddc0917a0078135b484cedcaf44f28909cd91910abd29dced9171db.
+    expect(feedsSeen.use_cache_branch.data).toEqual(new Uint8Array([0]));
 
     // Row 3 (<|notimestamps|>) predicts text token 11; row 4 predicts token 12.
     expect(alignment.logitsForText[0]).toBe(103);
     expect(alignment.logitsForText[vocabSize]).toBe(104);
+  });
+
+  it('feeds one new token with decoder cache and retains the encoder cache', async () => {
+    const branchValues: number[] = [];
+    const decoderPastLengths: number[] = [];
+    const decoderPresentLengths: number[] = [];
+    const encoderPastLengths: number[] = [];
+    const inputTokenSequences: number[][] = [];
+    const inputShapes: (readonly number[])[] = [];
+    const decoderSession = {
+      inputNames: [
+        'input_ids',
+        'encoder_hidden_states',
+        'past_key_values.0.decoder.key',
+        'past_key_values.0.decoder.value',
+        'past_key_values.0.encoder.key',
+        'past_key_values.0.encoder.value',
+        'use_cache_branch',
+      ],
+      run: async (feeds: Record<string, FakeTensor>) => {
+        branchValues.push(Number((feeds.use_cache_branch.data as Uint8Array)[0]));
+        const inputIds = feeds.input_ids.data as BigInt64Array;
+        inputTokenSequences.push(Array.from(inputIds, Number));
+        inputShapes.push(feeds.input_ids.dims);
+        decoderPastLengths.push(feeds['past_key_values.0.decoder.key'].dims[2] as number);
+        encoderPastLengths.push(feeds['past_key_values.0.encoder.key'].dims[2] as number);
+        if (branchValues.at(-1) === 1 && encoderPastLengths.at(-1) === 0) {
+          throw new Error('cached decoder received an empty encoder cache');
+        }
+        const decoderLength =
+          decoderPastLengths.at(-1)! + (feeds.input_ids.dims[1] as number);
+        decoderPresentLengths.push(decoderLength);
+        const encoderLength = feeds.encoder_hidden_states.dims[1] as number;
+        const encoderPresentLength = branchValues.at(-1) === 1 ? 0 : encoderLength;
+        return {
+          logits: new FakeTensor('float32', new Float32Array([0, 1]), [1, 1, 2]),
+          'present.0.decoder.key': new FakeTensor('float32', new Float32Array(decoderLength * 4), [1, 1, decoderLength, 4]),
+          'present.0.decoder.value': new FakeTensor('float32', new Float32Array(decoderLength * 4), [1, 1, decoderLength, 4]),
+          'present.0.encoder.key': new FakeTensor(
+            'float32',
+            new Float32Array(encoderPresentLength * 4),
+            [encoderPresentLength === 0 ? 0 : 1, 1, encoderPresentLength || 1, 4],
+          ),
+          'present.0.encoder.value': new FakeTensor(
+            'float32',
+            new Float32Array(encoderPresentLength * 4),
+            [encoderPresentLength === 0 ? 0 : 1, 1, encoderPresentLength || 1, 4],
+          ),
+        };
+      },
+    };
+    const loaded = {
+      ort: { Tensor: FakeTensor },
+      decoderSession,
+      modelConfig: { decoderLayers: 1, decoderAttentionHeads: 1, headDim: 4 },
+    } as never;
+    const executor = createExecutor() as unknown as {
+      runDecoderStep(
+        loadedState: unknown,
+        encoder: FakeTensor,
+        generatedTokens: readonly number[],
+        pastKeyValues: Record<string, FakeTensor>,
+        isFirstStep: boolean,
+      ): Promise<{ readonly pastKeyValues: Record<string, FakeTensor> }>;
+    };
+    const encoder = new FakeTensor('float32', new Float32Array(8), [1, 2, 4]);
+    const promptTokens = [50258, 50259, 50360, 50363];
+    const firstPrefix = [...promptTokens, 50260];
+    const secondPrefix = [...firstPrefix, 50261];
+
+    const first = await executor.runDecoderStep(loaded, encoder, promptTokens, {}, true);
+    const second = await executor.runDecoderStep(loaded, encoder, firstPrefix, first.pastKeyValues, false);
+    await executor.runDecoderStep(loaded, encoder, secondPrefix, second.pastKeyValues, false);
+
+    expect(branchValues).toEqual([0, 1, 1]);
+    expect(inputTokenSequences).toEqual([promptTokens, [50260], [50261]]);
+    expect(inputShapes).toEqual([[1, 4], [1, 1], [1, 1]]);
+    expect(decoderPastLengths).toEqual([0, 4, 5]);
+    expect(decoderPresentLengths).toEqual([4, 5, 6]);
+    expect(encoderPastLengths).toEqual([2, 2, 2]);
   });
 
   it('does not add cache feeds to a merged decoder that does not declare them', async () => {
@@ -259,10 +342,14 @@ describe('merged Whisper alignment boundaries', () => {
 
   it('does not add cache feeds to the regular merged decode step when absent', async () => {
     const feedsSeen: Record<string, FakeTensor> = {};
+    const inputTokenSequences: number[][] = [];
+    const inputShapes: (readonly number[])[] = [];
     const decoderSession = {
       inputNames: ['input_ids', 'encoder_hidden_states'],
       run: async (feeds: Record<string, FakeTensor>) => {
         Object.assign(feedsSeen, feeds);
+        inputTokenSequences.push(Array.from(feeds.input_ids.data as BigInt64Array, Number));
+        inputShapes.push(feeds.input_ids.dims);
         return {
           logits: new FakeTensor('float32', new Float32Array([0, 1]), [1, 1, 2]),
         };
@@ -282,8 +369,7 @@ describe('merged Whisper alignment boundaries', () => {
       },
     } as never;
 
-    await (
-      createExecutor() as unknown as {
+    const executor = createExecutor() as unknown as {
         runDecoderStep: (
           loadedState: unknown,
           encoder: unknown,
@@ -291,16 +377,25 @@ describe('merged Whisper alignment boundaries', () => {
           pastKeyValues: Record<string, never>,
           isFirstStep: boolean,
         ) => Promise<unknown>;
-      }
-    ).runDecoderStep(
+      };
+    await executor.runDecoderStep(
       loaded,
       new FakeTensor('float32', new Float32Array(4), [1, 2, 2]),
       [50258],
       {},
       true,
     );
+    await executor.runDecoderStep(
+      loaded,
+      new FakeTensor('float32', new Float32Array(4), [1, 2, 2]),
+      [50258, 50259],
+      {},
+      false,
+    );
 
     expect(Object.keys(feedsSeen)).toEqual(['input_ids', 'encoder_hidden_states']);
+    expect(inputTokenSequences).toEqual([[50258], [50258, 50259]]);
+    expect(inputShapes).toEqual([[1, 1], [1, 2]]);
   });
 
   it('uses text rows from cross-attention and crops padded frames to audio duration', async () => {

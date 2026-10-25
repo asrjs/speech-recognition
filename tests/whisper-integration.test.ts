@@ -13,8 +13,13 @@ import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { PcmAudioBuffer } from '../src/audio/index.js';
 
 describe('Whisper preset manifests', () => {
-  it('declares timestamped HF sources for legacy presets and splitgraph artifacts for the 4-graph preset', () => {
+  it('declares verified Hub sources and keeps original Large v3 local-only', () => {
     for (const manifest of WHISPER_PRESET_MANIFESTS) {
+      if (manifest.modelId === 'openai/whisper-large-v3') {
+        expect(manifest.source).toBeUndefined();
+        expect(manifest.localGeometry).toEqual({ decoderLayers: 32, hiddenSize: 1280, decoderAttentionHeads: 20 });
+        continue;
+      }
       expect(manifest.source).toBeDefined();
       if (manifest.source?.kind === 'huggingface') {
         expect(manifest.source.repoId).toMatch(/^onnx-community\/whisper-/);

@@ -1,0 +1,49 @@
+{
+  "status": "PUBLIC_LIBRARY_CPU_TRACE_NOT_ACCEPTANCE",
+  "backend": "wasm",
+  "input": {
+    "path": "N:\\github\\asrjs\\speech-recognition/tests/fixtures/jfk2.en.wav",
+    "wavSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "sampleRate": 16000,
+    "channels": 1,
+    "samples": 176000
+  },
+  "pcm": {
+    "sha256Float32le": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "mean": 0.00001372007890181108,
+    "std": 0.1421014894785324,
+    "min": -0.72357177734375,
+    "max": 0.78271484375
+  },
+  "normalizedPcm": {
+    "sha256Float32le": "2dca7b73164267beb9ed9bd7bd9d774c2f76ea4e64c87793788c71713031c78a",
+    "mean": -9.26567157545254e-11,
+    "std": 0.9999975240668023,
+    "min": -5.092020511627197,
+    "max": 5.508029460906982
+  },
+  "artifacts": {
+    "modelSha256": "38a6cc569d46eb382f27d85b3208b883e834ff281b2057a606ec79e4ae501545",
+    "tokensSha256": "7d99997ef207ff14c2cfe825f2aa037528ea250113cc3c6392bfe49326884ba6"
+  },
+  "transcript": "   م            ",
+  "nativeText": "   م            ",
+  "collapsedIds": [
+    4,
+    4,
+    4,
+    3376,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4
+  ]
+}

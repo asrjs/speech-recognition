@@ -1,0 +1,30 @@
+{
+  "status": "PASS_LOSSLESS_DECODER_EXTERNALIZATION",
+  "sourceBundle": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-bundle-publisher",
+  "targetBundle": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-bundle-external-decoder",
+  "sourceHashes": {
+    "encoder-model.onnx": "af8a77ac3502e6471b87bfdf1cf0344f80b39a1e101dfa19a4aba461bef7741d",
+    "encoder-model.onnx.data": "9904f1a89bdfe20e04f2828b2955d2bb91cb308c8a3e28bfcf68a88d8433d9aa",
+    "decoder-model.onnx": "1d283495fc0b791886f0d1251e32c3f4ed14bbca42dfb9973e732a5227036845",
+    "tokenizer.json": "2f74972b146840e829bc6fcd8f9086c8f2b76d520fa5d72b2642a74f8b58b4ae",
+    "config.json": "0311edf848f5a37e39e13060505d2d36614813d8c8598afb69265fb6b1c2a7ab"
+  },
+  "targetEncoderGraphSha256": "af8a77ac3502e6471b87bfdf1cf0344f80b39a1e101dfa19a4aba461bef7741d",
+  "targetEncoderDataSha256": "9904f1a89bdfe20e04f2828b2955d2bb91cb308c8a3e28bfcf68a88d8433d9aa",
+  "targetTokenizerSha256": "2f74972b146840e829bc6fcd8f9086c8f2b76d520fa5d72b2642a74f8b58b4ae",
+  "originalInlineDecoderSha256": "1d283495fc0b791886f0d1251e32c3f4ed14bbca42dfb9973e732a5227036845",
+  "externalizedDecoderGraphSha256": "2da7023542b9beb5858f91a690a4b578b5f1eb2ed770dd3a11cd93f7979b5ad3",
+  "decoderExternalDataSha256": "2d3eecd23312b421f341ca5353de63e7f276d37120cdb52e6c65fd3576e1a36c",
+  "decoderExternalDataBytes": 675987456,
+  "decoderInitializersAndTensorAttributes": 674,
+  "allInitializerPayloadHashesExact": true,
+  "decoderExternalLocations": [
+    "decoder-model.onnx.data"
+  ],
+  "configExternalData": {
+    "encoder": "encoder-model.onnx.data",
+    "decoder": "decoder-model.onnx.data"
+  },
+  "pathBasedOnnxChecker": "PASS",
+  "onnxVersion": "1.20.1"
+}

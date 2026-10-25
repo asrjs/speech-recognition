@@ -1,0 +1,12 @@
+{
+  "checkedAtUtc": "2026-10-25T10:11:02.958593+00:00",
+  "source": "GitHub connector search_prs",
+  "queries": [
+    "repo:asrjs/speech-recognition is:open",
+    "repo:asrjs/demos is:open"
+  ],
+  "openPrs": {
+    "asrjs/speech-recognition": [],
+    "asrjs/demos": []
+  }
+}

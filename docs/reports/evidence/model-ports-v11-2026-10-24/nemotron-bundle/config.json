@@ -1,0 +1,10 @@
+{
+  "format": "asrjs.nemotron-rnnt",
+  "schemaVersion": 1,
+  "family": "nemotron-rnnt",
+  "encoderWindowing": {
+    "firstChunkFrames": 49,
+    "shiftFrames": 56,
+    "leftContextFrames": 9
+  }
+}

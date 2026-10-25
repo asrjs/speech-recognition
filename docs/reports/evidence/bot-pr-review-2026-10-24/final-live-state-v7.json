@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-24T16:20:01.719461+00:00",
+  "source": "GitHub connector search_prs state=open query empty topn=100",
+  "repositories": {
+    "asrjs/speech-recognition": {
+      "issues": [],
+      "isError": false
+    },
+    "asrjs/demos": {
+      "issues": [],
+      "isError": false
+    }
+  },
+  "scope": "Open PR snapshot; no review/merge/close write performed"
+}

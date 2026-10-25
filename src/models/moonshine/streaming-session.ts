@@ -169,8 +169,10 @@ export class MoonshineStreamingSession {
       this.hiddens.push(...Array.from(hidden.data.slice(0, keep * 320)));
       this.hiddenFrames += keep;
       this.committedFrames += keep;
-      this.retained.push(...window);
-      const tail = this.tailContextFrames();
+      // The lookahead is re-fed as pending audio on the next call. Retain only
+      // the committed prefix so the final flush tail remains contiguous.
+      this.retained.push(...window.slice(0, emit * FRAME_SAMPLES));
+      const tail = this.tailContextFrames() * FRAME_SAMPLES;
       if (this.retained.length > tail) {
         this.retained.splice(0, this.retained.length - tail);
       }
@@ -198,16 +200,25 @@ export class MoonshineStreamingSession {
     if (this.pending.length > 0) {
       const tailAudio = [...this.retained, ...this.pending];
       const committedInTail = this.retained.length;
+      // The official feature extractor pads audio to a whole 5 ms (80 sample)
+      // frame and keeps the original sample count in its attention mask. The
+      // encoder uses mask.sum() // 80, so a trailing partial frame is ignored.
+      const paddedLength = Math.ceil(tailAudio.length / FRAME_SAMPLES) * FRAME_SAMPLES;
+      const encoderAudio = new Float32Array(paddedLength);
+      encoderAudio.set(tailAudio);
       const whole = MoonshineStreamingSession.named(
         await this.options.wholeEncoder.run({
-          input_values: this.floatTensor(tailAudio, [1, tailAudio.length]),
-          // The whole-utterance encoder requires the padding mask (oracle
-          // receipt contract finding); a full-valid tail is all ones.
-          attention_mask: this.int32Ones(tailAudio.length),
+          input_values: this.floatTensor(encoderAudio, [1, encoderAudio.length]),
+          attention_mask: this.int32Mask(tailAudio.length, paddedLength),
         }), 'last_hidden_state');
-      const tailFrames = tailAudio.length / FRAME_SAMPLES;
-      const keep = embeddedFrameCount(tailFrames) - embeddedFrameCount(committedInTail / FRAME_SAMPLES);
-      const fresh = whole.data.slice(whole.data.length - keep * 320);
+      const tailFrames = Math.floor(tailAudio.length / FRAME_SAMPLES);
+      const validEndFrame = embeddedFrameCount(tailFrames);
+      const committedEndFrame = embeddedFrameCount(committedInTail / FRAME_SAMPLES);
+      const keep = validEndFrame - committedEndFrame;
+      // The processor may pad one partial 80-sample frame, producing an
+      // extra hidden row. Slice the valid prefix before removing context;
+      // taking the final `keep` rows would shift the tail onto padding.
+      const fresh = whole.data.slice(committedEndFrame * 320, validEndFrame * 320);
       this.hiddens.push(...Array.from(fresh));
       this.hiddenFrames += keep;
       this.committedFrames += keep;
@@ -347,9 +358,10 @@ export class MoonshineStreamingSession {
     return new this.options.ort.Tensor('int64', BigInt64Array.from([BigInt(value)]), []);
   }
 
-  private int32Ones(count: number): unknown {
-    const ones = new Int32Array(count).fill(1);
-    return new this.options.ort.Tensor('int32', ones, [1, count]);
+  private int32Mask(validSamples: number, paddedSamples: number): unknown {
+    const mask = new Int32Array(paddedSamples);
+    mask.fill(1, 0, validSamples);
+    return new this.options.ort.Tensor('int32', mask, [1, paddedSamples]);
   }
 
   private intToken(id: number): unknown {

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "pr": 238,
+  "baseSha": "e534fb517dcd15a52ac8b52bff85551df89d3673",
+  "headSha": "37d7b774d0bf86340c2ae8f45b3328605fc79dc9",
+  "file": "src/presets/parakeet/compat.ts",
+  "currentSourceExpression": "await Promise.all(handles.map(async (handle) => handle.dispose()));",
+  "proposedPrExpression": "await Promise.all(handles.map((handle) => handle.dispose()));",
+  "contract": {
+    "disposeAllowsSyncVoid": true,
+    "fromUrlsAcceptsCallerSuppliedAssetHandles": true,
+    "helperUsedByModelDisposeCallback": true
+  },
+  "reproduction": {
+    "firstDisposeSynchronouslyThrows": true,
+    "before": {
+      "calls": [
+        "first",
+        "second"
+      ],
+      "rejected": true,
+      "errorMessage": "sync-dispose-failure"
+    },
+    "after": {
+      "calls": [
+        "first"
+      ],
+      "rejected": true,
+      "errorMessage": "sync-dispose-failure"
+    },
+    "conclusion": "After PR, the first synchronous disposal exception aborts Array.map; later handles are not disposed."
+  }
+}

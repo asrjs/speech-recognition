@@ -26,9 +26,14 @@ import type {
 } from './streaming-config.js';
 import { mergeStreamingConfig, resolveStreamingProfileId } from './streaming-config.js';
 import type { RealtimeLatencySummary } from './realtime-latency.js';
-import type { PartialTranscript, StreamingTranscriber } from '../types/index.js';
-import { AudioRingBuffer } from './realtime.js';
+import type { AbortSignalLike, BaseTranscriptionOptions, PartialTranscript, StreamingTranscriber, TranscriptResult } from '../types/index.js';
+import type { RealtimeTranscriptionContext, RealtimeTranscriptionUpdate } from './controller.js';
+import { AudioRingBuffer, createCaptureTranscript } from './realtime.js';
 import { PcmAudioBuffer } from '../audio/audio.js';
+import { SpeechContextBuffer, type SpeechContextRevision } from './speech-context.js';
+import type { LoadedSpeechModel } from './load.js';
+import { resampleLinear } from './media.js';
+import { subscribeToAbortSignal } from '../io/abort.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
 
@@ -48,6 +53,13 @@ export interface BrowserRealtimeMicrophoneUtterance {
   readonly durationSeconds: number;
   readonly sourceLabel: string;
   readonly metadata: unknown;
+  readonly context?: RealtimeTranscriptionContext;
+}
+
+export interface BrowserRealtimeTranscriptionContextOptions {
+  readonly maxDurationSeconds?: number;
+  readonly maxGapSeconds?: number;
+  readonly prerollSeconds?: number;
 }
 
 export interface BrowserRealtimeMicrophoneControllerState {
@@ -58,6 +70,8 @@ export interface BrowserRealtimeMicrophoneControllerState {
   readonly captureInfo: BrowserRealtimeCaptureInfo;
   /** From the inner transcription controller when a transcribe callback is attached. */
   readonly latency: RealtimeLatencySummary | null;
+  readonly transcript?: RealtimeTranscriptionUpdate | null;
+  readonly transcriptText?: string;
 }
 
 export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
@@ -86,6 +100,12 @@ export interface BrowserRealtimeMicrophoneControllerOptions extends Omit<
     sampleRate: number,
   ) => Promise<unknown>;
   readonly onSegment?: (segment: unknown) => void;
+  /** Re-run each accepted VAD segment over the complete captured turn context. */
+  readonly transcriptionContext?: BrowserRealtimeTranscriptionContextOptions;
+  /** Borrowed loaded model used for microphone utterances. The caller owns disposal. */
+  readonly model?: LoadedSpeechModel;
+  readonly transcribeOptions?: BaseTranscriptionOptions;
+  readonly onTranscript?: (update: RealtimeTranscriptionUpdate) => void;
 }
 
 export interface BrowserRealtimeMicrophoneController {
@@ -115,6 +135,17 @@ function concatFloat32Chunks(chunks: readonly Float32Array[]): Float32Array {
     offset += chunk.length;
   }
   return result;
+}
+
+function combineAbortSignals(
+  signals: readonly (AbortSignalLike | null | undefined)[],
+): { readonly signal: AbortSignal; dispose(): void } {
+  const controller = new AbortController();
+  if (signals.some((signal) => signal?.aborted)) controller.abort();
+  const cleanups = controller.signal.aborted
+    ? []
+    : signals.map((signal) => subscribeToAbortSignal(signal, () => controller.abort()));
+  return { signal: controller.signal, dispose: () => cleanups.forEach((cleanup) => cleanup()) };
 }
 
 function createInitialCaptureInfo(): BrowserRealtimeCaptureInfo {
@@ -150,6 +181,10 @@ export function createBrowserRealtimeMicrophoneController(
   const listeners = new Set<(state: BrowserRealtimeMicrophoneControllerState) => void>();
   const onUtterance = options.onUtterance ?? (() => undefined);
   const onStatus = options.onStatus ?? (() => undefined);
+  if (options.model && (options.transcribe || options.transcribeMonoPcm || options.streamingTranscriber)) {
+    throw new TypeError('model cannot be combined with transcribe, transcribeMonoPcm, or streamingTranscriber.');
+  }
+  let captureTranscript = options.model ? createCaptureTranscript() : null;
   let micMode: BrowserRealtimeMicrophoneMode = options.micMode ?? 'speech-detect';
   let profileId =
     options.profileId ?? resolveStreamingProfileId(options.isRealtimeEouModel === true);
@@ -158,14 +193,61 @@ export function createBrowserRealtimeMicrophoneController(
   let sampleRate = STREAMING_PROCESSING_SAMPLE_RATE;
   let manualChunks: Float32Array[] = [];
   let manualIngestFrame = 0;
+  const transcriptionContextMaxDurationSeconds = options.transcriptionContext?.maxDurationSeconds ?? 30;
+  const resolvedTranscriptionContext = options.transcriptionContext ?? (options.model ? {} : undefined);
+  const transcriptionContext = resolvedTranscriptionContext
+    ? new SpeechContextBuffer({
+        sampleRate: STREAMING_PROCESSING_SAMPLE_RATE,
+        maxDurationSeconds: resolvedTranscriptionContext.maxDurationSeconds ?? transcriptionContextMaxDurationSeconds,
+        retentionDurationSeconds: (resolvedTranscriptionContext.maxDurationSeconds ?? transcriptionContextMaxDurationSeconds) + resolvedConfig.ringBufferDurationMs / 1000,
+        maxGapSeconds: resolvedTranscriptionContext.maxGapSeconds ?? 3,
+        // Neural VAD can report onset after the first ~300ms of speech. Keep
+        // additional captured margin so contextual transcription retains it.
+        prerollSeconds: resolvedTranscriptionContext.prerollSeconds ?? 0.6,
+      })
+    : null;
   let lifecycleGeneration = 0;
   let lifecycleOperationTail: Promise<void> = Promise.resolve();
   let disposed = false;
   let startAbort: AbortController | null = null;
   let state = createInitialState(micMode);
+  const pendingTranscriptions = new Set<Promise<void>>();
+  const transcriptionErrors: unknown[] = [];
+
+  const drainTranscriptions = async (): Promise<void> => {
+    while (pendingTranscriptions.size) {
+      await Promise.all([...pendingTranscriptions]);
+    }
+    if (transcriptionErrors.length) {
+      const errors = transcriptionErrors.splice(0);
+      if (errors.length === 1) throw errors[0];
+      throw new AggregateError(errors, 'Microphone transcription failed.');
+    }
+  };
+
+  const modelTranscribe = options.model
+    ? async (request: import('./controller.js').RealtimeTranscriptionRequest) => {
+        const targetSampleRate = options.model!.model.info.inference?.sampleRate ?? request.sampleRate;
+        const pcm = request.sampleRate === targetSampleRate
+          ? request.pcm
+          : resampleLinear(request.pcm, request.sampleRate, targetSampleRate);
+        const combined = combineAbortSignals([request.signal, options.transcribeOptions?.signal]);
+        try {
+          const response = await options.model!.transcribeMonoPcm(pcm, targetSampleRate, {
+            ...options.transcribeOptions,
+            responseFlavor: 'canonical',
+            signal: combined.signal,
+          });
+          return response as TranscriptResult;
+        } finally {
+          combined.dispose();
+        }
+      }
+    : undefined;
 
   const starter = createStarter({
     ...options,
+    transcribe: options.transcribe ?? modelTranscribe,
     profileId,
     config: resolvedConfig,
   });
@@ -202,6 +284,19 @@ export function createBrowserRealtimeMicrophoneController(
             ...patch,
           };
     emit();
+  };
+
+  const trackTranscription = (operation: Promise<unknown>): void => {
+    const task = operation
+      .then(() => undefined)
+      .catch((error) => {
+        transcriptionErrors.push(error);
+        if (!disposed) setState({ micError: error instanceof Error ? error.message : String(error) });
+      })
+      .finally(() => {
+        pendingTranscriptions.delete(task);
+      });
+    pendingTranscriptions.add(task);
   };
 
   const updateStatus = (micStatus: string, appStatus = micStatus): void => {
@@ -306,6 +401,21 @@ export function createBrowserRealtimeMicrophoneController(
       sampleRate = nextSampleRate;
     }
 
+    if (transcriptionContext && micMode === 'speech-detect') {
+      try {
+        if (nextSampleRate !== STREAMING_PROCESSING_SAMPLE_RATE) {
+          throw new RangeError(`Speech context requires ${STREAMING_PROCESSING_SAMPLE_RATE} Hz PCM, got ${nextSampleRate} Hz.`);
+        }
+        if (input.startFrame === undefined) {
+          throw new RangeError('Speech context requires frame-addressed microphone chunks.');
+        }
+        transcriptionContext.write(input.startFrame, chunk);
+      } catch (error) {
+        setState({ micError: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+    }
+
     if (micMode === 'manual') {
       manualChunks.push(chunk);
       manualIngestFrame += chunk.length;
@@ -349,40 +459,80 @@ export function createBrowserRealtimeMicrophoneController(
       readonly endFrame: number;
       readonly metadata: unknown;
     },
+    contextOverride?: SpeechContextRevision,
   ): void => {
+    let contextualAudio: SpeechContextRevision | null = contextOverride ?? null;
+    if (!contextualAudio && transcriptionContext && micMode === 'speech-detect') {
+      const metadata = details.metadata as { logicalStartFrame?: number; logicalEndFrame?: number } | null;
+      try {
+        contextualAudio = transcriptionContext.snapshot(
+          details.startFrame,
+          details.endFrame,
+          metadata?.logicalStartFrame ?? details.startFrame,
+          metadata?.logicalEndFrame ?? details.endFrame,
+        );
+      } catch (error) {
+        setState({ micError: error instanceof Error ? error.message : String(error) });
+        return;
+      }
+    }
+    const inferencePcm = contextualAudio?.pcm ?? pcm;
+    const context = contextualAudio ? {
+      id: contextualAudio.id,
+      revision: contextualAudio.revision,
+      startFrame: contextualAudio.startFrame,
+      endFrame: contextualAudio.endFrame,
+      sampleRate: contextualAudio.sampleRate,
+      finalized: contextualAudio.finalized,
+    } : undefined;
     onUtterance({
-      pcm,
+      pcm: inferencePcm,
       sampleRate: details.sampleRate,
       reason: details.reason,
-      durationSeconds: pcm.length / details.sampleRate,
+      durationSeconds: inferencePcm.length / details.sampleRate,
       sourceLabel: `microphone-${details.reason}-${new Date().toLocaleTimeString()}`,
       metadata: details.metadata,
+      context,
     });
 
     if (streamingTranscriber) {
       // Detection finalizes at speech-end, before a continuation's audio is queued.
       if (micMode === 'manual') finalizeStreaming();
     } else if (options.transcribeMonoPcm && pcm.length > 0) {
-      void options.transcribeMonoPcm(pcm, details.sampleRate).catch(() => undefined);
+      trackTranscription(Promise.resolve().then(() => options.transcribeMonoPcm!(inferencePcm, details.sampleRate)));
     }
 
     const transcription = starter.controller;
     if (!transcription || pcm.length === 0) {
       return;
     }
-    void transcription
-      .transcribeUtterance(pcm, {
-        startFrame: details.startFrame,
-        endFrame: details.endFrame,
+    const task = transcription
+      .transcribeUtterance(inferencePcm, {
+        startFrame: context?.startFrame ?? details.startFrame,
+        endFrame: context?.endFrame ?? details.endFrame,
         sampleRate: details.sampleRate,
         reason: details.reason,
+        context,
       })
-      .catch(() => undefined)
+      .then((update) => {
+        if (!update || disposed) return;
+        if (captureTranscript) {
+          const transcriptText = captureTranscript.update(update.canonical.text, update.context);
+          setState({ transcript: update, transcriptText });
+        }
+        options.onTranscript?.(update);
+      })
+      .catch((error) => {
+        transcriptionErrors.push(error);
+        if (!disposed) setState({ micError: error instanceof Error ? error.message : String(error) });
+      })
       .finally(() => {
+        pendingTranscriptions.delete(task);
         if (!disposed) {
           emit();
         }
       });
+    pendingTranscriptions.add(task);
   };
 
   const starterUnsubscribe = starter.subscribe((event) => {
@@ -490,8 +640,14 @@ export function createBrowserRealtimeMicrophoneController(
         if (generation !== lifecycleGeneration || disposed || state.isMicActive) {
           return;
         }
+        await drainTranscriptions();
         manualChunks = [];
         manualIngestFrame = 0;
+        transcriptionContext?.reset();
+        if (captureTranscript) {
+          captureTranscript = createCaptureTranscript();
+          setState({ transcript: null, transcriptText: '' });
+        }
         streamingAudio = null;
         streamingCursor = null;
         isSpeechActive = false;
@@ -670,7 +826,13 @@ export function createBrowserRealtimeMicrophoneController(
       startAbort?.abort();
       setState({ isMicActive: false });
       return enqueueLifecycleOperation(async () => {
-        if (generation !== lifecycleGeneration && !captureHandle && !manualChunks.length) {
+        if (
+          generation !== lifecycleGeneration &&
+          !captureHandle &&
+          !manualChunks.length &&
+          !pendingTranscriptions.size &&
+          !transcriptionErrors.length
+        ) {
           return;
         }
         const errors: unknown[] = [];
@@ -689,6 +851,7 @@ export function createBrowserRealtimeMicrophoneController(
         if (disposed) {
           manualChunks = [];
           manualIngestFrame = 0;
+          transcriptionContext?.reset();
           if (errors.length) throw errors[0];
           return;
         }
@@ -701,27 +864,55 @@ export function createBrowserRealtimeMicrophoneController(
           });
         });
 
-        await attempt(async () => {
-          if (micMode === 'speech-detect') {
+        if (micMode === 'speech-detect') {
+          let detectorStopped = false;
+          await attempt(async () => {
             await starter.stop({ flush: flush && !disposed });
-          } else if (flush && !disposed && manualChunks.length > 0) {
-            const pcm = concatFloat32Chunks(manualChunks);
-            const endFrame = manualIngestFrame;
-            manualChunks = [];
-            manualIngestFrame = 0;
-            publishCapturedAudio(pcm, {
-              sampleRate,
-              reason: 'stop',
-              startFrame: Math.max(0, endFrame - pcm.length),
-              endFrame: Math.max(pcm.length, endFrame),
-              metadata: null,
+            detectorStopped = true;
+          });
+          if (flush && !disposed && detectorStopped && transcriptionContext && !streamingTranscriber) {
+            await attempt(() => {
+              let finalized: SpeechContextRevision | null;
+              try {
+                finalized = transcriptionContext.finalize();
+              } catch (error) {
+                setState({ micError: error instanceof Error ? error.message : String(error) });
+                throw error;
+              }
+              if (!finalized) return;
+              publishCapturedAudio(finalized.pcm, {
+                sampleRate: finalized.sampleRate,
+                reason: 'stop',
+                startFrame: finalized.startFrame,
+                endFrame: finalized.endFrame,
+                metadata: { finalized: true },
+              }, finalized);
             });
-          } else {
-            manualChunks = [];
-            manualIngestFrame = 0;
           }
-          await streamingOperationTail;
-        });
+          await attempt(() => streamingOperationTail);
+        } else {
+          await attempt(async () => {
+            if (flush && !disposed && manualChunks.length > 0) {
+              const pcm = concatFloat32Chunks(manualChunks);
+              const endFrame = manualIngestFrame;
+              manualChunks = [];
+              manualIngestFrame = 0;
+              publishCapturedAudio(pcm, {
+                sampleRate,
+                reason: 'stop',
+                startFrame: Math.max(0, endFrame - pcm.length),
+                endFrame: Math.max(pcm.length, endFrame),
+                metadata: null,
+              });
+            } else {
+              manualChunks = [];
+              manualIngestFrame = 0;
+            }
+            await streamingOperationTail;
+          });
+        }
+
+        await attempt(drainTranscriptions);
 
         if (!disposed) {
           await attempt(() => updateStatus('Microphone stopped', 'Model ready'));
@@ -730,6 +921,7 @@ export function createBrowserRealtimeMicrophoneController(
         if (errors.length === 1) throw errors[0];
         if (errors.length > 1)
           throw new AggregateError(errors, 'Microphone controller stop failed.');
+        transcriptionContext?.reset();
       });
     },
     flush(reason = 'manual'): void {
@@ -778,9 +970,10 @@ export function createBrowserRealtimeMicrophoneController(
         manualChunks = [];
         manualIngestFrame = 0;
         await attempt(starterUnsubscribe);
-        await attempt(() => streamingOperationTail);
         await attempt(() => monitor.dispose());
         await attempt(() => starter.dispose());
+        await attempt(drainTranscriptions);
+        await attempt(() => streamingOperationTail);
         listeners.clear();
         if (errors.length === 1) throw errors[0];
         if (errors.length > 1) {

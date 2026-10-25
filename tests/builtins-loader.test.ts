@@ -34,6 +34,30 @@ function createStaticBackend(capabilities: BackendCapabilities): ExecutionBacken
 }
 
 describe('loadBuiltInSpeechModel', () => {
+  it('registers verified Whisper manifest sources by default and preserves the opt-out', async () => {
+    const runtime = createSpeechRuntime();
+    registerBuiltInPresets(runtime);
+
+    const whisper = runtime.listPresets().find((preset) => preset.preset === 'whisper');
+    expect(whisper).toBeDefined();
+    const resolved = await whisper!.resolveModelRequest(
+      { modelId: 'openai/whisper-base' },
+      {} as never,
+    );
+    expect(resolved.options?.source?.kind).toBe('huggingface');
+
+    const optedOutRuntime = createSpeechRuntime();
+    registerBuiltInPresets(optedOutRuntime, { useManifestSources: false });
+    const optedOutWhisper = optedOutRuntime
+      .listPresets()
+      .find((preset) => preset.preset === 'whisper');
+    const optedOutResolved = await optedOutWhisper!.resolveModelRequest(
+      { modelId: 'openai/whisper-base' },
+      {} as never,
+    );
+    expect(optedOutResolved.options?.source).toBeUndefined();
+  });
+
   it('infers the Parakeet preset from modelId and returns a ready session-backed handle', async () => {
     const runtime = createSpeechRuntime();
     runtime.registerBackend(

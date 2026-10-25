@@ -30,10 +30,10 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     languages: ['ru', 'en', 'kk', 'ky', 'uz'],
     audioContract: 'offline-ctc',
     limitations: [
-      'Not a public preset; listSpeechModels() will not list this family.',
+      'Catalog entry is experimental and is not a verified preset.',
       'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Official GigaAM multilingual CTC. Chrome WebGPU and WASM match the JFK oracle. Load with a local ONNX directory.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Official GigaAM multilingual CTC. Chrome WebGPU and WASM match the JFK oracle. Load with a local ONNX directory.',
   },
   {
     family: 'gigaam-rnnt',
@@ -49,10 +49,10 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     audioContract: 'offline-rnnt',
     limitations: [
       'Russian-only; do not mix with English JFK CTC claims.',
-      'Not a public preset; listSpeechModels() will not list this family.',
+      'Catalog entry is experimental and is not a verified preset.',
       'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Official GigaAM v3 E2E RNN-T. Russian-only; do not mix with JFK CTC claims. Encoder/decoder/joint from model.to_onnx. Chrome WebGPU and Node WASM match the official example.wav oracle. Local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Official GigaAM v3 E2E RNN-T. Russian-only; do not mix with JFK CTC claims. Encoder/decoder/joint from model.to_onnx. Chrome WebGPU and Node WASM match the official example.wav oracle. Local ONNX only.',
   },
   {
     family: 'sensevoice',
@@ -67,10 +67,10 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     languages: ['auto', 'zh', 'en', 'yue', 'ja', 'ko'],
     audioContract: 'offline-ctc',
     limitations: [
-      'Not a public preset; listSpeechModels() will not list this family.',
+      'Catalog entry is experimental and is not a verified preset.',
       'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'FunAudioLLM SenseVoiceSmall export. Chrome WebGPU and WASM match the JFK oracle. Local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. FunAudioLLM SenseVoiceSmall export. Chrome WebGPU and WASM match the JFK oracle. Local ONNX only.',
   },
   {
     family: 'x-asr',
@@ -86,10 +86,10 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     audioContract: 'encoder-cache-streaming',
     limitations: [
       'True encoder-cache streaming, not silent window looping.',
-      'Not a public preset; listSpeechModels() will not list this family.',
+      'Catalog entry is experimental and is not a verified preset.',
       'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Sherpa Zipformer2 streaming zh-en 160ms. Chrome WebGPU and WASM match the JFK oracle. True encoder-cache streaming; local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Sherpa Zipformer2 streaming zh-en 160ms. Chrome WebGPU and WASM match the JFK oracle. True encoder-cache streaming; local ONNX only.',
   },
   {
     family: 'qwen-asr',
@@ -168,7 +168,7 @@ export function createExperimentalArtifactMissingError(
   const languageText = languages.length > 0 ? ` Languages: ${languages.join(', ')}.` : '';
   const message =
     `No ${label} artifact source is configured for "${id}". ` +
-    `This family is experimental and is not listed by listSpeechModels(). ` +
+    `This family is experimental and is not a verified preset. ` +
     `Pass options.source with a local ONNX directory (locator: local-onnx-dir). ` +
     `Discover via listExperimentalSpeechFamilies() / getExperimentalSpeechFamily("${family}").` +
     languageText +

@@ -5,6 +5,7 @@
     "src/io.ts",
     "src/inference.ts",
     "src/browser.ts",
+    "src/controller.ts",
     "src/realtime.ts",
     "src/bench.ts",
     "src/datasets.ts",
@@ -16,6 +17,27 @@
     "src/presets/parakeet.ts"
   ],
   "entryPointStrategy": "resolve",
+  "projectDocuments": [
+    "docs/BROWSER_CACHE.md",
+    "docs/FRAMEWORKS.md",
+    "docs/INTEGRATION_GUIDE.md",
+    "docs/PUBLIC_API_GUIDE.md",
+    "examples/README.md"
+  ],
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "yaml",
+    "tsx",
+    "typescript",
+    "powershell"
+  ],
   "out": ".typedoc-site",
   "name": "@asrjs/speech-recognition API",
   "sort": ["source-order"],
