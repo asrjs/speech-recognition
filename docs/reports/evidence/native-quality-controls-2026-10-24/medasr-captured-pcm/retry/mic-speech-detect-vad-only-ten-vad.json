@@ -1,0 +1,450 @@
+{
+  "schemaVersion": 1,
+  "app": "realtime",
+  "modelId": "google/medasr",
+  "source": "local",
+  "descriptorSources": [
+    "local"
+  ],
+  "sourceSelectionStatus": "UI",
+  "flow": "mic-speech-detect-vad-only-ten-vad",
+  "requestedBackend": "wasm",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": "N:\\github\\ysdede\\medasr.js\\medasr-onnx",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.wav",
+  "fixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "expectedFixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "fixtureBytes": 334444,
+  "oracle": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal No abnormalities are noted in the popliteal fossa",
+  "status": "FAIL",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "MISMATCH",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[LocalFolder] Folder input fallback selected files {count: 81}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Starting model load from local artifacts"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/96f68af8-f29f-45ae-b9c0-6e57b79c8aba"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/96f68af8-f29f-45ae-b9c0-6e57b79c8aba 3025ms"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Selected artifacts {encoder: model.onnx, decoder: model.onnx, tokenizer: tokens.txt, preprocessorBackend: js, preprocessor: null}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Model sessions created from local artifacts"
+    },
+    {
+      "type": "log",
+      "text": "[LoadModel] Running warm-up verification transcription"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Fetching audio from: /realtime/assets/Harvard-L2-1-B6X4PDwP.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[App] Model verification successful."
+    },
+    {
+      "type": "timeEnd",
+      "text": "LoadModel: 4134.296875 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/2669202b-77c7-4633-9b4e-3738819073f4"
+    },
+    {
+      "type": "timeEnd",
+      "text": "Transcribe-sanity_sample.wav: 1616.911865234375 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/2669202b-77c7-4633-9b4e-3738819073f4 3378ms"
+    },
+    {
+      "type": "log",
+      "text": "[MicWorker] Ready {source: local, modelId: undefined, info: Object, selection: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-stop-23:47:16, durationSeconds: 20.5, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-stop-23:47:16, durationSeconds: 20.5, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] complete {sourceLabel: microphone-stop-23:47:16, textLength: 174, pending: 0}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] TEN-VAD ready for diagnostics {state: ready, error: null, probability: 0, speaking: false, threshold: 0.5}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.07, threshold: 0.08, snr: 28.25}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 84480, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Long speech split at a quiet chunk before the hard limit {endFrame: 158976, segmentDurationMs: 4656}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: max-duration {startFrame: 82432, endFrame: 158976, logicalEndFrame: 158976, durationSec: 4.78, normalizedPowerAt16k: 318.77}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Long speech split into a new rough segment {previousAccepted: true, nextStartFrame: 157696}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-max-duration-23:47:28, durationSeconds: 4.78, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-max-duration-23:47:28, durationSeconds: 4.78, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] complete {sourceLabel: microphone-max-duration-23:47:28, textLength: 90, pending: 0}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 185344}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 155648, endFrame: 185344, logicalEndFrame: 185344, durationSec: 1.86, normalizedPowerAt16k: 62.19}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-silence-23:47:29, durationSeconds: 1.86, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-silence-23:47:29, durationSeconds: 1.86, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.004, threshold: 0.08, snr: 15.23}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] complete {sourceLabel: microphone-silence-23:47:29, textLength: 31, pending: 0}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.006, threshold: 0.08, snr: 18.85}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD speech start {startFrame: 199168, gateMode: vad-only}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence {endFrame: 240896}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Segment ready: silence {startFrame: 184064, endFrame: 240896, logicalEndFrame: 240896, durationSec: 3.55, normalizedPowerAt16k: 196.78}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-silence-23:47:33, durationSeconds: 3.55, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-silence-23:47:33, durationSeconds: 3.55, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger {energy: 0.002, threshold: 0.08, snr: 13.08}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] complete {sourceLabel: microphone-silence-23:47:33, textLength: 50, pending: 0}"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 0,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T23:47:17+0300",
+  "actualBackend": "wasm",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "captureFixture": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\sanity_sample-padded-5s.wav",
+  "captureFixtureSha256": "482849754bd80863bb2d2941c6b46fb3e6332484f13a044b75a0270eef5b9127",
+  "captureFixtureDurationSeconds": 20.45,
+  "requestedCaptureMs": 20450,
+  "controlledFakeMicrophone": true,
+  "gate": "vad-only",
+  "vadBackend": "ten-vad",
+  "captureMicPcmRequested": true,
+  "activeStage": "mic-flow-complete",
+  "capturedMicPcm": [
+    {
+      "requestId": 3,
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "sampleRate": 16000,
+      "frames": 76544,
+      "responseType": "SUCCESS",
+      "captureError": null,
+      "captureReceiptPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-3.json",
+      "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-3.f32le",
+      "pcmSha256": "b714dfafbdc0b06ff61c6f9b60cc6e0bcc9fdf922d7878a5e40628a0385afa79",
+      "queue": {
+        "sourceLabel": "microphone-max-duration-23:47:28",
+        "durationSeconds": 4.78,
+        "pending": 1,
+        "transcriber": "worker"
+      }
+    },
+    {
+      "requestId": 4,
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "sampleRate": 16000,
+      "frames": 29696,
+      "responseType": "SUCCESS",
+      "captureError": null,
+      "captureReceiptPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-4.json",
+      "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-4.f32le",
+      "pcmSha256": "ec2dbbbd7b185b2653332c59dfc42ecbdac64f6e847b736c27134ed87bf3163e",
+      "queue": {
+        "sourceLabel": "microphone-silence-23:47:29",
+        "durationSeconds": 1.86,
+        "pending": 1,
+        "transcriber": "worker"
+      }
+    },
+    {
+      "requestId": 5,
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "sampleRate": 16000,
+      "frames": 56832,
+      "responseType": "SUCCESS",
+      "captureError": null,
+      "captureReceiptPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-5.json",
+      "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-5.f32le",
+      "pcmSha256": "a5f571906b20c7f608273c31b625d59c62221045a94fda1416dc2877b7bbe9a9",
+      "queue": {
+        "sourceLabel": "microphone-silence-23:47:33",
+        "durationSeconds": 3.55,
+        "pending": 1,
+        "transcriber": "worker"
+      }
+    }
+  ],
+  "enqueued": [
+    {
+      "sourceLabel": "microphone-max-duration-23:47:28",
+      "durationSeconds": 4.78,
+      "pending": 1,
+      "transcriber": "worker"
+    },
+    {
+      "sourceLabel": "microphone-silence-23:47:29",
+      "durationSeconds": 1.86,
+      "pending": 1,
+      "transcriber": "worker"
+    },
+    {
+      "sourceLabel": "microphone-silence-23:47:33",
+      "durationSeconds": 3.55,
+      "pending": 1,
+      "transcriber": "worker"
+    }
+  ],
+  "completed": [
+    {
+      "sourceLabel": "microphone-max-duration-23:47:28",
+      "textLength": 90,
+      "pending": 0
+    },
+    {
+      "sourceLabel": "microphone-silence-23:47:29",
+      "textLength": 31,
+      "pending": 0
+    },
+    {
+      "sourceLabel": "microphone-silence-23:47:33",
+      "textLength": 50,
+      "pending": 0
+    }
+  ],
+  "failed": [],
+  "decisions": [
+    {
+      "message": "[StreamingSpeechDetector] TEN-VAD ready for diagnostics",
+      "meta": {
+        "state": "ready",
+        "error": null,
+        "probability": 0,
+        "speaking": false,
+        "threshold": 0.5
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger",
+      "meta": {
+        "energy": 0.07,
+        "threshold": 0.08,
+        "snr": 28.25
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Neural VAD speech start",
+      "meta": {
+        "startFrame": 84480,
+        "gateMode": "vad-only"
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Long speech split at a quiet chunk before the hard limit",
+      "meta": {
+        "endFrame": 158976,
+        "segmentDurationMs": 4656
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Segment ready: max-duration",
+      "meta": {
+        "startFrame": 82432,
+        "endFrame": 158976,
+        "logicalEndFrame": 158976,
+        "durationSec": 4.78,
+        "normalizedPowerAt16k": 318.77
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Long speech split into a new rough segment",
+      "meta": {
+        "previousAccepted": true,
+        "nextStartFrame": 157696
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence",
+      "meta": {
+        "endFrame": 185344
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Segment ready: silence",
+      "meta": {
+        "startFrame": 155648,
+        "endFrame": 185344,
+        "logicalEndFrame": 185344,
+        "durationSec": 1.86,
+        "normalizedPowerAt16k": 62.19
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger",
+      "meta": {
+        "energy": 0.004,
+        "threshold": 0.08,
+        "snr": 15.23
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger",
+      "meta": {
+        "energy": 0.006,
+        "threshold": 0.08,
+        "snr": 18.85
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Neural VAD speech start",
+      "meta": {
+        "startFrame": 199168,
+        "gateMode": "vad-only"
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Neural VAD finalized speech after sustained silence",
+      "meta": {
+        "endFrame": 240896
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Segment ready: silence",
+      "meta": {
+        "startFrame": 184064,
+        "endFrame": 240896,
+        "logicalEndFrame": 240896,
+        "durationSec": 3.55,
+        "normalizedPowerAt16k": 196.78
+      }
+    },
+    {
+      "message": "[StreamingSpeechDetector] Near-threshold audio stayed below live start trigger",
+      "meta": {
+        "energy": 0.002,
+        "threshold": 0.08,
+        "snr": 13.08
+      }
+    }
+  ],
+  "gpuWorkerTelemetry": [
+    {
+      "url": "http://127.0.0.1:4190/realtime/assets/browser-transcription-worker-thread-VEwsE0li.js",
+      "dispatches": 0
+    }
+  ],
+  "transcriptBefore": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa. The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "transcriptAfter": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa. The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa. articular cartilage of the femoral trochlea and the medial and lateral articular surfaces. s of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "transcript": "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces. s of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "verificationErrors": [
+    "Transcript is partial, duplicated, or differs from exact oracle"
+  ]
+}

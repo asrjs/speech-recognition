@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Read-only CPU JS NeMo frontend vs cached original NeMo preprocessor features; no checkpoint restore or model inference",
+  "fixture": "N:/github/asrjs/speech-recognition/tests/fixtures/jfk2.en.wav",
+  "wavSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "decodedFloat32PcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+  "sampleRate": 16000,
+  "audioSamples": 176000,
+  "durationSeconds": 11,
+  "frozenReference": {
+    "path": "N:/github/asrjs/speech-recognition/tools/data/results/nemotron/nemotron-3.5-nemo-features-jfk.json",
+    "sha256": "a9baad993ed7ec123446fecc98e4df4bcf67a5a3c392c90eb5ad8021a3476c52",
+    "generatedAt": "2026-08-30T20:47:38.861183+00:00",
+    "fixture": "tools/data/fixtures/audio/jfk-short.wav",
+    "featureShapeMetadata": [
+      1100,
+      1101
+    ],
+    "actualArrayShape": [
+      128,
+      1101
+    ],
+    "nFft": 512,
+    "winLength": 400,
+    "hopLength": 160,
+    "nMels": 128,
+    "normalize": "NA",
+    "preemphasis": 0.97,
+    "dither": 0.00001,
+    "logZeroGuard": 5.960464477539063e-8,
+    "validLength": 1100
+  },
+  "jsFrontend": {
+    "source": "src/audio/js-mel.ts JSMelProcessor",
+    "melBins": 128,
+    "normalization": "none",
+    "dither": "not implemented in JS frontend"
+  },
+  "comparisons": [
+    {
+      "mode": "onnx",
+      "frameCount": 1101,
+      "validLength": 1100,
+      "featureCount": 140928,
+      "compareValidFrames": {
+        "comparedValues": 140800,
+        "maxAbs": 0.0005130767822265625,
+        "meanAbs": 0.000001536145289884933,
+        "rmse": 0.000006349720502670135,
+        "exactValueCount": 72128,
+        "cosineSimilarity": 0.9999999999997666
+      },
+      "compareAllFrames": {
+        "comparedValues": 140928,
+        "maxAbs": 0.0005130767822265625,
+        "meanAbs": 0.0000015347500625553373,
+        "rmse": 0.0000063468362324769576,
+        "exactValueCount": 72256,
+        "cosineSimilarity": 0.9999999999997666
+      }
+    },
+    {
+      "mode": "centered",
+      "frameCount": 1101,
+      "validLength": 1101,
+      "featureCount": 140928,
+      "compareValidFrames": {
+        "comparedValues": 140800,
+        "maxAbs": 0.0005130767822265625,
+        "meanAbs": 0.000001536145289884933,
+        "rmse": 0.000006349720502670135,
+        "exactValueCount": 72128,
+        "cosineSimilarity": 0.9999999999997666
+      },
+      "compareAllFrames": {
+        "comparedValues": 140928,
+        "maxAbs": 13.768331527709961,
+        "meanAbs": 0.007970315421822359,
+        "rmse": 0.27769413371539275,
+        "exactValueCount": 72128,
+        "cosineSimilarity": 0.9996243729643199
+      }
+    }
+  ]
+}

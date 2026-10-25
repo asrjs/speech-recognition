@@ -1,0 +1,195 @@
+{
+  "policy": "No weights, audio, arrays or browser profiles; failures and rejected controls explicitly retained",
+  "count": 27,
+  "entries": [
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\official-reference-jfk2-en-prompt-en.json",
+      "file": "nemotron-native\\official-reference-jfk2-en-prompt-en.json",
+      "sha256": "fa58f2bfeff29a967f50d4fdb13a3d83cddd997c62a05c3a74ace4a4c80bac8c",
+      "bytes": 3925,
+      "scope": "NATIVE_REFERENCE_WITH_LANGUAGE_MARKERS"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\python310-compat-receipt.json",
+      "file": "nemotron-native\\python310-compat-receipt.json",
+      "sha256": "1618678220c72fa0f624dc7aa2be79bae2615d153fee62ee9175643f40d281d8",
+      "bytes": 1422,
+      "scope": "DECLARED_SYNTAX_ONLY_SHIM"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\native-cache-stream-560-originalgraph.json",
+      "file": "nemotron-native\\native-cache-stream-560-originalgraph.json",
+      "sha256": "3c6f2f59c4d079fb808e8ecd8d1ddb24a704a5993b3d197843a862b92a9ae391",
+      "bytes": 44898,
+      "scope": "ORIGINAL_STATIC_DROP_MISMATCH"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\native-cache-stream-jfk-560ms-dynamicdrop-atol1e4.json",
+      "file": "nemotron-native\\native-cache-stream-jfk-560ms-dynamicdrop-atol1e4.json",
+      "sha256": "74dedc8aaebc0fca51fff3285a38f994e3ec4f9705a3bc49f3fd0ebe8733e871",
+      "bytes": 51546,
+      "scope": "CACHE_TIME_PARITY_FAIL"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\native-cache-stream-jfk-560ms-dynamicdrop-corrected-control.json",
+      "file": "nemotron-native\\native-cache-stream-jfk-560ms-dynamicdrop-corrected-control.json",
+      "sha256": "29df88bd3021e5d03b9f10b0dc8801fa21d45bc67692f6f9548e5ff46d871b8e",
+      "bytes": 69676,
+      "scope": "CORRECTED_IDENTICAL_NATIVE_FEED_CONTROL"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\native-cache-stream-jfk-560ms-dynamicdrop-nativecache.json",
+      "file": "nemotron-native\\native-cache-stream-jfk-560ms-dynamicdrop-nativecache.json",
+      "sha256": "0fa144cb23e75d575bf8c3cfd4081b46b26cbfc4bc390036fcdb1966ae310202",
+      "bytes": 57464,
+      "scope": "REJECTED_UNEQUAL_FEED_CONTROL"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\native-cache-stream-jfk-560ms-c5-vs-ba4.json",
+      "file": "nemotron-native\\native-cache-stream-jfk-560ms-c5-vs-ba4.json",
+      "sha256": "f315a795920f3a9dd0aa78e7fd548397f2ace99e4cefdaaef61f2c4c4e32066d",
+      "bytes": 87988,
+      "scope": "BUILDER_GRAPH_EQUIVALENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\run_native_cache_stream_560.py",
+      "file": "nemotron-native\\run_native_cache_stream_560.py",
+      "sha256": "ebdf2de72640bf9a291717e776f3c94a2368a29397773f5db8982e330630bc46",
+      "bytes": 11692,
+      "scope": "REFERENCE_REPLAY_SCRIPT"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\run_official_reference_bounded.py",
+      "file": "nemotron-native\\run_official_reference_bounded.py",
+      "sha256": "f2c8c6cf2b82fb5e296f35c8e89a57b87cfe326d86bb2500d380e5aaebc9a6e1",
+      "bytes": 5367,
+      "scope": "REFERENCE_REPLAY_SCRIPT"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\build-receipt.json",
+      "file": "nemotron-bundle\\build-receipt.json",
+      "sha256": "6c3a9cf2e2dc196b8b560420f88338a81037bac48170e90a5d3f20fb026d04ce",
+      "bytes": 1595,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\bundle-hash-manifest.json",
+      "file": "nemotron-bundle\\bundle-hash-manifest.json",
+      "sha256": "9a7b3a9231e11f8b9457a1496239a15f0638496abb1aca02d88229b21ace13e6",
+      "bytes": 3161,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\c5-vs-ba4-and-decoder-sdk-greedy.json",
+      "file": "nemotron-bundle\\c5-vs-ba4-and-decoder-sdk-greedy.json",
+      "sha256": "1635b588ee1490203a128a600fef3d9bd81a02121609a65d92ce5ba6e0a30221",
+      "bytes": 4592,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\compare-c5-vs-ba4-and-decode.py",
+      "file": "nemotron-bundle\\compare-c5-vs-ba4-and-decode.py",
+      "sha256": "b02653931f3c8af4c2a40c5c43cd35097c48c032425f7626dffe5dea00c7ce44",
+      "bytes": 7896,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\compare-c5-vs-ba4-native.py",
+      "file": "nemotron-bundle\\compare-c5-vs-ba4-native.py",
+      "sha256": "2e86df812f498371291cbbdfaa62e316bd3512a7cdb02330b63580f5807b5808",
+      "bytes": 14964,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-conditional-drop-cli-real-20261024\\config.json",
+      "file": "nemotron-bundle\\config.json",
+      "sha256": "b046bc907dbfba24b6ff426297e3d5d95d18b2be9d67b3a8c7cecf3ef350f567",
+      "bytes": 206,
+      "scope": "BUILDER_AND_EXACT_48_ID_GREEDY_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\checkpoint-inspection.json",
+      "file": "canary-v2\\checkpoint-inspection.json",
+      "sha256": "de6943d536aeff0876b641ac26b4ecfeda2904b37ba1ea87223d4faccf485287",
+      "bytes": 4743,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\download-receipt.json",
+      "file": "canary-v2\\download-receipt.json",
+      "sha256": "4edff55df3864a930043fbb69e576dbc86a255031cf1e7e3f7c13e44857a490a",
+      "bytes": 881,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\onnx-export-verification.json",
+      "file": "canary-v2\\onnx-export-verification.json",
+      "sha256": "8339db77d9a67eff37f565e11dbfa17ef5e3d530295f04c9660b05dcf6d2d115",
+      "bytes": 6023,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-download-verification.json",
+      "file": "canary-v2\\parent-download-verification.json",
+      "sha256": "c6aeab84d2b5cdfa80b69a4d9ae46b9bc371d33f8ff5993eb944d42344adf9a7",
+      "bytes": 327,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-effective-pcm-verification.json",
+      "file": "canary-v2\\parent-effective-pcm-verification.json",
+      "sha256": "61683037ce018ba684194d4bf5cf5ce2512245d9da88bc9cd5172d396cd3c2d9",
+      "bytes": 368,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-lossless-decoder-cpu-verification.json",
+      "file": "canary-v2\\parent-lossless-decoder-cpu-verification.json",
+      "sha256": "8310a133dde59ed8c3d3123eea2e12f8ea07851bf4e4c445080feaf6e12091b4",
+      "bytes": 2524,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-lossless-decoder-externalization.json",
+      "file": "canary-v2\\parent-lossless-decoder-externalization.json",
+      "sha256": "7c069914f5a16924bf9e5a0335258cc6b09aec5e7949fcc52e49e4abba21ddd1",
+      "bytes": 1779,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-lossless-decoder-initializers-check.json",
+      "file": "canary-v2\\parent-lossless-decoder-initializers-check.json",
+      "sha256": "2bffb067df3e81183153316d02228e93f8d4e661e8178d7e5edf5603cd6ad194",
+      "bytes": 559,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-native-reference-verification.json",
+      "file": "canary-v2\\parent-native-reference-verification.json",
+      "sha256": "3109be6890dfc4a6666d590ab2f7b04b079624eb17411947f29ec075c8fd109c",
+      "bytes": 711,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-onnx-verify-cpu.json",
+      "file": "canary-v2\\parent-onnx-verify-cpu.json",
+      "sha256": "f869350d4689f54110da37fa0e88f97495f2a920c0421d5f4cde743096d3778e",
+      "bytes": 2507,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-real-adapter-verification.json",
+      "file": "canary-v2\\parent-real-adapter-verification.json",
+      "sha256": "7e4923e67d80ec23635a758ceb890f2982a089ee98c15f989554eaa3893cc023",
+      "bytes": 2083,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    },
+    {
+      "source": "N:\\github\\asrjs\\speech-recognition\\tmp\\canary-1b-port-20261024\\parent-model_config.yaml",
+      "file": "canary-v2\\parent-model_config.yaml",
+      "sha256": "202542a45eb4ad656a47044c5db8c02926259d7232b436d77ca6af21dc84deae",
+      "bytes": 4341,
+      "scope": "SCOPED_CPU_EXPORT_OR_STORAGE_EVIDENCE"
+    }
+  ]
+}

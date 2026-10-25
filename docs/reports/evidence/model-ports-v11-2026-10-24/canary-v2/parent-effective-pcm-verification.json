@@ -1,0 +1,8 @@
+{
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "effectivePcmSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+  "samples": 176000,
+  "sampleRate": 16000,
+  "exactEqualDecodedFixtureAndReference": true,
+  "sourceReferenceSha256": "81d377b00175dbc960879cf2858c1fc7285f3170000738326bece69b0bc31356"
+}

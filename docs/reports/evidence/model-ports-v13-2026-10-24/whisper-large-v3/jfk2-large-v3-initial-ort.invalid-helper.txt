@@ -1,0 +1,5 @@
+INVALID_HELPER
+Attempt: generate_hf_reference.py before cache_position feed support.
+Native HF no-timestamps and timestamped generation completed, but ONNX split decode failed before the first decoder_step.run because the actual exported decoder_step graph requires the input `cache_position` and the reference helper omitted it.
+Exact exception: ValueError: Required inputs (['cache_position']) are missing from input feed.
+This is a helper mismatch, not a model/graph PASS or FAIL; native transcript is preserved separately in jfk2-large-v3-native.json.

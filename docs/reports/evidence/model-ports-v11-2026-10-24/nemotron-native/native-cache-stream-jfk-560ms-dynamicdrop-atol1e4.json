@@ -1,0 +1,2098 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T17:42:17.649629+00:00",
+  "checkpointSha256": "210214ed94039bf6bfbb9a047c7fa289628db75b103e2bf6381fa78285436a74",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureFrames": 176000,
+  "fixtureSampleRate": 16000,
+  "prompt": "en",
+  "device": "cpu",
+  "torchVersion": "2.6.0+cu118",
+  "torchThreads": 2,
+  "torchInteropThreads": 2,
+  "numbaCacheDir": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\numba-cache",
+  "attentionContext": [
+    56,
+    6
+  ],
+  "streamingCfg": {
+    "chunk_size": [
+      49,
+      56
+    ],
+    "shift_size": [
+      49,
+      56
+    ],
+    "cache_drop_size": 0,
+    "valid_out_len": 7,
+    "pre_encode_cache_size": [
+      0,
+      9
+    ],
+    "drop_extra_pre_encoded": 2,
+    "last_channel_cache_size": 56
+  },
+  "streamingChunks": [
+    {
+      "step": 0,
+      "startMelFrame": 0,
+      "advanceMelFrames": 49,
+      "inputFeatureFrames": 49,
+      "inputLength": 49,
+      "dropExtraPreEncoded": 0,
+      "bufferEmptyAfterYield": false,
+      "partialText": "",
+      "tokenCount": 0
+    },
+    {
+      "step": 1,
+      "startMelFrame": 49,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And",
+      "tokenCount": 1
+    },
+    {
+      "step": 2,
+      "startMelFrame": 105,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my",
+      "tokenCount": 5
+    },
+    {
+      "step": 3,
+      "startMelFrame": 161,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Ameri",
+      "tokenCount": 11
+    },
+    {
+      "step": 4,
+      "startMelFrame": 217,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 5,
+      "startMelFrame": 273,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 6,
+      "startMelFrame": 329,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 7,
+      "startMelFrame": 385,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask",
+      "tokenCount": 15
+    },
+    {
+      "step": 8,
+      "startMelFrame": 441,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not",
+      "tokenCount": 16
+    },
+    {
+      "step": 9,
+      "startMelFrame": 497,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not",
+      "tokenCount": 16
+    },
+    {
+      "step": 10,
+      "startMelFrame": 553,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what",
+      "tokenCount": 17
+    },
+    {
+      "step": 11,
+      "startMelFrame": 609,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country",
+      "tokenCount": 23
+    },
+    {
+      "step": 12,
+      "startMelFrame": 665,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for",
+      "tokenCount": 27
+    },
+    {
+      "step": 13,
+      "startMelFrame": 721,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you",
+      "tokenCount": 28
+    },
+    {
+      "step": 14,
+      "startMelFrame": 777,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you",
+      "tokenCount": 28
+    },
+    {
+      "step": 15,
+      "startMelFrame": 833,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask",
+      "tokenCount": 33
+    },
+    {
+      "step": 16,
+      "startMelFrame": 889,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can",
+      "tokenCount": 36
+    },
+    {
+      "step": 17,
+      "startMelFrame": 945,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your",
+      "tokenCount": 40
+    },
+    {
+      "step": 18,
+      "startMelFrame": 1001,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country",
+      "tokenCount": 45
+    },
+    {
+      "step": 19,
+      "startMelFrame": 1057,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 53,
+      "inputLength": 53,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": true,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+      "tokenCount": 48
+    }
+  ],
+  "onnxVsNativeEncoderSteps": [
+    {
+      "inputFrames": 49,
+      "inputLength": 49,
+      "dropExtraPreEncoded": 0,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        49
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        0
+      ],
+      "cacheChannelLengthCandidateInput": [
+        0
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.86102294921875e-06,
+          "meanAbs": 1.1177004515567595e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.960464477539062e-07,
+          "meanAbs": 5.2255672117460624e-09,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002307891845703125,
+          "meanAbs": 9.74921724169581e-07,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        7
+      ],
+      "cacheChannelLengthCandidateInput": [
+        7
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 1.990795135498047e-05,
+          "meanAbs": 6.521756371772167e-07,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 4.384666681289673e-06,
+          "meanAbs": 1.3192190805364067e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002999305725097656,
+          "meanAbs": 1.8025134274891607e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        14
+      ],
+      "cacheChannelLengthCandidateInput": [
+        14
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 6.139278411865234e-05,
+          "meanAbs": 1.1203795874540186e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 2.1312167754128894e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0005400180816650391,
+          "meanAbs": 1.926122758057806e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        21
+      ],
+      "cacheChannelLengthCandidateInput": [
+        21
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 5.602836608886719e-06,
+          "meanAbs": 1.6575858856932818e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 2.826134856428358e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00016498565673828125,
+          "meanAbs": 1.695848354983421e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        28
+      ],
+      "cacheChannelLengthCandidateInput": [
+        28
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 3.203749656677246e-06,
+          "meanAbs": 1.2295085330801418e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 3.528889012090131e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000194549560546875,
+          "meanAbs": 1.514868653097854e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        35
+      ],
+      "cacheChannelLengthCandidateInput": [
+        35
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 1.5348196029663086e-06,
+          "meanAbs": 1.3321830952658535e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 4.159986793002742e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001888275146484375,
+          "meanAbs": 1.2441286182438169e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        42
+      ],
+      "cacheChannelLengthCandidateInput": [
+        42
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 1.2516975402832031e-06,
+          "meanAbs": 1.1614423556238762e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 4.8241316942466114e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018310546875,
+          "meanAbs": 1.5204777682940078e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        49
+      ],
+      "cacheChannelLengthCandidateInput": [
+        49
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.4437904357910156e-06,
+          "meanAbs": 1.0529741497781028e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 5.5128953900595604e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00021648406982421875,
+          "meanAbs": 1.620283911106422e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.1457672119140625e-06,
+          "meanAbs": 1.2039246907339214e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 5.6400877419485054e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001544952392578125,
+          "meanAbs": 1.4174346489627189e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 8.352100849151611e-06,
+          "meanAbs": 4.5205220138606297e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.5623393058776855e-06,
+          "meanAbs": 5.65739204900984e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018405914306640625,
+          "meanAbs": 1.4716183985514818e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.1457672119140625e-06,
+          "meanAbs": 1.0990471212478172e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.4813998562330823e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000263214111328125,
+          "meanAbs": 1.5727732848614635e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 9.864568710327148e-06,
+          "meanAbs": 4.034436114709804e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.5113820331594475e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018310546875,
+          "meanAbs": 1.7387664403549388e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 3.889203071594238e-06,
+          "meanAbs": 2.494445376604355e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.4857763584360514e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0003795623779296875,
+          "meanAbs": 1.6836045315940097e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 3.3676624298095703e-06,
+          "meanAbs": 1.489252789659596e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.524980921444737e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0003795623779296875,
+          "meanAbs": 1.5726513310535968e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 3.0994415283203125e-06,
+          "meanAbs": 1.6731053977179856e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.570685050550393e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001983642578125,
+          "meanAbs": 1.387066336315644e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.9802322387695312e-06,
+          "meanAbs": 1.5438336374375338e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.586936835025446e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018310546875,
+          "meanAbs": 1.6441804507039736e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 1.3113021850585938e-06,
+          "meanAbs": 1.3740923675088978e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.163252353668213e-06,
+          "meanAbs": 5.615527730417387e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0003108978271484375,
+          "meanAbs": 1.6548393955963685e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.115964889526367e-06,
+          "meanAbs": 1.2583736211776601e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 4.202127456665039e-06,
+          "meanAbs": 5.4511825711105784e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002002716064453125,
+          "meanAbs": 1.5425872132262122e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "maxAbs": 2.3245811462402344e-06,
+          "meanAbs": 1.3994066908448337e-07,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 4.202127456665039e-06,
+          "meanAbs": 5.525353074447596e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000324249267578125,
+          "meanAbs": 1.622590220702379e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    },
+    {
+      "inputFrames": 53,
+      "inputLength": 53,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": true,
+      "nativeMelShape": [
+        1,
+        128,
+        53
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "cacheChannelLengthCandidateInput": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": true,
+          "shape": [
+            1,
+            6,
+            1024
+          ],
+          "maxAbs": 9.5367431640625e-07,
+          "meanAbs": 9.934547999061276e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 4.202127456665039e-06,
+          "meanAbs": 5.5203215864567986e-08,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000232696533203125,
+          "meanAbs": 1.5454867505353548e-06,
+          "allcloseAtol1e-5Rtol1e-5": false,
+          "allcloseAtol1e-4Rtol1e-4": true
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true,
+          "allcloseAtol1e-4Rtol1e-4": true
+        }
+      }
+    }
+  ],
+  "onnxVsNativeAllClose": false,
+  "streamingText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+  "tokenIds": [
+    2860,
+    2,
+    1290,
+    2,
+    1731,
+    1179,
+    290,
+    133,
+    309,
+    271,
+    581,
+    1257,
+    113,
+    40,
+    2900,
+    2847,
+    2831,
+    2815,
+    995,
+    313,
+    113,
+    34,
+    1752,
+    2813,
+    2,
+    1288,
+    398,
+    2810,
+    4,
+    2,
+    2947,
+    309,
+    2127,
+    2831,
+    2810,
+    2813,
+    2,
+    1288,
+    398,
+    2815,
+    995,
+    313,
+    113,
+    34,
+    1752,
+    4,
+    2,
+    2947
+  ],
+  "tokenCount": 48,
+  "offlineOfficialReferenceText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+  "browserLegacyOnnxText": "And so my fellow Americans ask not what your country can do for you at what you can do for your country.",
+  "strictExactCanonicalOracleMatch": false,
+  "elapsedSeconds": 87.421,
+  "scope": "original checkpoint native cache-aware streaming versus isolated dynamic-drop ONNX candidate, CPU only; candidate carries its own cache chain; no SDK/browser changes"
+}

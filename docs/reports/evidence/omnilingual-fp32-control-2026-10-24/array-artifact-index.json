@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "note": "Large arrays remain in task-local tmp and are intentionally not copied into docs evidence.",
+  "fixtureWav": {
+    "path": "tests/fixtures/jfk2.en.wav",
+    "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "bytes": 352078
+  },
+  "arrays": [
+    {
+      "label": "rawDecodedPcm",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\jfk2-decoded-pcm-float32.npy",
+      "containerSha256": "d9995a6f2f2e7c8872169dc4e1a221fb73cf17053e73339a826bc60b5447f29b",
+      "float32LeContentSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+      "shape": [
+        176000
+      ],
+      "bytes": 704128
+    },
+    {
+      "label": "metaPreprocessedWaveform",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\native-v2-jfk-waveform.npy",
+      "containerSha256": "851af2b5fa6e705573f46fda96236465def466af0b394c200df717b85bc7ed98",
+      "float32LeContentSha256": "ed1689e6d2515827b26aeb57f837915a6b34018693ea6df00d43adc6c0d6733d",
+      "shape": [
+        176000
+      ],
+      "bytes": 704128
+    },
+    {
+      "label": "nativeLogits",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\native-v2-jfk-logits.npy",
+      "containerSha256": "04ece05c77858817dc1d752bf5f42b5be40a3b5c2cbe0a7ae8f6dec018a827a5",
+      "float32LeContentSha256": "1e5d06c19d9f720174ac785fcae281b62ba74f686d41a14d3a3de293d1adcd3b",
+      "shape": [
+        549,
+        10288
+      ],
+      "bytes": 22592576
+    },
+    {
+      "label": "fp32OnnxLogits",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\fp32-jfk-logits.npy",
+      "containerSha256": "fb1a7fac2037ea7c1bab1817d4bebb5008342d9e781b40a885d53bf41b1619dd",
+      "float32LeContentSha256": "66b5e153af982dd3c760e192a88891f26b32385b60312dbc179c3fa577a0f11f",
+      "shape": [
+        549,
+        10288
+      ],
+      "bytes": 22592576
+    },
+    {
+      "label": "int8OnnxLogits",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\int8-jfk-logits.npy",
+      "containerSha256": "8118e35ac79e89b42ed7fd74ec543c4b6da119ab7b76c2a61d1061c621b2476d",
+      "float32LeContentSha256": "3fc395ce8a5734e7d36a277963d813e4ad3098b8f15ea6c1dce97096fa8200b6",
+      "shape": [
+        549,
+        10288
+      ],
+      "bytes": 22592576
+    },
+    {
+      "label": "compiledSdkWaveformEps1e5",
+      "taskLocalPath": "N:\\github\\asrjs\\speech-recognition\\tmp\\omnilingual-native-wsl-20261024\\artifacts\\parent-sdk-fixed.f32le",
+      "containerSha256": "54cbafe307c9ee4d1cd22704ca02bdeed956b74e035f43e62b7d00035e4f5a3e",
+      "float32LeContentSha256": "54cbafe307c9ee4d1cd22704ca02bdeed956b74e035f43e62b7d00035e4f5a3e",
+      "shape": [
+        176000
+      ],
+      "bytes": 704000
+    }
+  ]
+}

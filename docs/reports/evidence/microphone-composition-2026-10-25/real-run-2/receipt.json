@@ -1,0 +1,57 @@
+{
+  "status": "FAIL",
+  "physicalMicrophone": "UNVERIFIED",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "modelDir": "N:\\models\\onnx\\nemo\\parakeet-tdt-0.6b-v3-onnx",
+  "backend": "WebGPU FP16 encoder + WASM INT8 decoder",
+  "console": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_CONNECTION_RESET"
+    },
+    {
+      "type": "error",
+      "text": "wasm streaming compile failed: TypeError: WebAssembly compilation aborted: Network error: Response body loading was aborted"
+    },
+    {
+      "type": "error",
+      "text": "falling back to ArrayBuffer instantiation"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_CONNECTION_RESET"
+    },
+    {
+      "type": "error",
+      "text": "failed to asynchronously prepare wasm: both async and sync fetching of the wasm failed"
+    },
+    {
+      "type": "error",
+      "text": "Aborted(both async and sync fetching of the wasm failed)"
+    }
+  ],
+  "pageErrors": [],
+  "error": "Error('Page.evaluate: Error: no available backend found. ERR: [webgpu] RuntimeError: Aborted(both async and sync fetching of the wasm failed). Build with -sASSERTIONS for more info.\\n    at Ba (http://127.0.0.1:4341/@fs/N:/github/asrjs/frameworks/node_modules/.vite/deps/onnxruntime-web.js?v=f1078c27:78:19)\\n    at async t.create (http://127.0.0.1:4341/@fs/N:/github/asrjs/frameworks/node_modules/.vite/deps/onnxruntime-web.js?v=f1078c27:540:20)\\n    at async honorAbortAfterCreate (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/io/abort.js:150:21)\\n    at async honorAbortAfterCreate (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/io/abort.js:150:21)\\n    at async OrtNemoTdtExecutor.initialize (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/executor.js:212:30)\\n    at async OrtNemoTdtExecutor.ready (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/executor.js:417:9)\\n    at async NemoTdtSpeechSession.initialize (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/model.js:128:9)\\n    at async initializeOwnedSession (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/runtime/owned-session.js:25:9)\\n    at async loadBuiltInSpeechModel (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/runtime/builtins.js:319:25)\\n    at async loadSpeechModel (http://127.0.0.1:4341/@fs/N:/github/asrjs/speech-recognition/dist/runtime/load.js:18:20)')",
+  "requests": [
+    "/model/vocab.txt",
+    "/ort/ort-wasm-simd-threaded.jsep.mjs",
+    "/ort/ort-wasm-simd-threaded.jsep.wasm",
+    "/ort/ort-wasm-simd-threaded.jsep.wasm"
+  ]
+}

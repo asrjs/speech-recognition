@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 1,
+  "app": "realtime",
+  "modelId": "google/medasr",
+  "source": "local",
+  "descriptorSources": [
+    "local"
+  ],
+  "sourceSelectionStatus": "UI",
+  "flow": "mic-manual-manual-none",
+  "requestedBackend": "wasm",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": "N:\\github\\ysdede\\medasr.js\\medasr-onnx",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.wav",
+  "fixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "expectedFixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "fixtureBytes": 334444,
+  "oracle": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal No abnormalities are noted in the popliteal fossa",
+  "status": "PASS_CONTROLLED_MIC",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "EXACT",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[LocalFolder] Folder input fallback selected files {count: 81}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Starting model load from local artifacts"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/96f68af8-f29f-45ae-b9c0-6e57b79c8aba"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/96f68af8-f29f-45ae-b9c0-6e57b79c8aba 3025ms"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Selected artifacts {encoder: model.onnx, decoder: model.onnx, tokenizer: tokens.txt, preprocessorBackend: js, preprocessor: null}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Model sessions created from local artifacts"
+    },
+    {
+      "type": "log",
+      "text": "[LoadModel] Running warm-up verification transcription"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Fetching audio from: /realtime/assets/Harvard-L2-1-B6X4PDwP.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[App] Model verification successful."
+    },
+    {
+      "type": "timeEnd",
+      "text": "LoadModel: 4134.296875 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/2669202b-77c7-4633-9b4e-3738819073f4"
+    },
+    {
+      "type": "timeEnd",
+      "text": "Transcribe-sanity_sample.wav: 1616.911865234375 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/2669202b-77c7-4633-9b4e-3738819073f4 3378ms"
+    },
+    {
+      "type": "log",
+      "text": "[MicWorker] Ready {source: local, modelId: undefined, info: Object, selection: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-stop-23:47:16, durationSeconds: 20.5, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-stop-23:47:16, durationSeconds: 20.5, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] complete {sourceLabel: microphone-stop-23:47:16, textLength: 174, pending: 0}"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 0,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T23:46:55+0300",
+  "actualBackend": "wasm",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "captureFixture": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\sanity_sample-padded-5s.wav",
+  "captureFixtureSha256": "482849754bd80863bb2d2941c6b46fb3e6332484f13a044b75a0270eef5b9127",
+  "captureFixtureDurationSeconds": 20.45,
+  "requestedCaptureMs": 20450,
+  "controlledFakeMicrophone": true,
+  "gate": null,
+  "vadBackend": null,
+  "captureMicPcmRequested": true,
+  "activeStage": "mic-flow-complete",
+  "capturedMicPcm": [
+    {
+      "requestId": 2,
+      "flow": "mic-manual-manual-none",
+      "sampleRate": 16000,
+      "frames": 327936,
+      "responseType": "SUCCESS",
+      "captureError": null,
+      "captureReceiptPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.json",
+      "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.f32le",
+      "pcmSha256": "43ac2143b17cb7f3f97346cc95b3fd8b7db0b8e5a846724dca8b9c9c1d4d4e66",
+      "queue": {
+        "sourceLabel": "microphone-stop-23:47:16",
+        "durationSeconds": 20.5,
+        "pending": 1,
+        "transcriber": "worker"
+      }
+    }
+  ],
+  "enqueued": [
+    {
+      "sourceLabel": "microphone-stop-23:47:16",
+      "durationSeconds": 20.5,
+      "pending": 1,
+      "transcriber": "worker"
+    }
+  ],
+  "completed": [
+    {
+      "sourceLabel": "microphone-stop-23:47:16",
+      "textLength": 174,
+      "pending": 0
+    }
+  ],
+  "failed": [],
+  "decisions": [],
+  "gpuWorkerTelemetry": [
+    {
+      "url": "http://127.0.0.1:4190/realtime/assets/browser-transcription-worker-thread-VEwsE0li.js",
+      "dispatches": 0
+    }
+  ],
+  "transcriptBefore": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "transcriptAfter": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa. The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "transcript": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "verificationErrors": []
+}

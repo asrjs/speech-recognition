@@ -1,0 +1,1978 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T17:29:27.434442+00:00",
+  "checkpointSha256": "210214ed94039bf6bfbb9a047c7fa289628db75b103e2bf6381fa78285436a74",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureFrames": 176000,
+  "fixtureSampleRate": 16000,
+  "prompt": "en",
+  "device": "cpu",
+  "torchVersion": "2.6.0+cu118",
+  "torchThreads": 2,
+  "torchInteropThreads": 2,
+  "numbaCacheDir": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\numba-cache",
+  "attentionContext": [
+    56,
+    6
+  ],
+  "streamingCfg": {
+    "chunk_size": [
+      49,
+      56
+    ],
+    "shift_size": [
+      49,
+      56
+    ],
+    "cache_drop_size": 0,
+    "valid_out_len": 7,
+    "pre_encode_cache_size": [
+      0,
+      9
+    ],
+    "drop_extra_pre_encoded": 2,
+    "last_channel_cache_size": 56
+  },
+  "streamingChunks": [
+    {
+      "step": 0,
+      "startMelFrame": 0,
+      "advanceMelFrames": 49,
+      "inputFeatureFrames": 49,
+      "inputLength": 49,
+      "dropExtraPreEncoded": 0,
+      "bufferEmptyAfterYield": false,
+      "partialText": "",
+      "tokenCount": 0
+    },
+    {
+      "step": 1,
+      "startMelFrame": 49,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And",
+      "tokenCount": 1
+    },
+    {
+      "step": 2,
+      "startMelFrame": 105,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my",
+      "tokenCount": 5
+    },
+    {
+      "step": 3,
+      "startMelFrame": 161,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Ameri",
+      "tokenCount": 11
+    },
+    {
+      "step": 4,
+      "startMelFrame": 217,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 5,
+      "startMelFrame": 273,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 6,
+      "startMelFrame": 329,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans",
+      "tokenCount": 14
+    },
+    {
+      "step": 7,
+      "startMelFrame": 385,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask",
+      "tokenCount": 15
+    },
+    {
+      "step": 8,
+      "startMelFrame": 441,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not",
+      "tokenCount": 16
+    },
+    {
+      "step": 9,
+      "startMelFrame": 497,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not",
+      "tokenCount": 16
+    },
+    {
+      "step": 10,
+      "startMelFrame": 553,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what",
+      "tokenCount": 17
+    },
+    {
+      "step": 11,
+      "startMelFrame": 609,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country",
+      "tokenCount": 23
+    },
+    {
+      "step": 12,
+      "startMelFrame": 665,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for",
+      "tokenCount": 27
+    },
+    {
+      "step": 13,
+      "startMelFrame": 721,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you",
+      "tokenCount": 28
+    },
+    {
+      "step": 14,
+      "startMelFrame": 777,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you",
+      "tokenCount": 28
+    },
+    {
+      "step": 15,
+      "startMelFrame": 833,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask",
+      "tokenCount": 33
+    },
+    {
+      "step": 16,
+      "startMelFrame": 889,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can",
+      "tokenCount": 36
+    },
+    {
+      "step": 17,
+      "startMelFrame": 945,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your",
+      "tokenCount": 40
+    },
+    {
+      "step": 18,
+      "startMelFrame": 1001,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": false,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country",
+      "tokenCount": 45
+    },
+    {
+      "step": 19,
+      "startMelFrame": 1057,
+      "advanceMelFrames": 56,
+      "inputFeatureFrames": 53,
+      "inputLength": 53,
+      "dropExtraPreEncoded": 2,
+      "bufferEmptyAfterYield": true,
+      "partialText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+      "tokenCount": 48
+    }
+  ],
+  "onnxVsNativeEncoderSteps": [
+    {
+      "inputFrames": 49,
+      "inputLength": 49,
+      "dropExtraPreEncoded": 0,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        49
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        0
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            5,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 2.0,
+          "meanAbs": 2.0,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.1972800493240356,
+          "meanAbs": 0.0023717438118285557,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 66.2832260131836,
+          "meanAbs": 0.45033677897343966,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 2.0,
+          "meanAbs": 2.0,
+          "allcloseAtol1e-5Rtol1e-5": false
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        7
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.8402934074401855e-06,
+          "meanAbs": 6.965632753137234e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002422332763671875,
+          "meanAbs": 1.4379989797907366e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        14
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.152557373046875e-07,
+          "meanAbs": 6.125044705556399e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00014019012451171875,
+          "meanAbs": 1.3591650465144314e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        21
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.152557373046875e-07,
+          "meanAbs": 6.1639596416447555e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000152587890625,
+          "meanAbs": 1.3400053999297435e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        28
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.152557373046875e-07,
+          "meanAbs": 6.204724895251363e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018978118896484375,
+          "meanAbs": 1.1348063760518867e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        35
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 9.238719940185547e-07,
+          "meanAbs": 5.560871884662044e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001735687255859375,
+          "meanAbs": 9.742363576578822e-07,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        42
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.960464477539062e-07,
+          "meanAbs": 6.140562978730811e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00016021728515625,
+          "meanAbs": 1.2684549183383363e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        49
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 9.5367431640625e-07,
+          "meanAbs": 6.501960578407848e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002155303955078125,
+          "meanAbs": 1.3388439350373682e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.9669532775878906e-06,
+          "meanAbs": 6.2073399462842226e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00017547607421875,
+          "meanAbs": 1.1405053133566587e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 2.086162567138672e-06,
+          "meanAbs": 6.776360964419073e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001163482666015625,
+          "meanAbs": 1.1155074811882968e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 5.960464477539062e-07,
+          "meanAbs": 6.085878019127892e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000164031982421875,
+          "meanAbs": 1.2943754933395962e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.9073486328125e-06,
+          "meanAbs": 6.700565174139988e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001678466796875,
+          "meanAbs": 1.3936722041014035e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.3113021850585938e-06,
+          "meanAbs": 5.919045793183792e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002231597900390625,
+          "meanAbs": 1.2778318801538082e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 8.344650268554688e-07,
+          "meanAbs": 6.130836605584767e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.00018215179443359375,
+          "meanAbs": 1.2245468419007305e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 3.337860107421875e-06,
+          "meanAbs": 6.313331651115155e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001163482666015625,
+          "meanAbs": 1.0710763581862562e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 8.642673492431641e-07,
+          "meanAbs": 6.511696010114672e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000141143798828125,
+          "meanAbs": 1.3307736466453573e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.430511474609375e-06,
+          "meanAbs": 6.294203584259843e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002384185791015625,
+          "meanAbs": 1.3037526412269531e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.1622905731201172e-06,
+          "meanAbs": 5.989359113165026e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.000164031982421875,
+          "meanAbs": 1.241176313918861e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 65,
+      "inputLength": 65,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": false,
+      "nativeMelShape": [
+        1,
+        128,
+        65
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            7
+          ],
+          "onnxShape": [
+            1,
+            7,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 1.6093254089355469e-06,
+          "meanAbs": 6.355893254827465e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0001773834228515625,
+          "meanAbs": 1.2625407399045986e-06,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    },
+    {
+      "inputFrames": 53,
+      "inputLength": 53,
+      "dropExtraPreEncoded": 2,
+      "keepAllOutputs": true,
+      "nativeMelShape": [
+        1,
+        128,
+        53
+      ],
+      "cacheChannelShapeNative": [
+        24,
+        1,
+        56,
+        1024
+      ],
+      "cacheTimeShapeNative": [
+        24,
+        1,
+        1024,
+        8
+      ],
+      "cacheChannelLengthNative": [
+        56
+      ],
+      "comparisons": {
+        "encoded": {
+          "sameShape": false,
+          "nativeShape": [
+            1,
+            1024,
+            6
+          ],
+          "onnxShape": [
+            1,
+            6,
+            1024
+          ]
+        },
+        "encodedLength": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastChannelNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "maxAbs": 7.748603820800781e-07,
+          "meanAbs": 5.253994138563835e-09,
+          "allcloseAtol1e-5Rtol1e-5": true
+        },
+        "cacheLastTimeNext": {
+          "sameShape": true,
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "maxAbs": 0.0002002716064453125,
+          "meanAbs": 9.91945297704644e-07,
+          "allcloseAtol1e-5Rtol1e-5": false
+        },
+        "cacheLastChannelLengthNext": {
+          "sameShape": true,
+          "shape": [
+            1
+          ],
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "allcloseAtol1e-5Rtol1e-5": true
+        }
+      }
+    }
+  ],
+  "onnxVsNativeAllClose": false,
+  "streamingText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+  "tokenIds": [
+    2860,
+    2,
+    1290,
+    2,
+    1731,
+    1179,
+    290,
+    133,
+    309,
+    271,
+    581,
+    1257,
+    113,
+    40,
+    2900,
+    2847,
+    2831,
+    2815,
+    995,
+    313,
+    113,
+    34,
+    1752,
+    2813,
+    2,
+    1288,
+    398,
+    2810,
+    4,
+    2,
+    2947,
+    309,
+    2127,
+    2831,
+    2810,
+    2813,
+    2,
+    1288,
+    398,
+    2815,
+    995,
+    313,
+    113,
+    34,
+    1752,
+    4,
+    2,
+    2947
+  ],
+  "tokenCount": 48,
+  "offlineOfficialReferenceText": "And so my fellow Americans ask not what your country can do for you. <en-US> Ask what you can do for your country. <en-US>",
+  "browserLegacyOnnxText": "And so my fellow Americans ask not what your country can do for you at what you can do for your country.",
+  "strictExactCanonicalOracleMatch": false,
+  "elapsedSeconds": 106.141,
+  "scope": "original checkpoint native cache-aware streaming at [56,6]; independent of offline full-context transcription and ONNX browser path"
+}

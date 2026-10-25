@@ -1,0 +1,184 @@
+{
+  "model_id": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-whisper-large-v3-20261024\\source",
+  "format": "whisper-browser-self-export-v1",
+  "opset": 17,
+  "num_mel_bins": 128,
+  "max_source_positions": 1500,
+  "max_target_positions": 448,
+  "d_model": 1280,
+  "decoder_layers": 32,
+  "decoder_attention_heads": 20,
+  "head_dim": 64,
+  "vocab_size": 51866,
+  "alignment_heads": [
+    [
+      7,
+      0
+    ],
+    [
+      10,
+      17
+    ],
+    [
+      12,
+      18
+    ],
+    [
+      13,
+      12
+    ],
+    [
+      16,
+      1
+    ],
+    [
+      17,
+      14
+    ],
+    [
+      19,
+      11
+    ],
+    [
+      21,
+      4
+    ],
+    [
+      24,
+      1
+    ],
+    [
+      25,
+      6
+    ]
+  ],
+  "alignment_heads_source": "generation_config_or_config",
+  "alignment_export": {
+    "causal_self_attention": true,
+    "encoder_hidden_state_dtype": "float16",
+    "attention_implementation": "eager",
+    "attention_values": "logits",
+    "attention_layout": "selected_heads"
+  },
+  "special_tokens": {
+    "eos_token_id": 50257,
+    "bos_token_id": 50257,
+    "pad_token_id": 50256,
+    "decoder_start_token_id": 50258,
+    "forced_decoder_ids": null,
+    "suppress_tokens": null,
+    "begin_suppress_tokens": [
+      220,
+      50257
+    ],
+    "no_timestamps_token_id": 50364,
+    "no_speech_token_id": 50363,
+    "timestamp_begin": 50365
+  },
+  "artifacts": {
+    "encoder": {
+      "file": "encoder_model.onnx"
+    },
+    "decoder_init": {
+      "file": "decoder_init.onnx",
+      "externalData": [
+        {
+          "path": "./decoder_init.onnx.data",
+          "file": "decoder_init.onnx.data",
+          "sizeBytes": 265553920,
+          "sha256": "d2ffb83fbb738500320a79acfa1014575eafcc2f6aa6e321d25f9c088ef7dd94"
+        }
+      ]
+    },
+    "decoder_step": {
+      "file": "decoder_step.onnx",
+      "externalData": [
+        {
+          "path": "./decoder_step.onnx.data",
+          "file": "decoder_step.onnx.data",
+          "sizeBytes": 132776960,
+          "sha256": "30bd232b7a138f8c12623f4dc74a528683751d5c9816e9348b92abe110fd02ae"
+        }
+      ]
+    },
+    "decoder_align": {
+      "file": "decoder_align.onnx",
+      "externalData": [
+        {
+          "path": "./decoder_align.onnx.data",
+          "file": "decoder_align.onnx.data",
+          "sizeBytes": 132776960,
+          "sha256": "30bd232b7a138f8c12623f4dc74a528683751d5c9816e9348b92abe110fd02ae"
+        }
+      ]
+    }
+  },
+  "external_data": true,
+  "external_data_threshold": 104857600,
+  "runtime_compatibility": {
+    "fp32": {
+      "precision": "float32",
+      "validation": {
+        "onnxChecker": "pass",
+        "ortCpuLoad": "pass",
+        "smokeDecode": "pass",
+        "ortWebGpuLoad": "not_recommended",
+        "webGpuSmokeDecode": "not_recommended",
+        "accuracyReport": "reference"
+      },
+      "runtimeCompatibility": {
+        "node": "validated",
+        "nativeOrt": "validated",
+        "browserWebGpu": "not_recommended",
+        "browserWasm": "not_recommended"
+      },
+      "notes": "Reference path. ~4.5 GB for large-v3-turbo. Not for browser \u2014 too large for practical WebGPU/WASM use."
+    },
+    "fp16": {
+      "precision": "float16",
+      "validation": {
+        "onnxChecker": "pass",
+        "ortCpuLoad": "pass",
+        "smokeDecode": "pass",
+        "ortWebGpuLoad": "pending",
+        "webGpuSmokeDecode": "pending",
+        "accuracyReport": "pending"
+      },
+      "runtimeCompatibility": {
+        "node": "validated",
+        "nativeOrt": "validated",
+        "browserWebGpu": "pending",
+        "browserWasm": "pending"
+      },
+      "notes": "Export-time FP16 via --dtype float16 --device cuda. ~2.3 GB. Primary WebGPU candidate \u2014 pending ORT WebGPU session smoke test before browser-ready status."
+    },
+    "q8": {
+      "precision": "int8 (dynamic)",
+      "validation": {
+        "onnxChecker": "pass",
+        "ortCpuLoad": "pass",
+        "smokeDecode": "pass",
+        "ortWebGpuLoad": "pending",
+        "webGpuSmokeDecode": "pending",
+        "accuracyReport": "pending"
+      },
+      "runtimeCompatibility": {
+        "node": "validated",
+        "nativeOrt": "validated",
+        "browserWebGpu": "pending",
+        "browserWasm": "pending"
+      },
+      "notes": "Post-export int8 dynamic quantization from fp32 source. ~1.4 GB. Compact native/browser candidate \u2014 pending WebGPU validation and accuracy comparison vs fp16."
+    }
+  },
+  "deferred": {
+    "mixedDtype": {
+      "status": "planned",
+      "description": "Graph-level mixed dtype (encoder fp16 + decoder q8/q4). Requires manifest schema changes, artifact resolver, browser URL loader, KV-cache compat, WebGPU tests."
+    },
+    "q4": {
+      "status": "research",
+      "description": "Q4/Q4F16 weight-only quantization. Needs opset compatibility research, ORT native load, WebGPU validation. Do not publish until all four graphs load and smoke decode."
+    }
+  }
+}

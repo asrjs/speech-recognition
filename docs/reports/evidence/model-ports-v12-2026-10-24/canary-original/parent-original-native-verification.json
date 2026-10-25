@@ -1,0 +1,108 @@
+{
+  "scope": "parent independent pinned checkpoint SHA, native/full oracle and manual content-ID comparison",
+  "checkpointSha256": "b0284183a9a1e039a2fff39427e2991fa4df0b9612a3447fc33ff82b20fdfb5a",
+  "referenceSha256": "3b31ab81d3805e92015fd1acf3d8a31b39c1d8c83014e92b91e41618d9b1b703",
+  "nativeCanonicalWordsEqual": true,
+  "manualCanonicalWordsEqual": true,
+  "contentTokenIdsEqual": true,
+  "contentTokenCount": 38,
+  "rawTokenListsEqual": false,
+  "rawTextEqual": false,
+  "rawDifference": "manual terminal EOS and native leading space",
+  "prompt": {
+    "slots": {
+      "source_lang": "en",
+      "task": "asr",
+      "target_lang": "en",
+      "pnc": "yes"
+    },
+    "token_ids": [
+      3,
+      4,
+      8,
+      4,
+      11
+    ],
+    "token_pieces": [
+      "<|startoftranscript|>",
+      "<|en|>",
+      "<|transcribe|>",
+      "<|en|>",
+      "<|pnc|>"
+    ]
+  },
+  "contract": {
+    "nemo_version": "1.23.0",
+    "model_class": "nemo.collections.asr.models.aed_multitask_models.EncDecMultiTaskModel",
+    "prompt_format": "canary",
+    "tokenizer_class": "nemo.collections.common.tokenizers.canary_tokenizer.CanaryTokenizer",
+    "vocab_size": 4128,
+    "decoder_classes": 4128,
+    "langs": [
+      "spl_tokens",
+      "en",
+      "de",
+      "es",
+      "fr"
+    ],
+    "special_tokens": {
+      "<pad>": 1,
+      "<|endoftext|>": 2,
+      "<|startoftranscript|>": 3,
+      "<|en|>": 4,
+      "<|es|>": 5,
+      "<|de|>": 6,
+      "<|fr|>": 7,
+      "<|transcribe|>": 8,
+      "<|translate|>": 9,
+      "<|nopnc|>": 10,
+      "<|pnc|>": 11,
+      "<|nospeech|>": 12,
+      "<|spltoken0|>": 13,
+      "<|spltoken1|>": 14,
+      "<|spltoken2|>": 15,
+      "<|spltoken3|>": 16,
+      "<|spltoken4|>": 17,
+      "<|spltoken5|>": 18,
+      "<|spltoken6|>": 19,
+      "<|spltoken7|>": 20,
+      "<|spltoken8|>": 21,
+      "<|spltoken9|>": 22,
+      "<|spltoken10|>": 23,
+      "<|spltoken11|>": 24,
+      "<|spltoken12|>": 25,
+      "<|spltoken13|>": 26,
+      "<|spltoken14|>": 27,
+      "<|spltoken15|>": 28,
+      "<|spltoken16|>": 29,
+      "<|spltoken17|>": 30
+    },
+    "encoder_layers": 24,
+    "encoder_hidden": 1024,
+    "decoder_layers": 24,
+    "decoder_hidden": 1024,
+    "decoder_heads": 8,
+    "max_target_positions": 512,
+    "mel_bins": 128,
+    "sample_rate": 16000,
+    "normalization": "per_feature"
+  },
+  "featureShape": [
+    1,
+    128,
+    1101
+  ],
+  "featureLengths": [
+    1100
+  ],
+  "encoderShape": [
+    1,
+    138,
+    1024
+  ],
+  "encoderLengths": [
+    138
+  ],
+  "browser": "NOT_RUN",
+  "onnxExport": "NOT_YET_VERIFIED"
+}

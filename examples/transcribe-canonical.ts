@@ -1,27 +1,20 @@
-import { createSpeechRuntime } from '@asrjs/speech-recognition';
-import { createWasmBackend } from '@asrjs/speech-recognition';
-import { createNemoTdtModelFamily } from '@asrjs/speech-recognition/models/nemo-tdt';
+import {
+  transcribeSpeechFromMonoPcm,
+  type LoadSpeechModelOptions,
+} from '@asrjs/speech-recognition';
 
-export async function transcribeCanonicalExample() {
-  const runtime = createSpeechRuntime({
-    backends: [createWasmBackend()],
-    modelFamilies: [createNemoTdtModelFamily()]
-  });
-
-  const model = await runtime.loadModel({
-    family: 'nemo-tdt',
-    modelId: 'nemo-fastconformer-tdt-scaffold',
-    classification: {
-      ecosystem: 'nemo',
-      encoder: 'fastconformer',
-      decoder: 'tdt',
-      task: 'asr'
-    }
-  });
-  const session = await model.createSession();
-
-  return session.transcribe(new Float32Array(16000), {
-    detail: 'segments',
-    responseFlavor: 'canonical'
+/** One recording, using the caller's model source and real audio sample rate. */
+export async function transcribeCanonicalExample(
+  pcm: Float32Array,
+  sampleRate: number,
+  loadOptions: LoadSpeechModelOptions,
+) {
+  // The one-shot helper owns loading, inference and awaited cleanup.
+  return transcribeSpeechFromMonoPcm(pcm, sampleRate, {
+    ...loadOptions,
+    transcribeOptions: {
+      detail: 'segments',
+      responseFlavor: 'canonical',
+    },
   });
 }

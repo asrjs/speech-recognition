@@ -1,0 +1,18 @@
+{
+  "schema": "canary-checkpoint-download/v1",
+  "modelId": "nvidia/canary-1b-v2",
+  "file": "canary-1b-v2.nemo",
+  "revision": "cc46424723391883dbf1e2516631f5c177d7b263",
+  "url": "https://huggingface.co/nvidia/canary-1b-v2/resolve/cc46424723391883dbf1e2516631f5c177d7b263/canary-1b-v2.nemo",
+  "httpResponse": "http=200 bytes=6358958080 seconds=267.933002",
+  "expectedBytes": 6358958080,
+  "actualBytes": 6358958080,
+  "expectedSha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094",
+  "actualSha256": "ae5ef1bf06812a95a1594a8f5f0ee9c51f35418e5ba96939fa6b98ab00431094",
+  "elapsedSeconds": 267.97,
+  "authentication": "none",
+  "hfCacheUsed": false,
+  "destination": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\canary-1b-v2.nemo",
+  "downloadedAt": "2026-10-24T19:36:18.9731295+03:00",
+  "status": "VERIFIED"
+}

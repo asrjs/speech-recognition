@@ -1,0 +1,132 @@
+{
+  "schema": "parakeet-ctc-native-fresh-control/v1",
+  "created": "2026-10-24T22:49:32+0300",
+  "result": "NATIVE_CONTROL_COMPLETED_SAVED_ORACLE_MATCH_CANONICAL_QUALITY_MISMATCH",
+  "model": "ctaguchi/parakeet-hf-ctc-110m-en",
+  "native_output": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-parakeet-ctc-native-20261024\\native-jfk-short.json",
+  "attempt_history": [
+    {
+      "attempt": 1,
+      "env": "tools/model-debugging/reference/transformers5 (Transformers5.18.0, Torch2.14.1+cpu)",
+      "result": "STOPPED_BEFORE_MODEL_LOAD_OR_INFERENCE",
+      "reason": "ParakeetProcessor.from_pretrained failed because librosa was absent in this isolated environment."
+    },
+    {
+      "attempt": 2,
+      "env": "C:/Users/steam/anaconda3/envs/medasr_env (Transformers5.3.0.dev0, Torch2.10.0+cpu)",
+      "pid": 24252,
+      "result": "STOPPED_BEFORE_MODEL_LOAD_OR_INFERENCE",
+      "reason": "Faulthandler showed librosa import blocked at numba.core.caching.ensure_cache_path -> tempfile.NamedTemporaryFile -> _mkstemp_inner. Process-scoped NUMBA_CACHE_DIR was missing. Owned PID was terminated; transcript includes the stack."
+    },
+    {
+      "attempt": 3,
+      "env": "medasr_env with task-local NUMBA_CACHE_DIR",
+      "result": "STOPPED_BEFORE_INFERENCE",
+      "reason": "Model loaded all 694 tensors; harness queried nonexistent ParakeetProcessor.blank_token_id instead of config.pad_token_id."
+    },
+    {
+      "attempt": 4,
+      "env": "medasr_env with task-local NUMBA_CACHE_DIR",
+      "result": "STOPPED_BEFORE_INFERENCE",
+      "reason": "Harness queried nonexistent ParakeetProcessor.blank_token metadata after model load; changed task-local runner to use verified <pad> ID 1024."
+    },
+    {
+      "attempt": 5,
+      "env": "medasr_env with task-local NUMBA_CACHE_DIR",
+      "result": "COMPLETED",
+      "scope": "Fresh native CPU inference; local_files_only, offline flags, CUDA_VISIBLE_DEVICES empty, 2 torch threads."
+    }
+  ],
+  "native_vs_saved_oracle": {
+    "token_ids_equal": true,
+    "text_equal": true,
+    "collapsed_token_count": 34,
+    "output_frames": 138
+  },
+  "quality": {
+    "canonical_excerpt": "And so, my fellow Americans, ask not what your country can do for you. Ask what you can do for your country.",
+    "native_excerpt": "And so, my fellow Americans, askk not what your country can do for you. Ask what you can do for your country.",
+    "exact_text_match": false,
+    "mismatch_word": {
+      "expected": "ask",
+      "native": "askk"
+    },
+    "cause_scope": "Fresh native model output and library output agree; the differing word is not introduced by library CTC collapse/tokenization."
+  },
+  "model_contract": {
+    "transformers": "5.3.0.dev0",
+    "torch": "2.10.0+cpu",
+    "device": "cpu",
+    "threads": 2,
+    "offline": true,
+    "vocab_size": 1025,
+    "blank_id": 1024,
+    "feature_shape": [
+      1,
+      1101,
+      80
+    ],
+    "attention_mask_shape": [
+      1,
+      1101
+    ],
+    "valid_attention_frames": 1100,
+    "logits_shape": [
+      1,
+      138,
+      1025
+    ]
+  },
+  "files": [
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-parakeet-ctc-native-20261024\\run_native_jfk_cpu.py",
+      "bytes": 7746,
+      "sha256": "2aa6a4487ac1a3f0874863495bd3c5ad32ae975fa0c0cdc6a3a9b4937e122ea1"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-parakeet-ctc-native-20261024\\native-jfk-short.json",
+      "bytes": 7057,
+      "sha256": "9131cf235264754a6f37aa35aab76873355a3aaaabed297ff73eddab328ed94a"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\model.safetensors",
+      "bytes": 437298244,
+      "sha256": "928d40a16a729e2afaacdacc13627252c891d0ccfe6b99da8c7dd8df66b92cc5"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\config.json",
+      "bytes": 985,
+      "sha256": "c6fca53c73fd1378d3ec49a21b87de402032fc2e0bc1ca2eed457428c5d15d54"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\.cache\\parakeet-ctc-110m\\tokenizer.json",
+      "bytes": 400141,
+      "sha256": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\audio\\jfk-short.wav",
+      "bytes": 352078,
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\parakeet-ctc\\parakeet-ctc-110m-en-oracle-2026-10-04.json",
+      "bytes": 786,
+      "sha256": "2950d5afd7129d4dcac4ce1818f8eed4d0cd280684678cc0b7c3bc1cb34e5b5d"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\parakeet-ctc\\parakeet-ctc-family-transcription-2026-10-04.json",
+      "bytes": 2073,
+      "sha256": "909070ccc52c21614a671c22543690dee5465698101fd4372cadbb8a5c8daf82"
+    },
+    {
+      "path": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\fixtures\\jfk-nemo-single-pass.json",
+      "bytes": 29366,
+      "sha256": "abec0b5935bf7d49aafefdbe4521ffcd39266bc251018a425d6ca116ce42cbe6"
+    }
+  ],
+  "not_run": [
+    "ONNX/library inference in this fresh task",
+    "browser/WASM/WebGPU",
+    "any downloads"
+  ]
+}

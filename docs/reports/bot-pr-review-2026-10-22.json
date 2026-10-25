@@ -1,0 +1,1202 @@
+{
+  "generatedAt": "2026-10-22",
+  "scope": "Read-only bot PR review",
+  "inventory": {
+    "speechRecognitionOpen": 76,
+    "demosOpen": 0,
+    "requestedCount": 78,
+    "observedCount": 76,
+    "mainSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+    "note": "Live API returned 76 open PRs in speech-recognition and 0 in demos; all open PR metadata, changed files, and CI state are listed below. Difference from expected 78 is recorded."
+  },
+  "pullRequests": [
+    {
+      "number": 234,
+      "title": "Bolt: Optimize element copying in padToFrames using native Subarray",
+      "url": "https://github.com/asrjs/speech-recognition/pull/234",
+      "headSHA": "8a393f9f1efbbac9bf8b94156872c2b0dfdfdd07",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/audio/whisper-mel.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/smoke/browser-root-import-graph.mjs",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 233,
+      "title": "🧹 reword comment in ctc-viterbi.ts to avoid false-positive dead code detection",
+      "url": "https://github.com/asrjs/speech-recognition/pull/233",
+      "headSHA": "2968c206b5360a79bf996d134a905c589d3668fa",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/alignment/ctc-viterbi.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 232,
+      "title": "⚡ perf(tokenizer): replace findIndex with indexOf in MedAsrTextTokenizer candidate resolution",
+      "url": "https://github.com/asrjs/speech-recognition/pull/232",
+      "headSHA": "6c90eaa5f17c808c3a95e0c259073fd496cad1e1",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/models/lasr-ctc/tokenizer.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 231,
+      "title": "🧹 Remove deprecated comment from ctc.ts",
+      "url": "https://github.com/asrjs/speech-recognition/pull/231",
+      "headSHA": "414cec85e769041aae8337c1dbc48a1e0923eef8",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/models/lasr-ctc/ctc.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 230,
+      "title": "🧹 update empty catch block in x-asr executor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/230",
+      "headSHA": "514820b529e8c00ae2e053b9bcf06de88ebb907b",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/models/x-asr/executor.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 229,
+      "title": "🧪 add edge case tests for whisper chunk planning",
+      "url": "https://github.com/asrjs/speech-recognition/pull/229",
+      "headSHA": "1d4d3bbd303f8c6fbdf2c8d9c69a9951634bca1c",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/pipeline-whisper-chunking.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 228,
+      "title": "Bolt: fix ten-vad-worker memory leak on early destruction",
+      "url": "https://github.com/asrjs/speech-recognition/pull/228",
+      "headSHA": "84a377ff9fa2fbad1d24d8d6355a68c6f52b5db8",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/runtime/ten-vad-worker.ts",
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 227,
+      "title": "Bolt: Fix missing vitest path aliases for worker and directory-based models",
+      "url": "https://github.com/asrjs/speech-recognition/pull/227",
+      "headSHA": "353066b898dc370e7950c2e05dd7e19f9375c824",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "tests/moonshine-streaming-session.test.ts",
+        "tests/moonshine-streaming-transcriber.test.ts",
+        "tests/smoke/browser-root-import-graph.mjs",
+        "tests/streaming-detector-neural-vad.test.ts",
+        "tests/windowed-controller-demo.test.ts",
+        "tests/worker-and-stateful-streaming.test.ts",
+        "vitest.config.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 226,
+      "title": "Bolt: skip typed-array allocation and copy for single-chunk audio hot paths",
+      "url": "https://github.com/asrjs/speech-recognition/pull/226",
+      "headSHA": "3067dc43b2a00dea7de3fdc8e06cd184f7282498",
+      "baseSHA": "af8d147a6f09d5584c703faf84db24a65c0a4b45",
+      "files": [
+        "src/io/handles.ts",
+        "src/runtime/browser-controller.ts",
+        "src/runtime/firered-vad/api/classes.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 220,
+      "title": "Bolt: fix memory leak in ten-vad worker when initialization fails",
+      "url": "https://github.com/asrjs/speech-recognition/pull/220",
+      "headSHA": "79376151e02597577917b7124cf5a5788e426d2f",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/runtime/ten-vad-worker.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 219,
+      "title": "🔒 Security Fix: Replace Math.random with crypto.randomUUID in streaming detector",
+      "url": "https://github.com/asrjs/speech-recognition/pull/219",
+      "headSHA": "450f151a1e4ace6cbb48dd8c71ba46585c413d3d",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/runtime/streaming-detector.ts",
+        "tests/streaming-detector.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 218,
+      "title": "⚡ perf: replace redundant Object.keys().find for logits in Whisper executor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/218",
+      "headSHA": "aa79558355d744209ac12dc1c285ce37c9d4b855",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/models/whisper-seq2seq/executor.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 217,
+      "title": "test: add compressionRatioGate edge case coverage",
+      "url": "https://github.com/asrjs/speech-recognition/pull/217",
+      "headSHA": "4bb7bb2e0722372671bb448c583169a07e6b3e13",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "tests/quality-gates.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 216,
+      "title": "🧹 resolve unused variable suppression in EnhancedWhisperExecutor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/216",
+      "headSHA": "03d139c5cc3001c06ca88993dbf04da8f8947399",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/models/whisper-seq2seq/enhanced-executor.ts",
+        "tests/whisper-enhanced-executor.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 215,
+      "title": "🧪 test: add edge case tests for normalizePcmInput",
+      "url": "https://github.com/asrjs/speech-recognition/pull/215",
+      "headSHA": "98855f5e3ffe4a42a36562658ffc0c2f292ab5a8",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "tests/audio.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 214,
+      "title": "🧪 test: add edge case test coverage for confidenceFromLogits",
+      "url": "https://github.com/asrjs/speech-recognition/pull/214",
+      "headSHA": "9c045d760b77d2321923e712374ab195f29ca1ab",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "tests/inference-math.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 213,
+      "title": "🧪 Add unit tests for estimateSecondsPerOutputFrame",
+      "url": "https://github.com/asrjs/speech-recognition/pull/213",
+      "headSHA": "7634d9344db30c152ddf664d6fcf8442b0241c64",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "tests/ctc-decoder.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 212,
+      "title": "Bolt: Add fast paths to avoid typed-array copies for single chunks",
+      "url": "https://github.com/asrjs/speech-recognition/pull/212",
+      "headSHA": "1ba2ab6cf5151b4d836bd159a0ed09d0c645b124",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/runtime/browser-controller.ts",
+        "src/runtime/firered-vad/api/classes.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 211,
+      "title": "Bolt: Add fast-path to array concatenation loops for single chunks",
+      "url": "https://github.com/asrjs/speech-recognition/pull/211",
+      "headSHA": "33fc7c076dad89741015a102975db22b5341f221",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/io/handles.ts",
+        "src/runtime/browser-controller.ts",
+        "src/runtime/firered-vad/api/classes.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 210,
+      "title": "Bolt: Improve type safety in production pipeline types",
+      "url": "https://github.com/asrjs/speech-recognition/pull/210",
+      "headSHA": "20acd07eea323f56e9c7b25aebb6f284ee86d10d",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 209,
+      "title": "Bolt: Optimize single-chunk stream buffering in UrlAssetHandle",
+      "url": "https://github.com/asrjs/speech-recognition/pull/209",
+      "headSHA": "c82a1c2ebcabd8c1b02d2fccf9e0c9899fdc7801",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/io/handles.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 208,
+      "title": "Bolt: Fix memory leak in TEN-VAD worker initialization failures",
+      "url": "https://github.com/asrjs/speech-recognition/pull/208",
+      "headSHA": "561fee1dc1f2771b88057b3171b689013d53396c",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/runtime/ten-vad-worker.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 207,
+      "title": "Bolt: optimize UrlAssetHandle stream cache copying",
+      "url": "https://github.com/asrjs/speech-recognition/pull/207",
+      "headSHA": "4052397b9a37752c93304f243aacb73b5aa1149c",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/io/handles.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 206,
+      "title": "Bolt: Improve type safety for pipeline transcript words and segments",
+      "url": "https://github.com/asrjs/speech-recognition/pull/206",
+      "headSHA": "93a064875aa23f6e799ef98d4db5817071f5f3d5",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 205,
+      "title": "Bolt: fix TEN-VAD worker handleDispose memory leak",
+      "url": "https://github.com/asrjs/speech-recognition/pull/205",
+      "headSHA": "67892b545516d2a1583f5519b404f013ac4ece1c",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/runtime/ten-vad-worker.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 204,
+      "title": "Bolt: optimize array copying in WhisperMelProcessor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/204",
+      "headSHA": "37686244ac6e6eed047bc9ea375e30e9c37d4e08",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 203,
+      "title": "Bolt: Inline getReflectPaddedSample in WhisperMelProcessor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/203",
+      "headSHA": "b4ed1ff3823374c398135d7e93436c4370446c19",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 202,
+      "title": "Bolt: improve type safety in production whisper pipeline output",
+      "url": "https://github.com/asrjs/speech-recognition/pull/202",
+      "headSHA": "1eb9ad0a3cb8c35294a391640cf41a66247c4d64",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 201,
+      "title": "Bolt: improve type safety in pipeline output types",
+      "url": "https://github.com/asrjs/speech-recognition/pull/201",
+      "headSHA": "47f6dbd3f348620bc9410c869548a4a82bf1dd4a",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 200,
+      "title": "Bolt: Optimize array copying in Whisper mel padding",
+      "url": "https://github.com/asrjs/speech-recognition/pull/200",
+      "headSHA": "deaa2f9a2865d8556b7476acb7b3b15b970b2b7e",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 199,
+      "title": "Bolt: Optimize cache chunk allocation for UrlAssetHandle",
+      "url": "https://github.com/asrjs/speech-recognition/pull/199",
+      "headSHA": "8828d1f28c738fe749d7ccf86eb1e1cb6bd07053",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/io/handles.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 198,
+      "title": "Bolt: enforce strict typing for ProductionTranscript",
+      "url": "https://github.com/asrjs/speech-recognition/pull/198",
+      "headSHA": "f1dca6351ae9f86e4c06ced11522f9289feb8b5d",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 197,
+      "title": "Bolt: Improve Whisper mel padding performance with TypedArray.set",
+      "url": "https://github.com/asrjs/speech-recognition/pull/197",
+      "headSHA": "36d729e79e023a504f088ba7162197226130b13b",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 196,
+      "title": "Bolt: optimize TypedArray copying in padToFrames",
+      "url": "https://github.com/asrjs/speech-recognition/pull/196",
+      "headSHA": "9071c411130590cc92b9b1ec031a8195abc25fe0",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 195,
+      "title": "Bolt: Optimize padToFrames and remove redundant async wrappers",
+      "url": "https://github.com/asrjs/speech-recognition/pull/195",
+      "headSHA": "6cff0aaada0c45cbafc3977d57cf274f03d2b23d",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts",
+        "src/models/qwen-asr/model.ts",
+        "src/presets/parakeet/compat.ts",
+        "src/runtime/local-browser.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 194,
+      "title": "Bolt: Improve type safety for production pipeline transcript words and segments",
+      "url": "https://github.com/asrjs/speech-recognition/pull/194",
+      "headSHA": "70d843ba3affcb80a61702ec65bfb84439ebf147",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/pipeline/types.ts",
+        "src/pipeline/whisper-production-pipeline.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 193,
+      "title": "Bolt: optimize chunk allocations and remove redundant async closures",
+      "url": "https://github.com/asrjs/speech-recognition/pull/193",
+      "headSHA": "db3a543a07738d215cffa40b302f44fc4fe6071d",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/io/handles.ts",
+        "src/models/qwen-asr/model.ts",
+        "src/presets/parakeet/compat.ts",
+        "src/runtime/local-browser.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 192,
+      "title": "Bolt: Optimize audio mel padding with TypedArray set()",
+      "url": "https://github.com/asrjs/speech-recognition/pull/192",
+      "headSHA": "ca7004a2153a74028ff6a69fdf618c9f5bd6616b",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 191,
+      "title": "Bolt: Mock expected console.warn in cache fallback test",
+      "url": "https://github.com/asrjs/speech-recognition/pull/191",
+      "headSHA": "c3c37f8e723d114e45d22cd0b76c4ef2bedd3dd9",
+      "baseSHA": "609e53e22b7f90a9189fc5d0f671d41eec725504",
+      "files": [
+        "tests/io-handles.test.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 190,
+      "title": "Bolt: Optimize TypedArray copy operations in audio preprocessing",
+      "url": "https://github.com/asrjs/speech-recognition/pull/190",
+      "headSHA": "3d1b2f73dbad47696bbd8b7b7b3c1f66d9a897eb",
+      "baseSHA": "16b3772cc8fd967f42547390b3becfecde5878c4",
+      "files": [
+        "src/audio/whisper-mel.ts",
+        "src/models/lasr-ctc/mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 189,
+      "title": "Bolt: reduce typed-array copies in padToFrames",
+      "url": "https://github.com/asrjs/speech-recognition/pull/189",
+      "headSHA": "c9785a52416fda703cf129e74eb740434c341760",
+      "baseSHA": "286799b0eba3d9ebd969193e293927bf751709b6",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 188,
+      "title": "Bolt: optimize memory by returning single stream chunks directly",
+      "url": "https://github.com/asrjs/speech-recognition/pull/188",
+      "headSHA": "6a5f9e515bca413c99f7def89817661f5c66c2fa",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "src/io/handles.ts",
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 187,
+      "title": "security: sanitize spawnSync input parameters in node-nemo-shared-audio-parity",
+      "url": "https://github.com/asrjs/speech-recognition/pull/187",
+      "headSHA": "5ed1c11fc3eaa30c09f5f1961354f15b37f3e8bc",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "package-lock.json",
+        "tests/nemo-shared-audio-parity.test.ts",
+        "tools/model-debugging/reference/hf-parakeet-port/node-nemo-shared-audio-parity.mjs",
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 186,
+      "title": "Code health: remove unused import type OrtModuleLike in nemo-tdt executor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/186",
+      "headSHA": "16f794fe24cf2a1815a95048c3acf8c62621b1d8",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 185,
+      "title": "Optimize smoothProb in VadPostprocessor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/185",
+      "headSHA": "ca9b7532f1b2a18d6da80cc4297345f9d16f80f7",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "package-lock.json",
+        "src/runtime/firered-vad/core/vad-postprocessor.ts",
+        "tests/firered-vad-postprocessor.test.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 184,
+      "title": "Verify ModelFileProgress usage in Parakeet compat",
+      "url": "https://github.com/asrjs/speech-recognition/pull/184",
+      "headSHA": "6a4eaf8d09a3067d9df48fb629d8e4540a34220e",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 183,
+      "title": "Optimize Uint8Array chunk assembly in streamToBytes",
+      "url": "https://github.com/asrjs/speech-recognition/pull/183",
+      "headSHA": "2a89b3f802dcd329d9dd96b98961505bfe674aa2",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "package-lock.json",
+        "src/io/handles.ts",
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 182,
+      "title": "remove unused OrtModuleLike import from nemo-rnnt executor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/182",
+      "headSHA": "beda359ccc88925382cb395044a3aa2232eec5f4",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "src/models/nemo-rnnt/executor.ts"
+      ],
+      "CI": "CI:failure"
+    },
+    {
+      "number": 181,
+      "title": "Security Fix: Eliminate XSS risk in Browser Compact Stats Renderer",
+      "url": "https://github.com/asrjs/speech-recognition/pull/181",
+      "headSHA": "6c3bd82c55c608ad0516c2996ba7d4678f65dddb",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "src/runtime/browser-compact-stats.ts",
+        "tests/browser-compact-stats.test.ts",
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 180,
+      "title": "Document sequential stage rationale in runPipelineStages",
+      "url": "https://github.com/asrjs/speech-recognition/pull/180",
+      "headSHA": "9571bf3d81a0d82f5edc713fdfb0d981d08c1bbc",
+      "baseSHA": "e840269f0d6223fc9a951c8d305f6d3e66f6b0aa",
+      "files": [
+        "src/pipeline/composition.ts",
+        "tests/pipeline-composition-benchmark.test.ts",
+        "tools/model-debugging/scripts/x-asr-artifact-contract.mjs"
+      ],
+      "CI": "CI:success"
+    },
+    {
+      "number": 167,
+      "title": "Bolt: Add missing vitest path aliases for pipeline and other modules",
+      "url": "https://github.com/asrjs/speech-recognition/pull/167",
+      "headSHA": "64d323d396f7f079a1d21a67854628278f8ca8c4",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 166,
+      "title": "Bolt: fix missing path aliases for submodules in vitest.config.ts",
+      "url": "https://github.com/asrjs/speech-recognition/pull/166",
+      "headSHA": "74f7423ae1e219bdf69805fa90aa492b8e06b4f3",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 165,
+      "title": "Bolt: add missing module resolution aliases to vitest.config.ts",
+      "url": "https://github.com/asrjs/speech-recognition/pull/165",
+      "headSHA": "188c28a1e3e8e007ac7ee19d07510b952691681e",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 164,
+      "title": "Bolt: add missing path aliases to vitest.config.ts",
+      "url": "https://github.com/asrjs/speech-recognition/pull/164",
+      "headSHA": "dca8030da11a33ab57e1bed3ca80148c98a26deb",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 163,
+      "title": "Bolt: optimize padToFrames allocation via native subarray memory set",
+      "url": "https://github.com/asrjs/speech-recognition/pull/163",
+      "headSHA": "9647932adef21da640c65746a03c056c7abf90dc",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/audio/whisper-mel.ts",
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 162,
+      "title": "Bolt: Add missing vitest path aliases for pipeline and chunking",
+      "url": "https://github.com/asrjs/speech-recognition/pull/162",
+      "headSHA": "062d72fa48f2425f2f98d50b85d9895e5c413679",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 161,
+      "title": "Bolt: Add missing vitest alias for pipeline module",
+      "url": "https://github.com/asrjs/speech-recognition/pull/161",
+      "headSHA": "e87efdfb6162ddd42a8b9c698782fc4a76c27f82",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 160,
+      "title": "Bolt: optimize array copying in padToFrames using native set",
+      "url": "https://github.com/asrjs/speech-recognition/pull/160",
+      "headSHA": "e78b6fc15f467f6b3df13a4b0ec799888b8c9172",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 159,
+      "title": "Bolt: optimize typed array copy in WhisperMelProcessor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/159",
+      "headSHA": "06998808c755161715405957c3aa8a1f76062a06",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 158,
+      "title": "Bolt: Optimize Whisper mel padding with native TypedArray.set()",
+      "url": "https://github.com/asrjs/speech-recognition/pull/158",
+      "headSHA": "0adf4ec82124a3ffee4b8921a1d8515f608784d7",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 157,
+      "title": "Bolt: optimize token index mapping loops in post-processing",
+      "url": "https://github.com/asrjs/speech-recognition/pull/157",
+      "headSHA": "298b4c4e59b9a8087df702a02b093971dd0bbeac",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/models/lasr-ctc/mapping.ts",
+        "src/models/nemo-common/mapping.ts",
+        "src/models/wav2vec2/mapping.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 156,
+      "title": "Bolt: Fix pipeline vitest aliases",
+      "url": "https://github.com/asrjs/speech-recognition/pull/156",
+      "headSHA": "d3bf0356d936a75ebbb5785ba94f4513d4d40631",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 155,
+      "title": "Bolt: Add missing pipeline alias to vitest config",
+      "url": "https://github.com/asrjs/speech-recognition/pull/155",
+      "headSHA": "93870b7150e57cfd2479d96d2c2e99d1adb4f028",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 154,
+      "title": "Bolt: Optimize array copying in WhisperMelProcessor",
+      "url": "https://github.com/asrjs/speech-recognition/pull/154",
+      "headSHA": "44e61f738d07ddacdc413e172a58cfe731429388",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "src/audio/whisper-mel.ts",
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 153,
+      "title": "Bolt: add missing vitest aliases for pipeline, quality, chunking, and post-processing modules",
+      "url": "https://github.com/asrjs/speech-recognition/pull/153",
+      "headSHA": "1311aadc4fc22b8a7515b0d6c66688c881e97b0e",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 152,
+      "title": "Bolt: add missing test module aliases to vitest.config.ts",
+      "url": "https://github.com/asrjs/speech-recognition/pull/152",
+      "headSHA": "02687d1d40b580e80e58ce4bafe1781232816747",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 151,
+      "title": "Bolt: add missing pipeline export aliases to vitest config",
+      "url": "https://github.com/asrjs/speech-recognition/pull/151",
+      "headSHA": "be9a32589ad593d3276a510e10f284993cb30580",
+      "baseSHA": "850a51f159da57b4d8d95787face37ff8d1547ba",
+      "files": [
+        "vitest.config.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 150,
+      "title": "Bolt: Optimize padToFrames array copying with TypedArray.set",
+      "url": "https://github.com/asrjs/speech-recognition/pull/150",
+      "headSHA": "e8a704be04711aaab9539cf5c916375deb36bf01",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 149,
+      "title": "perf: optimize whisper mel real fft performance",
+      "url": "https://github.com/asrjs/speech-recognition/pull/149",
+      "headSHA": "1120e010f3afc24a65bf8047923b2c01cd405373",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 148,
+      "title": "Bolt: optimize whisper mel processor inner loops and fft",
+      "url": "https://github.com/asrjs/speech-recognition/pull/148",
+      "headSHA": "e19521bd7b1e2a5c9cd3e1ef8e4a41aa6f29b834",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "src/audio/whisper-mel.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 147,
+      "title": "Fix base names conversion for fp16 model variants",
+      "url": "https://github.com/asrjs/speech-recognition/pull/147",
+      "headSHA": "2b944dffe1a1d6440c2c80989b1f69459e6f9cdd",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "tools/whisper-onnx-export/export_whisper.py",
+        "tools/whisper-onnx-export/test_comprehensive.py"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 146,
+      "title": "[Testing Improvement] Add unit tests for joinTranscriptWords",
+      "url": "https://github.com/asrjs/speech-recognition/pull/146",
+      "headSHA": "12108694c083799e6e29e64271d30d6fb9e154b8",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "tests/pipeline-sentence-segmenter.test.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 145,
+      "title": "[Performance] Replace synchronous file I/O with async in local model loading",
+      "url": "https://github.com/asrjs/speech-recognition/pull/145",
+      "headSHA": "94b387078de65fb605eef325e24fa435c70cb5a6",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "benchmark-local-file-async.cjs",
+        "benchmark-local-file.cjs",
+        "docs/whisper-splitgraph-local.md",
+        "examples/whisper-splitgraph-local.mjs",
+        "src/models/whisper-seq2seq/local-file.ts",
+        "tests/whisper-splitgraph-artifacts.test.ts",
+        "tests/whisper-splitgraph-smoke.test.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 144,
+      "title": "[Testing Improvement] Add tests for validatePositiveNumber",
+      "url": "https://github.com/asrjs/speech-recognition/pull/144",
+      "headSHA": "621bc79464a9837d2bfbf8bb4e0f4097ce365db2",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "tests/pipeline-whisper-chunking.test.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 143,
+      "title": "[testing improvement] Add tests for validatePositiveInteger in whisper-chunking",
+      "url": "https://github.com/asrjs/speech-recognition/pull/143",
+      "headSHA": "21affb0c74d8514af5fb95f14f221f88a52b89ff",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "tests/pipeline-whisper-chunking.test.ts"
+      ],
+      "CI": "no workflow run returned"
+    },
+    {
+      "number": 142,
+      "title": "Remove redundant async wrapper in session dispose map",
+      "url": "https://github.com/asrjs/speech-recognition/pull/142",
+      "headSHA": "daa06882664e5aa4c5384e27250744b0bf8e16aa",
+      "baseSHA": "d6bfbd341267e12808bd06bdf51bcf08abdc2fad",
+      "files": [
+        "src/models/nemo-tdt/model.ts"
+      ],
+      "CI": "no workflow run returned"
+    }
+  ],
+  "topCandidates": {
+    "safeTests": [
+      213,
+      214,
+      215,
+      217
+    ],
+    "adapt": [
+      228,
+      147,
+      212,
+      218
+    ],
+    "separateCodeHunk": [
+      234
+    ]
+  },
+  "clusters": [
+    {
+      "name": "Safe test templates",
+      "prs": [
+        213,
+        214,
+        215,
+        217
+      ],
+      "decision": "Best candidates to cherry-pick/rebase and rerun on current main: isolated edge-case coverage."
+    },
+    {
+      "name": "Whisper padToFrames duplicates",
+      "prs": [
+        234,
+        204,
+        200,
+        197,
+        196,
+        192,
+        190,
+        189,
+        163,
+        160,
+        159,
+        158,
+        154,
+        150
+      ],
+      "decision": "At most one consolidated TypedArray.set/subarray code hunk. Likely correct, speedup unverified."
+    },
+    {
+      "name": "Unsafe cache alias",
+      "prs": [
+        226,
+        211,
+        209,
+        207,
+        199,
+        193
+      ],
+      "decision": "After iterator completion, the new one-chunk shortcut keeps cache.bytes aliased to the consumer-held chunk. MemoryAssetCache stores the value by reference, so later mutation changes cached model bytes; baseline copy avoided this post-completion alias. Mutation before completion may affect both and is not the new regression. Keep snapshot copy or slice before cache write."
+    },
+    {
+      "name": "TEN-VAD cleanup",
+      "prs": [
+        228,
+        220,
+        208,
+        205
+      ],
+      "decision": "Real leak; adapt with test. #208 guards pointers; #228 latest base but no regression test and CI lint fails."
+    },
+    {
+      "name": "Transcript types",
+      "prs": [
+        210,
+        206,
+        202,
+        201,
+        198,
+        194
+      ],
+      "decision": "DX goal valid; adapt source-derived contract, preserve unknown fields."
+    },
+    {
+      "name": "Whisper prompt context",
+      "prs": [
+        216
+      ],
+      "decision": "Shared mutable context may race. Require per-call state/serialization."
+    },
+    {
+      "name": "Aliases",
+      "prs": [
+        227,
+        167,
+        166,
+        165,
+        164,
+        162,
+        161,
+        156,
+        155,
+        153,
+        152,
+        151
+      ],
+      "decision": "Mostly redundant; current main already has aliases."
+    },
+    {
+      "name": "FFT/mel parity",
+      "prs": [
+        203,
+        149,
+        148
+      ],
+      "decision": "Do not accept until numeric parity on boundaries and representative audio."
+    },
+    {
+      "name": "Already in main",
+      "prs": [
+        188,
+        184,
+        183,
+        180,
+        186
+      ],
+      "decision": "Several path/stream optimizations already exist; #186 has no diff."
+    },
+    {
+      "name": "Whisper loader API",
+      "prs": [
+        145
+      ],
+      "decision": "Reject sync-to-async breaking change and invalid benchmark."
+    }
+  ],
+  "deepVerifiedFindings": [
+    {
+      "severity": "major",
+      "prs": [
+        182
+      ],
+      "location": "src/models/nemo-rnnt/executor.ts:17,40",
+      "headSHA": "beda359ccc88925382cb395044a3aa2232eec5f4",
+      "evidence": "Removes OrtModuleLike while LoadedExecutorState.ort still uses it; GitHub CI Build fails TS2304 on Node 22/24.",
+      "decision": "Reject."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        227
+      ],
+      "location": "tests/smoke/browser-root-import-graph.mjs:52,173",
+      "headSHA": "353066b898dc370e7950c2e05dd7e19f9375c824",
+      "evidence": "Raises regression ceiling 78 to 79 and hardcodes false around the <45 failure guard; CI success masks unmet target.",
+      "decision": "Reject; false PASS."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        234
+      ],
+      "location": "tests/smoke/browser-root-import-graph.mjs:173",
+      "headSHA": "8a393f9f1efbbac9bf8b94156872c2b0dfdfdd07",
+      "evidence": "Gates target failure on ASRJS_ROOT_IMPORT_STRICT_BUDGET, which CI does not set, so process exits 0 while output says <45 UNMET. Keep this separate from its likely-equivalent TypedArray copy hunk.",
+      "decision": "Reject guard under no-false-PASS requirement."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        226,
+        211,
+        209,
+        207,
+        199,
+        193
+      ],
+      "location": "src/io/handles.ts:432-439",
+      "evidence": "With a one-chunk response and MemoryAssetCache (which stores the supplied value by reference), the new shortcut caches the same Uint8Array yielded to the consumer. After the iterator has fully completed, mutating a retained chunk changes the cached bytes; the old copy-based path is independent after completion. Mutating before completion can affect both implementations, so that is not the new regression.",
+      "decision": "Reject shortcut or snapshot with a copy before cache.set."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        216
+      ],
+      "location": "src/models/whisper-seq2seq/enhanced-executor.ts:261-288",
+      "headSHA": "03d139c5cc3001c06ca88993dbf04da8f8947399",
+      "evidence": "Shared contextBuilder resets/reads/adds across awaits; concurrent calls can mix tokens. No concurrency test in PR.",
+      "decision": "Require per-call state or serialization and test."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        145
+      ],
+      "location": "src/models/whisper-seq2seq/local-file.ts:86-200",
+      "headSHA": "94b387078de65fb605eef325e24fa435c70cb5a6",
+      "evidence": "Changes exported loader sync to Promise and breaks callers; comparison benchmark fails to await new async loader.",
+      "decision": "Reject wholesale."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        187
+      ],
+      "location": "tests/nemo-shared-audio-parity.test.ts:~52",
+      "headSHA": "5ed1c11fc3eaa30c09f5f1961354f15b37f3e8bc",
+      "evidence": "Path test expects /models unchanged; Windows path.win32.normalize returns backslash-rooted form. CI was Linux; argv-based spawnSync does not show injection.",
+      "decision": "Port guards only after portable test."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        228,
+        220,
+        208,
+        205
+      ],
+      "location": "src/runtime/ten-vad-worker.ts:82-92,229-239",
+      "headSHA": "84a377ff9fa2fbad1d24d8d6355a68c6f52b5db8",
+      "evidence": "Init allocates pointers before create; failed create leaves vadHandle zero and current dispose skips all frees. #228 fixes cleanup but no targeted test; CI fails lint.",
+      "decision": "Adapt fix with failure/partial-allocation tests."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        206,
+        210,
+        202,
+        201,
+        198,
+        194
+      ],
+      "location": "src/pipeline/types.ts:29-54; src/pipeline/whisper-production-pipeline.ts:115-185",
+      "evidence": "Type variants may drop source fields; #202 fabricates probability .9, #201 options unknown, #194 asserts native shape.",
+      "decision": "Source-derived types, preserve fields."
+    },
+    {
+      "severity": "major",
+      "prs": [
+        147
+      ],
+      "location": "tools/whisper-onnx-export/export_whisper.py:1048",
+      "headSHA": "2b944dffe1a1d6440c2c80989b1f69459e6f9cdd",
+      "evidence": "FP16 converter likely receives suffixed names although helper expects canonical graph names; PR also changes fixture to absolute /app path.",
+      "decision": "Port converter hunk only with test and portable fixture."
+    },
+    {
+      "severity": "minor",
+      "prs": [
+        231
+      ],
+      "location": "src/models/lasr-ctc/ctc.ts:11",
+      "headSHA": "414cec85e769041aae8337c1dbc48a1e0923eef8",
+      "evidence": "Removes @deprecated editor annotation while adjacent comment recommends canonical import.",
+      "decision": "Do not take absent policy change."
+    }
+  ],
+  "unverifiedRemainder": {
+    "note": "Not every diff was line-by-line reviewed. CI status recorded for all. No workflow run returned means unverified, never PASS.",
+    "details": [
+      "#233-#229 and #226 latest workflow failed; exact failure causes not all inspected.",
+      "#167-#142 had no workflow run returned; mostly stale duplicates.",
+      "#185/#186 fail on existing X-ASR contract tests; #186 is zero-diff.",
+      "Performance claims for copy/FFT were not independently reproduced.",
+      "Demos has no open PRs."
+    ]
+  },
+  "remoteActions": "None"
+}

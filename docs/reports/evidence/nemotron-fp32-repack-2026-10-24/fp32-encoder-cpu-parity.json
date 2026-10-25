@@ -1,0 +1,263 @@
+{
+  "generatedAt": "2026-10-24T16:16:10.906340+00:00",
+  "purpose": "CPU-only Nemotron encoder/cache graph equivalence; not ASR transcript/model parity",
+  "providersRequested": [
+    "CPUExecutionProvider"
+  ],
+  "threads": {
+    "intraOp": 2,
+    "interOp": 2
+  },
+  "optimizationForParity": "ORT_DISABLE_ALL",
+  "original": "N:\\models\\onnx\\nemo\\nemotron-3.5-asr-streaming-fp32-nemo\\encoder.onnx",
+  "candidate": "N:\\github\\asrjs\\speech-recognition\\tmp\\nemotron-fp32-repack-20261024\\encoder-packed\\encoder.onnx",
+  "frozenFeatureFile": "N:\\github\\asrjs\\speech-recognition\\tools\\data\\results\\nemotron\\nemotron-3.5-nemo-features-jfk.json",
+  "artifacts": {
+    "originalGraphSha256": "58cf678d66c7c36461e204861dd59e4eea01a0c3c0805dd9e0ae004bd5ef53f3",
+    "candidateGraphSha256": "03d6cd3d33434133534e94d7954db40a9a318c6039d3761763ccbb839a94264e",
+    "frozenFeatureFileSha256": "a9baad993ed7ec123446fecc98e4df4bcf67a5a3c392c90eb5ad8021a3476c52",
+    "onnxruntimeVersion": "1.23.2"
+  },
+  "featureInput": {
+    "sourceFixture": "tools/data/fixtures/audio/jfk-short.wav",
+    "sourceFeatureShapeMetadata": [
+      1100,
+      1101
+    ],
+    "actualFeatureShapeBinsMajor": [
+      128,
+      1101
+    ],
+    "feedShape": [
+      1,
+      65,
+      128
+    ],
+    "frames": 65,
+    "continuationFrames": 65,
+    "cacheState": "zero initialized using current executor cache dimensions [1,24,56,1024] and [1,24,1024,8]",
+    "promptId": 0
+  },
+  "inputNames": [
+    "audio_signal",
+    "length",
+    "cache_last_channel",
+    "cache_last_time",
+    "cache_last_channel_len",
+    "lang_id"
+  ],
+  "feedShapes": {
+    "audio_signal": [
+      1,
+      65,
+      128
+    ],
+    "length": [
+      1
+    ],
+    "cache_last_channel": [
+      1,
+      24,
+      56,
+      1024
+    ],
+    "cache_last_time": [
+      1,
+      24,
+      1024,
+      8
+    ],
+    "cache_last_channel_len": [
+      1
+    ],
+    "lang_id": [
+      1
+    ]
+  },
+  "comparison": {
+    "firstChunk": {
+      "outputCount": 5,
+      "allShapesEqual": true,
+      "allArrayEqual": true,
+      "allcloseAtol1e6Rtol1e6": true,
+      "outputs": [
+        {
+          "name": "outputs",
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 0.43983548879623413,
+          "candidateMaxAbs": 0.43983548879623413,
+          "baselineNonzeroCount": 7168,
+          "candidateNonzeroCount": 7168,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "encoded_lengths",
+          "shape": [
+            1
+          ],
+          "dtype": "int64",
+          "baselineMaxAbs": 7.0,
+          "candidateMaxAbs": 7.0,
+          "baselineNonzeroCount": 1,
+          "candidateNonzeroCount": 1,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_channel_next",
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 1.1166589260101318,
+          "candidateMaxAbs": 1.1166589260101318,
+          "baselineNonzeroCount": 172032,
+          "candidateNonzeroCount": 172032,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_time_next",
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 60.06917953491211,
+          "candidateMaxAbs": 60.06917953491211,
+          "baselineNonzeroCount": 171999,
+          "candidateNonzeroCount": 171999,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_channel_len_next",
+          "shape": [
+            1
+          ],
+          "dtype": "int64",
+          "baselineMaxAbs": 7.0,
+          "candidateMaxAbs": 7.0,
+          "baselineNonzeroCount": 1,
+          "candidateNonzeroCount": 1,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        }
+      ]
+    },
+    "continuationWithReturnedCaches": {
+      "outputCount": 5,
+      "allShapesEqual": true,
+      "allArrayEqual": true,
+      "allcloseAtol1e6Rtol1e6": true,
+      "outputs": [
+        {
+          "name": "outputs",
+          "shape": [
+            1,
+            7,
+            1024
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 0.7626140713691711,
+          "candidateMaxAbs": 0.7626140713691711,
+          "baselineNonzeroCount": 7168,
+          "candidateNonzeroCount": 7168,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "encoded_lengths",
+          "shape": [
+            1
+          ],
+          "dtype": "int64",
+          "baselineMaxAbs": 7.0,
+          "candidateMaxAbs": 7.0,
+          "baselineNonzeroCount": 1,
+          "candidateNonzeroCount": 1,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_channel_next",
+          "shape": [
+            1,
+            24,
+            56,
+            1024
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 1.1166589260101318,
+          "candidateMaxAbs": 1.1166589260101318,
+          "baselineNonzeroCount": 344064,
+          "candidateNonzeroCount": 344064,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_time_next",
+          "shape": [
+            1,
+            24,
+            1024,
+            8
+          ],
+          "dtype": "float32",
+          "baselineMaxAbs": 75.38264465332031,
+          "candidateMaxAbs": 75.38264465332031,
+          "baselineNonzeroCount": 196409,
+          "candidateNonzeroCount": 196409,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        },
+        {
+          "name": "cache_last_channel_len_next",
+          "shape": [
+            1
+          ],
+          "dtype": "int64",
+          "baselineMaxAbs": 14.0,
+          "candidateMaxAbs": 14.0,
+          "baselineNonzeroCount": 1,
+          "candidateNonzeroCount": 1,
+          "maxAbs": 0.0,
+          "meanAbs": 0.0,
+          "arrayEqual": true,
+          "allcloseAtol1e6Rtol1e6": true
+        }
+      ]
+    },
+    "allArrayEqual": true
+  },
+  "status": "PASS_GRAPH_EQUIVALENCE_ONLY"
+}

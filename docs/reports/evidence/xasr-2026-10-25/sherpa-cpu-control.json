@@ -1,0 +1,693 @@
+{
+  "schemaVersion": 1,
+  "status": "OFFICIAL_SHERPA_CPU_CONTROL_COMPLETED_NOT_RUNTIME_PASS",
+  "scope": "Project-documented sherpa-onnx OnlineRecognizer.from_transducer CPU path on exact captured X-ASR float32 PCM. Each VAD segment uses a fresh stateful stream, receives 160ms chunks, then input_finished() and ready-drain exactly as the official reference runner; results joined in ascending requestId. This is a reference behavior control for the official graphs, not a numerical WebGPU parity test or microphone-flow PASS.",
+  "source": {
+    "modelDir": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model",
+    "sherpaOnnxVersion": "1.13.6",
+    "sherpaOnnxModule": "N:\\github\\salute-developers\\GigaAM\\.venv\\Lib\\site-packages\\sherpa_onnx\\__init__.py",
+    "python": "3.11.4 (tags/v3.11.4:d2340ef, Jun  7 2023, 05:45:37) [MSC v.1934 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "provider": "cpu",
+    "modelType": "zipformer2",
+    "decodingMethod": "greedy_search",
+    "enableEndpointDetection": false,
+    "sampleRate": 16000,
+    "featureDim": 80,
+    "chunkMs": 160,
+    "chunkSamples": 2560,
+    "files": {
+      "encoder": {
+        "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\encoder-160ms.onnx",
+        "sizeBytes": 592967053,
+        "sha256": "821a1dfb9027915ca014080abfa658346be0e2d0bf8b2027f0b6dd29fffe0c4b"
+      },
+      "decoder": {
+        "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\decoder-160ms.onnx",
+        "sizeBytes": 11309084,
+        "sha256": "3658368d274a5d5fd39a7ac20c46bed0ad9cfea1f0feddef30d5d89797c1f499"
+      },
+      "joiner": {
+        "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\joiner-160ms.onnx",
+        "sizeBytes": 10260467,
+        "sha256": "03781c98165a2385024c9cecdd2b6b13310d81db23a62c7da420782c2915cf81"
+      },
+      "tokens": {
+        "path": "N:\\models\\x-asr\\zh-en\\chunk-160ms-model\\tokens.txt",
+        "sizeBytes": 58806,
+        "sha256": "b818a60878b9aae978cbb8ad594acbd403d76d1af2e31ef4197c84e2dbdba27c"
+      }
+    }
+  },
+  "originalFixture": {
+    "path": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+    "fileSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "frames": 176000,
+    "durationSeconds": 11.0,
+    "pcmFloat32LeSha256": "ebd52851100536db02d12c49fddd010372dcdc70243562e057553d476b706ae0",
+    "rms": 0.14210149014087825,
+    "peakAbs": 0.78271484375,
+    "exactZeroFraction": 0.005255681818181818,
+    "sherpa": {
+      "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+      "partials": [
+        {
+          "offsetSamples": 5120,
+          "text": ""
+        },
+        {
+          "offsetSamples": 17920,
+          "text": "And"
+        },
+        {
+          "offsetSamples": 25600,
+          "text": "And so"
+        },
+        {
+          "offsetSamples": 28160,
+          "text": "And so my"
+        },
+        {
+          "offsetSamples": 30720,
+          "text": "And so my fe"
+        },
+        {
+          "offsetSamples": 33280,
+          "text": "And so my fellow"
+        },
+        {
+          "offsetSamples": 38400,
+          "text": "And so my fellow american"
+        },
+        {
+          "offsetSamples": 53760,
+          "text": "And so my fellow americans"
+        },
+        {
+          "offsetSamples": 71680,
+          "text": "And so my fellow americans ask"
+        },
+        {
+          "offsetSamples": 84480,
+          "text": "And so my fellow americans ask not"
+        },
+        {
+          "offsetSamples": 97280,
+          "text": "And so my fellow americans ask not what"
+        },
+        {
+          "offsetSamples": 104960,
+          "text": "And so my fellow americans ask not what your"
+        },
+        {
+          "offsetSamples": 110080,
+          "text": "And so my fellow americans ask not what your country"
+        },
+        {
+          "offsetSamples": 115200,
+          "text": "And so my fellow americans ask not what your country can"
+        },
+        {
+          "offsetSamples": 120320,
+          "text": "And so my fellow americans ask not what your country can do"
+        },
+        {
+          "offsetSamples": 122880,
+          "text": "And so my fellow americans ask not what your country can do for"
+        },
+        {
+          "offsetSamples": 130560,
+          "text": "And so my fellow americans ask not what your country can do for you"
+        },
+        {
+          "offsetSamples": 145920,
+          "text": "And so my fellow americans ask not what your country can do for you ask"
+        },
+        {
+          "offsetSamples": 151040,
+          "text": "And so my fellow americans ask not what your country can do for you ask what"
+        },
+        {
+          "offsetSamples": 153600,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you"
+        },
+        {
+          "offsetSamples": 158720,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you can"
+        },
+        {
+          "offsetSamples": 161280,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you can do"
+        },
+        {
+          "offsetSamples": 163840,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you can do for"
+        },
+        {
+          "offsetSamples": 168960,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your"
+        },
+        {
+          "offsetSamples": 174080,
+          "text": "And so my fellow americans ask not what your country can do for you ask what you can do for your country"
+        }
+      ],
+      "decodeSeconds": 5.6757
+    }
+  },
+  "flows": [
+    {
+      "flow": "mic-manual-manual-none",
+      "browserTranscript": "And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country .",
+      "browserTranscriptBefore": "And so my fellow americans ask not what your country can do for you ask what you can do for your country",
+      "browserTranscriptAfter": "And so my fellow americans ask not what your country can do for you ask what you can do for your country And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country .",
+      "fullCapture": {
+        "requestId": 2,
+        "frames": 336128,
+        "durationSeconds": 21.008,
+        "pcmFloat32LeSha256": "2f74b35a26de186ad8027076db3970dc9f1fd15092c0863a9500d19e9cd50192",
+        "rms": 0.10264438990558915,
+        "peakAbs": 0.7821043133735657,
+        "exactZeroFraction": 0.4782791079588728,
+        "sherpa": {
+          "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do for your country.",
+          "partials": [
+            {
+              "offsetSamples": 5120,
+              "text": ""
+            },
+            {
+              "offsetSamples": 94720,
+              "text": "And"
+            },
+            {
+              "offsetSamples": 102400,
+              "text": "And so"
+            },
+            {
+              "offsetSamples": 104960,
+              "text": "And so my"
+            },
+            {
+              "offsetSamples": 107520,
+              "text": "And so my f"
+            },
+            {
+              "offsetSamples": 110080,
+              "text": "And so my fell"
+            },
+            {
+              "offsetSamples": 112640,
+              "text": "And so my fellow"
+            },
+            {
+              "offsetSamples": 117760,
+              "text": "And so my fellow Am"
+            },
+            {
+              "offsetSamples": 120320,
+              "text": "And so my fellow Amer"
+            },
+            {
+              "offsetSamples": 122880,
+              "text": "And so my fellow Americ"
+            },
+            {
+              "offsetSamples": 125440,
+              "text": "And so my fellow American"
+            },
+            {
+              "offsetSamples": 130560,
+              "text": "And so my fellow Americans"
+            },
+            {
+              "offsetSamples": 151040,
+              "text": "And so my fellow Americans ask"
+            },
+            {
+              "offsetSamples": 161280,
+              "text": "And so my fellow Americans ask not"
+            },
+            {
+              "offsetSamples": 176640,
+              "text": "And so my fellow Americans ask not what"
+            },
+            {
+              "offsetSamples": 181760,
+              "text": "And so my fellow Americans ask not what your"
+            },
+            {
+              "offsetSamples": 189440,
+              "text": "And so my fellow Americans ask not what your country"
+            },
+            {
+              "offsetSamples": 192000,
+              "text": "And so my fellow Americans ask not what your country can"
+            },
+            {
+              "offsetSamples": 197120,
+              "text": "And so my fellow Americans ask not what your country can do"
+            },
+            {
+              "offsetSamples": 199680,
+              "text": "And so my fellow Americans ask not what your country can do for"
+            },
+            {
+              "offsetSamples": 207360,
+              "text": "And so my fellow Americans ask not what your country can do for you"
+            },
+            {
+              "offsetSamples": 220160,
+              "text": "And so my fellow Americans ask not what your country can do for you."
+            },
+            {
+              "offsetSamples": 222720,
+              "text": "And so my fellow Americans ask not what your country can do for you. As"
+            },
+            {
+              "offsetSamples": 225280,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask"
+            },
+            {
+              "offsetSamples": 230400,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what"
+            },
+            {
+              "offsetSamples": 232960,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you"
+            },
+            {
+              "offsetSamples": 235520,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can"
+            },
+            {
+              "offsetSamples": 238080,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do"
+            },
+            {
+              "offsetSamples": 243200,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do for"
+            },
+            {
+              "offsetSamples": 245760,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do for your"
+            },
+            {
+              "offsetSamples": 248320,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do for your country"
+            },
+            {
+              "offsetSamples": 258560,
+              "text": "And so my fellow Americans ask not what your country can do for you. Ask what you can do for your country."
+            }
+          ],
+          "decodeSeconds": 10.2595
+        }
+      }
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "browserTranscript": "And so my fellow Am Watch your country can do for you Ask what you can do for your country",
+      "browserTranscriptBefore": "And so my fellow americans ask not what your country can do for you ask what you can do for your country And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country . And so my fellow Amer Ask Watch our country can do for you Ask what you can do for your country",
+      "browserTranscriptAfter": "And so my fellow americans ask not what your country can do for you ask what you can do for your country And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country . And so my fellow Amer Ask Watch our country can do for you Ask what you can do for your country And so my fellow Am Watch your country can do for you Ask what you can do for your country",
+      "segments": [
+        {
+          "requestId": 7,
+          "frames": 33600,
+          "durationSeconds": 2.1,
+          "pcmFloat32LeSha256": "9de9f9af18f1ee0563ca34c4e13ef7bb14827ad3720d3725a9cb21c25822656d",
+          "rms": 0.21515031424304248,
+          "peakAbs": 0.7821043133735657,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "And so my fellow A",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 15360,
+                "text": "And"
+              },
+              {
+                "offsetSamples": 17920,
+                "text": "And so"
+              },
+              {
+                "offsetSamples": 23040,
+                "text": "And so my"
+              },
+              {
+                "offsetSamples": 25600,
+                "text": "And so my f"
+              },
+              {
+                "offsetSamples": 28160,
+                "text": "And so my fell"
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "And so my fellow"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "And so my fellow A"
+              }
+            ],
+            "decodeSeconds": 0.8801
+          }
+        },
+        {
+          "requestId": 8,
+          "frames": 26112,
+          "durationSeconds": 1.632,
+          "pcmFloat32LeSha256": "8b61f08094933eed38bc2c549d2322f52f2b0a80a3e5fc05451b26782be8d557",
+          "rms": 0.11518194454391319,
+          "peakAbs": 0.6621716022491455,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              }
+            ],
+            "decodeSeconds": 0.7549
+          }
+        },
+        {
+          "requestId": 9,
+          "frames": 8704,
+          "durationSeconds": 0.544,
+          "pcmFloat32LeSha256": "6e1941da6f8b2f6765b98c4899b8289b8df24d57420eac05dd0ea8b2f5505337",
+          "rms": 0.1764802485009313,
+          "peakAbs": 0.679440975189209,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              }
+            ],
+            "decodeSeconds": 0.1462
+          }
+        },
+        {
+          "requestId": 10,
+          "frames": 54272,
+          "durationSeconds": 3.392,
+          "pcmFloat32LeSha256": "5e6d31dcd77053277157151d2ca61401ef8b2f22cced5b5b26f2fc09028a503e",
+          "rms": 0.11896576398953036,
+          "peakAbs": 0.7225769758224487,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "What's your country can do for",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "What"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "What's"
+              },
+              {
+                "offsetSamples": 35840,
+                "text": "What's your"
+              },
+              {
+                "offsetSamples": 40960,
+                "text": "What's your country"
+              },
+              {
+                "offsetSamples": 46080,
+                "text": "What's your country can"
+              },
+              {
+                "offsetSamples": 48640,
+                "text": "What's your country can do"
+              },
+              {
+                "offsetSamples": 51200,
+                "text": "What's your country can do for"
+              }
+            ],
+            "decodeSeconds": 1.4688
+          }
+        },
+        {
+          "requestId": 11,
+          "frames": 49408,
+          "durationSeconds": 3.088,
+          "pcmFloat32LeSha256": "f33791801b983f09e5ae7d8fe0ff4c1a32253bf56346999f3c78162afb3814d9",
+          "rms": 0.10945453353152859,
+          "peakAbs": 0.6869133710861206,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "Ask what you can do for your",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 20480,
+                "text": "As"
+              },
+              {
+                "offsetSamples": 23040,
+                "text": "Ask"
+              },
+              {
+                "offsetSamples": 28160,
+                "text": "Ask what"
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "Ask what you"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "Ask what you can"
+              },
+              {
+                "offsetSamples": 38400,
+                "text": "Ask what you can do"
+              },
+              {
+                "offsetSamples": 40960,
+                "text": "Ask what you can do for"
+              },
+              {
+                "offsetSamples": 43520,
+                "text": "Ask what you can do for your"
+              }
+            ],
+            "decodeSeconds": 1.3199
+          }
+        }
+      ],
+      "sherpaJoinedInRequestOrder": "And so my fellow A What's your country can do for Ask what you can do for your",
+      "sherpaJoinedMatchesBrowserTranscript": false
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "browserTranscript": "And so my fellow Amer Ask Watch our country can do for you Ask what you can do for your country",
+      "browserTranscriptBefore": "And so my fellow americans ask not what your country can do for you ask what you can do for your country And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country .",
+      "browserTranscriptAfter": "And so my fellow americans ask not what your country can do for you ask what you can do for your country And so my fellow Americans ask not what your country can do for you . Ask what you can do for your country . And so my fellow Amer Ask Watch our country can do for you Ask what you can do for your country",
+      "segments": [
+        {
+          "requestId": 3,
+          "frames": 36096,
+          "durationSeconds": 2.256,
+          "pcmFloat32LeSha256": "508dde4a37338a2adcf4596f5cfdcc6b3ef4457a2b20d3d670c8130eb5164584",
+          "rms": 0.20710823644786427,
+          "peakAbs": 0.7821043133735657,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "And so my fellow Am",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 15360,
+                "text": "And"
+              },
+              {
+                "offsetSamples": 17920,
+                "text": "And so"
+              },
+              {
+                "offsetSamples": 23040,
+                "text": "And so my"
+              },
+              {
+                "offsetSamples": 25600,
+                "text": "And so my fe"
+              },
+              {
+                "offsetSamples": 28160,
+                "text": "And so my fell"
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "And so my fellow"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "And so my fellow A"
+              },
+              {
+                "offsetSamples": 35840,
+                "text": "And so my fellow Am"
+              }
+            ],
+            "decodeSeconds": 0.9884
+          }
+        },
+        {
+          "requestId": 4,
+          "frames": 33536,
+          "durationSeconds": 2.096,
+          "pcmFloat32LeSha256": "bff76a34c0b7d09a44d19a6d0ef3b22dec303bdaa3d8ba001bb8446f87dd19b0",
+          "rms": 0.13566328239695252,
+          "peakAbs": 0.679440975189209,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "Ask",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "As"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "Ask"
+              }
+            ],
+            "decodeSeconds": 0.9639
+          }
+        },
+        {
+          "requestId": 5,
+          "frames": 52480,
+          "durationSeconds": 3.28,
+          "pcmFloat32LeSha256": "8d2ea0709144d9847e9d0aec2d3650833fbfc812b2aebcb5943646193b045a96",
+          "rms": 0.12096557507993533,
+          "peakAbs": 0.7225769758224487,
+          "exactZeroFraction": 0.0,
+          "sherpa": {
+            "text": "Watch our country can do for",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 25600,
+                "text": "Wa"
+              },
+              {
+                "offsetSamples": 28160,
+                "text": "Watch"
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "Watch our"
+              },
+              {
+                "offsetSamples": 38400,
+                "text": "Watch our country"
+              },
+              {
+                "offsetSamples": 40960,
+                "text": "Watch our country can"
+              },
+              {
+                "offsetSamples": 46080,
+                "text": "Watch our country can do"
+              },
+              {
+                "offsetSamples": 48640,
+                "text": "Watch our country can do for"
+              }
+            ],
+            "decodeSeconds": 1.4446
+          }
+        },
+        {
+          "requestId": 6,
+          "frames": 55296,
+          "durationSeconds": 3.456,
+          "pcmFloat32LeSha256": "d2b699bf83d87f12e755ef563a8630985519a82d5ac43e75c6598197196008c3",
+          "rms": 0.10405926192578618,
+          "peakAbs": 0.6869133710861206,
+          "exactZeroFraction": 0.06248191550925926,
+          "sherpa": {
+            "text": "Ask what you can do for your country",
+            "partials": [
+              {
+                "offsetSamples": 5120,
+                "text": ""
+              },
+              {
+                "offsetSamples": 20480,
+                "text": "As"
+              },
+              {
+                "offsetSamples": 23040,
+                "text": "Ask"
+              },
+              {
+                "offsetSamples": 28160,
+                "text": "Ask what"
+              },
+              {
+                "offsetSamples": 30720,
+                "text": "Ask what you"
+              },
+              {
+                "offsetSamples": 33280,
+                "text": "Ask what you can"
+              },
+              {
+                "offsetSamples": 38400,
+                "text": "Ask what you can do"
+              },
+              {
+                "offsetSamples": 40960,
+                "text": "Ask what you can do for"
+              },
+              {
+                "offsetSamples": 43520,
+                "text": "Ask what you can do for your"
+              },
+              {
+                "offsetSamples": 51200,
+                "text": "Ask what you can do for your country"
+              }
+            ],
+            "decodeSeconds": 1.4932
+          }
+        }
+      ],
+      "sherpaJoinedInRequestOrder": "And so my fellow Am Ask Watch our country can do for Ask what you can do for your country",
+      "sherpaJoinedMatchesBrowserTranscript": false
+    }
+  ],
+  "elapsedSeconds": 27.448
+}

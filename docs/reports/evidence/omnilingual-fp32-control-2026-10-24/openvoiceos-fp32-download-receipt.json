@@ -1,0 +1,12 @@
+{
+  "url": "https://huggingface.co/OpenVoiceOS/omnilingual-asr-ctc-300m-onnx/resolve/bc55e1de19af8a907b0a010d06fc4637a2d5bf0c/model.onnx",
+  "anonymous": true,
+  "status": 200,
+  "final_host": "us.aws.cdn.hf.co",
+  "bytes": 1304579963,
+  "expected_bytes": 1304579963,
+  "sha256": "32432a0afa53180d08553de33baec1a36a43141bded193a26bcf2bed0bcd9c13",
+  "expected_sha256": "32432a0afa53180d08553de33baec1a36a43141bded193a26bcf2bed0bcd9c13",
+  "verified": true,
+  "elapsed_seconds": 55.74
+}

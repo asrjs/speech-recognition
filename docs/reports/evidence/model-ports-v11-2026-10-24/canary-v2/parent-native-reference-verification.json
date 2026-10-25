@@ -1,0 +1,16 @@
+{
+  "referenceSha256": "81d377b00175dbc960879cf2858c1fc7285f3170000738326bece69b0bc31356",
+  "manualText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "nativeText": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "manualTokenCount": 32,
+  "nativeTokenCount": 31,
+  "rawTokenIdsEqual": false,
+  "oneTerminalEosOnlyDifference": true,
+  "contentTokenPiecesEqual": true,
+  "canonicalNormalizedTextMatch": true,
+  "waveformKeys": [
+    "dims",
+    "data"
+  ],
+  "scope": "CPU native-reference text and content-ID checks; terminal EOS policy differs; not ONNX/browser acceptance"
+}

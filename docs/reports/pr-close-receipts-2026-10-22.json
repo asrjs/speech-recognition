@@ -1,0 +1,42 @@
+[
+  {
+    "number": 211,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#211 (Bolt: Add fast-path to array concatenation loops for single chunks)\n"
+  },
+  {
+    "number": 209,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#209 (Bolt: Optimize single-chunk stream buffering in UrlAssetHandle)\n"
+  },
+  {
+    "number": 207,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#207 (Bolt: optimize UrlAssetHandle stream cache copying)\n"
+  },
+  {
+    "number": 202,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#202 (Bolt: improve type safety in production whisper pipeline output)\n"
+  },
+  {
+    "number": 199,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#199 (Bolt: Optimize cache chunk allocation for UrlAssetHandle)\n"
+  },
+  {
+    "number": 193,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#193 (Bolt: optimize chunk allocations and remove redundant async closures)\n"
+  },
+  {
+    "number": 186,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#186 (Code health: remove unused import type OrtModuleLike in nemo-tdt executor)\n"
+  },
+  {
+    "number": 145,
+    "exit": 0,
+    "output": "\u2713 Closed pull request asrjs/speech-recognition#145 ([Performance] Replace synchronous file I/O with async in local model loading)\n"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "flow": "mic-manual-manual-none",
+  "requestId": 2,
+  "sampleRate": 16000,
+  "frames": 327936,
+  "pcmFormat": "mono-float32-little-endian",
+  "pcmBytes": 1311744,
+  "pcmSha256": "43ac2143b17cb7f3f97346cc95b3fd8b7db0b8e5a846724dca8b9c9c1d4d4e66",
+  "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+  "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.f32le"
+}

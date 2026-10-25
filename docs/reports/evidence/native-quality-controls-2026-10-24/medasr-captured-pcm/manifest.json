@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "scope": "MedASR native CPU controls on the exact float32 mono PCM buffers sent by the Realtime WASM demo; no PCM payloads included",
+  "retryRoot": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime",
+  "initialAttemptRoot": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture\\realtime",
+  "fixture": {
+    "sha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+    "expectedSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+    "physicalMicrophone": "UNVERIFIED; controlled Chromium fake audio"
+  },
+  "nativeControl": {
+    "sourcePath": "mic-pcm-capture/native-ort-captured-pcm.json",
+    "provider": "onnxruntime-node CPUExecutionProvider",
+    "modelDir": "N:/github/ysdede/medasr.js/medasr-onnx",
+    "outputs": 8
+  },
+  "captures": [
+    {
+      "flow": "mic-manual-manual-none",
+      "requestId": 2,
+      "sampleRate": 16000,
+      "frames": 327936,
+      "bytes": 1311744,
+      "sha256": "43ac2143b17cb7f3f97346cc95b3fd8b7db0b8e5a846724dca8b9c9c1d4d4e66",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-manual-manual-none-request-2.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-manual-manual-none-request-2.f32le",
+      "audioCopied": false,
+      "nativeControlText": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+      "nativeFrameCount": 509,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "requestId": 6,
+      "sampleRate": 16000,
+      "frames": 77152,
+      "bytes": 308608,
+      "sha256": "5da3151cfed7ed64d3ead5d2cf8293f087277be263bb21b308b28522be2f93f0",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-6.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-firered-vad-request-6.f32le",
+      "audioCopied": false,
+      "nativeControlText": "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces.",
+      "nativeFrameCount": 117,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "requestId": 7,
+      "sampleRate": 16000,
+      "frames": 17152,
+      "bytes": 68608,
+      "sha256": "8c11b3ac03e1b15cff05789c51cbbf4a95ea2185d148f33e844f9283451976cc",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-7.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-firered-vad-request-7.f32le",
+      "audioCopied": false,
+      "nativeControlText": "s of the patella{ep}",
+      "nativeFrameCount": 24,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "requestId": 8,
+      "sampleRate": 16000,
+      "frames": 14336,
+      "bytes": 57344,
+      "sha256": "349859cd821f330fdf8105134c2c6463f77932537ea61c21dd78db2023c0de5b",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-8.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-firered-vad-request-8.f32le",
+      "audioCopied": false,
+      "nativeControlText": "appear normal.",
+      "nativeFrameCount": 19,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-firered-vad",
+      "requestId": 9,
+      "sampleRate": 16000,
+      "frames": 55040,
+      "bytes": 220160,
+      "sha256": "2a0d52c753331a4a644d568c9e577cb610cbc823aba2d2d9e09547b5f8fe3cb3",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-9.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-firered-vad-request-9.f32le",
+      "audioCopied": false,
+      "nativeControlText": "No abnormalities are noted in the popliteal fossa.",
+      "nativeFrameCount": 83,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "requestId": 3,
+      "sampleRate": 16000,
+      "frames": 76544,
+      "bytes": 306176,
+      "sha256": "b714dfafbdc0b06ff61c6f9b60cc6e0bcc9fdf922d7878a5e40628a0385afa79",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-3.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-3.f32le",
+      "audioCopied": false,
+      "nativeControlText": "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces.",
+      "nativeFrameCount": 116,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "requestId": 4,
+      "sampleRate": 16000,
+      "frames": 29696,
+      "bytes": 118784,
+      "sha256": "ec2dbbbd7b185b2653332c59dfc42ecbdac64f6e847b736c27134ed87bf3163e",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-4.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-4.f32le",
+      "audioCopied": false,
+      "nativeControlText": "s of the patella appear normal.",
+      "nativeFrameCount": 43,
+      "nativeVocabSize": 512
+    },
+    {
+      "flow": "mic-speech-detect-vad-only-ten-vad",
+      "requestId": 5,
+      "sampleRate": 16000,
+      "frames": 56832,
+      "bytes": 227328,
+      "sha256": "a5f571906b20c7f608273c31b625d59c62221045a94fda1416dc2877b7bbe9a9",
+      "pcmFormat": "mono-float32-little-endian",
+      "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+      "metadataReceipt": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-5.json",
+      "pcmOriginalPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-5.f32le",
+      "audioCopied": false,
+      "nativeControlText": "No abnormalities are noted in the popliteal fossa.",
+      "nativeFrameCount": 86,
+      "nativeVocabSize": 512
+    }
+  ],
+  "comparison": {
+    "manual": {
+      "browserStatus": "PASS_CONTROLLED_MIC",
+      "browserTranscriptStatus": "EXACT",
+      "browserTranscript": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+      "nativeTranscript": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+      "sameTranscript": true
+    },
+    "tenVad": {
+      "browserStatus": "FAIL",
+      "browserTranscriptStatus": "MISMATCH",
+      "browserTranscript": "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces. s of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+      "nativePerChunk": [
+        "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces.",
+        "s of the patella appear normal.",
+        "No abnormalities are noted in the popliteal fossa."
+      ],
+      "normalizedWordSequenceMatches": true,
+      "quality": "FAIL; first word and suffix are lost across chunk boundary"
+    },
+    "fireRedVad": {
+      "browserStatus": "FAIL",
+      "browserTranscriptStatus": "MISMATCH",
+      "browserTranscript": "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces. s of the patella {ep} appear normal. No abnormalities are noted in the popliteal fossa.",
+      "nativePerChunk": [
+        "articular cartilage of the femoral trochlea and the medial and lateral articular surfaces.",
+        "s of the patella{ep}",
+        "appear normal.",
+        "No abnormalities are noted in the popliteal fossa."
+      ],
+      "normalizedWordSequenceMatches": true,
+      "quality": "FAIL; first word and suffix are lost across chunk boundaries; native control token spacing differs"
+    }
+  },
+  "initialAttempt": {
+    "status": "INVALID_FAILED_CAPTURE_ATTEMPT_PRESERVED_SEPARATELY",
+    "overallStatus": "FAIL",
+    "detail": "The first directory is an invalid/incomplete capture run retained separately: the file receipt reports a browser console verification error, and the three mic receipts time out before accepted captures. It contains no PCM capture metadata or native crop outputs and is not used for the retry comparisons.",
+    "files": [
+      "initial-failed-capture/file.json",
+      "initial-failed-capture/mic-manual-manual-none.json",
+      "initial-failed-capture/mic-speech-detect-vad-only-ten-vad.json",
+      "initial-failed-capture/mic-speech-detect-vad-only-firered-vad.json",
+      "initial-failed-capture/overall.json"
+    ],
+    "perFlow": {
+      "file.json": {
+        "status": "FAIL",
+        "runtimeStatus": "EXECUTED",
+        "transcriptStatus": "EXACT",
+        "activeStage": "file-flow-running",
+        "verificationErrors": [
+          "Browser console errors present"
+        ],
+        "error": null
+      },
+      "mic-manual-manual-none.json": {
+        "status": "FAIL",
+        "runtimeStatus": "FAIL",
+        "transcriptStatus": "UNVERIFIED",
+        "activeStage": "mic-capture-running",
+        "verificationErrors": null,
+        "error": "Page.wait_for_function: Timeout 180000ms exceeded."
+      },
+      "mic-speech-detect-vad-only-ten-vad.json": {
+        "status": "FAIL",
+        "runtimeStatus": "FAIL",
+        "transcriptStatus": "UNVERIFIED",
+        "activeStage": null,
+        "verificationErrors": null,
+        "error": "Page.wait_for_function: Timeout 180000ms exceeded."
+      },
+      "mic-speech-detect-vad-only-firered-vad.json": {
+        "status": "FAIL",
+        "runtimeStatus": "FAIL",
+        "transcriptStatus": "UNVERIFIED",
+        "activeStage": null,
+        "verificationErrors": null,
+        "error": "Page.wait_for_function: Timeout 180000ms exceeded."
+      },
+      "overall.json": {
+        "status": "FAIL",
+        "runtimeStatus": null,
+        "transcriptStatus": null,
+        "activeStage": null,
+        "verificationErrors": null,
+        "error": null
+      }
+    }
+  },
+  "copiedJsonFiles": [
+    {
+      "path": "retry/native-ort-captured-pcm.json",
+      "source": "mic-pcm-capture/native-ort-captured-pcm.json",
+      "bytes": 6982,
+      "sha256": "d91a96ece917f77a22b4955e13ceb371b4fbdc59bcd8e5e0681c5a8de0b012ea"
+    },
+    {
+      "path": "retry/mic-manual-manual-none.json",
+      "source": "mic-manual-manual-none.json",
+      "bytes": 7187,
+      "sha256": "bb052c053a679412905e9d1b9b39cffb4fc60af5a4b421180e747371e204fc39"
+    },
+    {
+      "path": "retry/mic-speech-detect-vad-only-ten-vad.json",
+      "source": "mic-speech-detect-vad-only-ten-vad.json",
+      "bytes": 17064,
+      "sha256": "f4a707001979b7c21e871f913992b253e3446db375e0042c7219f673b3c1e941"
+    },
+    {
+      "path": "retry/mic-speech-detect-vad-only-firered-vad.json",
+      "source": "mic-speech-detect-vad-only-firered-vad.json",
+      "bytes": 23888,
+      "sha256": "5b78c823676a916df3d1a9c22fe01c7511cd24949d4b018532a4d60154f54c30"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-manual-manual-none-request-2.json",
+      "source": "mic-pcm-capture/mic-manual-manual-none-request-2.json",
+      "bytes": 554,
+      "sha256": "3de53b835acfa1709654197f48eb97e028aa3f69e51972c48647eefb34ff4ca6"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-6.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-6.json",
+      "bytes": 584,
+      "sha256": "a3eae7f7c8b5fad02e40538e238835418e3156a2627e6326045b99c348d8a6f8"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-7.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-7.json",
+      "bytes": 583,
+      "sha256": "c88a8e151ade38a277f73bd623a3c1c4f83ef0be66fadb80832d153ad892f2f8"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-8.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-8.json",
+      "bytes": 583,
+      "sha256": "d4357718f550b677ea6e29838b25818ed0015edaabfcd3f0a7e60bbd3ccf19df"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-9.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-firered-vad-request-9.json",
+      "bytes": 584,
+      "sha256": "271cdb66304f0151de4748a7601db8b2cf83bcfd36401d61e91ff0b7a2782503"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-3.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-3.json",
+      "bytes": 576,
+      "sha256": "1b771716babac5b84123d2aa3021a480b3b0b681a41a597c8b3317360e662c8b"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-4.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-4.json",
+      "bytes": 576,
+      "sha256": "1d47939f92180f4d5ba86a1e16c4253bf94ec727a02e7fc5d2c1cc3d51137bbe"
+    },
+    {
+      "path": "retry/mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-5.json",
+      "source": "mic-pcm-capture/mic-speech-detect-vad-only-ten-vad-request-5.json",
+      "bytes": 576,
+      "sha256": "163a4a26cf3cf9965de654945fcbe0b234f9e7b1cf3348e8150d5c8dbfc38223"
+    },
+    {
+      "path": "initial-failed-capture/file.json",
+      "source": "file.json",
+      "bytes": 11089,
+      "sha256": "298103e8aaaedc4536955fcd105532e69ba4c09d561fc003761251489dd55698"
+    },
+    {
+      "path": "initial-failed-capture/mic-manual-manual-none.json",
+      "source": "mic-manual-manual-none.json",
+      "bytes": 2177,
+      "sha256": "9a29c0efcb2a44b57cbe0b526d65453f2efd555a4db003307270bebf21a28bc1"
+    },
+    {
+      "path": "initial-failed-capture/mic-speech-detect-vad-only-ten-vad.json",
+      "source": "mic-speech-detect-vad-only-ten-vad.json",
+      "bytes": 1544,
+      "sha256": "e37bc04284c7799a7426340ff363a1a75bb299649bb65e8e5c0ae2e83ea287fe"
+    },
+    {
+      "path": "initial-failed-capture/mic-speech-detect-vad-only-firered-vad.json",
+      "source": "mic-speech-detect-vad-only-firered-vad.json",
+      "bytes": 1548,
+      "sha256": "00cd296158a46a6e5a194657b57715d49ea9fbb50cd41eea9e58352fc4f35bfd"
+    },
+    {
+      "path": "initial-failed-capture/overall.json",
+      "source": "overall.json",
+      "bytes": 1300,
+      "sha256": "f06e33bc60957b3e1ba6d5d2081d9e939cfd1bc756706fc2afd8bdb1eaecaf77"
+    }
+  ],
+  "excludedOriginalArtifacts": {
+    "pcmPayloads": "8 exact originals verified in place; none copied",
+    "otherAudio": "no WAV or other audio files copied",
+    "models": "no model weights copied",
+    "arrays": "no tensor arrays copied",
+    "profile": "no browser profile copied",
+    "screenshots": "no screenshots copied"
+  },
+  "validation": {
+    "json": "strict UTF-8 JSON; duplicate keys and NaN/Infinity rejected; each source <4,000,000 bytes",
+    "pcmFilesVerified": 8,
+    "pcmSha256AndDeclaredByteLengthMatch": true,
+    "nativeInputNamesAndFramesMatchCaptureMetadata": true,
+    "tenVadNativeWordsMatchBrowserSegments": true,
+    "fireRedNativeWordsMatchBrowserSegments": true,
+    "manualTranscriptExact": true,
+    "tenVadAndFireRedAcceptance": "FAIL"
+  }
+}

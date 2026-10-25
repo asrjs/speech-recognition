@@ -1,0 +1,76 @@
+{
+  "schema": "canary-1b-cpu-port-receipt/v1",
+  "checked": "2026-10-24",
+  "model": "nvidia/canary-1b",
+  "source": {
+    "revision": "5113160c7a3e52a7e5de1d904810d7aeabe6135b",
+    "url": "https://huggingface.co/nvidia/canary-1b/resolve/5113160c7a3e52a7e5de1d904810d7aeabe6135b/canary-1b.nemo",
+    "bytes": 4071127040,
+    "sha256": "b0284183a9a1e039a2fff39427e2991fa4df0b9612a3447fc33ff82b20fdfb5a",
+    "download": "anonymous streamed GET; exact size and SHA verified"
+  },
+  "bundle": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry",
+  "reference": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\native-reference-jfk2.json",
+  "verifier_command": "python verify_canary_onnx.py --model-dir C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry --reference C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-verifier-reference.json --output C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-verify.json",
+  "status": "PASS_GATED_COMPONENTS",
+  "scope": {
+    "kind": "nemo-aed-onnx-component-parity",
+    "preprocessor": "SKIPPED_REFERENCE_FEATURES",
+    "encoder": "CHECKED",
+    "decoder": "CHECKED",
+    "browser_runtime": "NOT_RUN"
+  },
+  "gates": {
+    "preprocessor_shape_and_lengths": "SKIPPED",
+    "encoder_shapes_lengths_and_mask": true,
+    "decoder_token_ids_and_text": true,
+    "numeric_differences": "MEASURED_NOT_GATED"
+  },
+  "files": [
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\canary-1b.nemo",
+      "bytes": 4071127040,
+      "sha256": "b0284183a9a1e039a2fff39427e2991fa4df0b9612a3447fc33ff82b20fdfb5a"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\native-reference-jfk2.json",
+      "bytes": 5919233,
+      "sha256": "3b31ab81d3805e92015fd1acf3d8a31b39c1d8c83014e92b91e41618d9b1b703"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-verifier-reference.json",
+      "bytes": 9159733,
+      "sha256": "4ec82e4894f5bfbd7415e5c92409281852e688b1d9e399afcffaddbc1737dfd0"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-verify.json",
+      "bytes": 2583,
+      "sha256": "2aac12c56058b12eabbdfbece1862d6debd082af22877d0365530f4ede958b3d"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry\\config.json",
+      "bytes": 1131,
+      "sha256": "c64e1ad80554436eb1a475257f796ed5becdadce80a1b7b83b32cfff94f67bb5"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry\\decoder-model.onnx",
+      "bytes": 1649466511,
+      "sha256": "1f383ae2c422b2d6d1fcd8bcca9d3e4a73e2e034ea904529f7a55e215c8cfedf"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry\\encoder-model.onnx",
+      "bytes": 3037416,
+      "sha256": "4f5d345a5a1dd1924dbf04ed6663dffcbc2858362bb1384f85082f403e9359c1"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry\\encoder-model.onnx.data",
+      "bytes": 2476071936,
+      "sha256": "0072b872b63ddc6738cd90bfb224cb6e9261908b37a8a7805fa442fbed823028"
+    },
+    {
+      "path": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-1b-port-20261024\\onnx-fp32-retry\\tokenizer.json",
+      "bytes": 71560,
+      "sha256": "cfbfe38a3bdffc47021d0c64eec2aebeba6ff0b12ea9dafcc83386f458d27874"
+    }
+  ]
+}

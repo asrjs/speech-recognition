@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-24T17:26:37.660329+00:00",
+  "originalModule": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\nemotron-3.5-asr-streaming\\.venv\\Lib\\site-packages\\nemo\\collections\\asr\\parts\\utils\\streaming_utils.py",
+  "originalSha256": "a006e38e763080cb013d3c3e210dfcacb1f48dc0dd3c8bc498738c4b11b8734a",
+  "temporaryCompatModule": "C:\\Users\\steam\\AppData\\Local\\Temp\\nemotron-native-cpu-reference-20261024\\streaming_utils_py310_compat.py",
+  "temporarySha256": "d093cb4a41ca75632c8116378116cffeaeae635a34f9580061563c40230620f3",
+  "exactChange": {
+    "old": "shifted_indices = shifted_indices[..., *[None for _ in range(len(self.dim_shape))]]",
+    "new": "shifted_indices = shifted_indices[(Ellipsis,) + (None,) * len(self.dim_shape)]"
+  },
+  "pyCompile": "PASS",
+  "torchIndexEquivalence": [
+    {
+      "trailingAxes": 0,
+      "shape": [
+        2,
+        3
+      ],
+      "equal": true
+    },
+    {
+      "trailingAxes": 1,
+      "shape": [
+        2,
+        3,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "trailingAxes": 2,
+      "shape": [
+        2,
+        3,
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "trailingAxes": 3,
+      "shape": [
+        2,
+        3,
+        1,
+        1,
+        1
+      ],
+      "equal": true
+    }
+  ],
+  "originalUntouched": true
+}

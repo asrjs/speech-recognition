@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "app": "realtime",
+  "modelId": "google/medasr",
+  "source": "local",
+  "descriptorSources": [
+    "local"
+  ],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "wasm",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": "N:\\github\\ysdede\\medasr.js\\medasr-onnx",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.wav",
+  "fixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "expectedFixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "fixtureBytes": 334444,
+  "oracle": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal No abnormalities are noted in the popliteal fossa",
+  "status": "FAIL",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "EXACT",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[LocalFolder] Folder input fallback selected files {count: 81}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Parsing selected local folder entries… {count: 81, folderName: medasr-onnx}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Starting model load from local artifacts"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/28e01b75-c948-4686-9e18-ee10c48f9040"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/28e01b75-c948-4686-9e18-ee10c48f9040 3050ms"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Selected artifacts {encoder: model.onnx, decoder: model.onnx, tokenizer: tokens.txt, preprocessorBackend: js, preprocessor: null}"
+    },
+    {
+      "type": "log",
+      "text": "[LocalFolder] Model sessions created from local artifacts"
+    },
+    {
+      "type": "log",
+      "text": "[LoadModel] Running warm-up verification transcription"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Fetching audio from: /realtime/assets/Harvard-L2-1-B6X4PDwP.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[App] Model verification successful."
+    },
+    {
+      "type": "timeEnd",
+      "text": "LoadModel: 4117.236083984375 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session create start wasm blob:http://127.0.0.1:4190/4673e3d8-2d75-480f-80a4-07bde04a695e"
+    },
+    {
+      "type": "timeEnd",
+      "text": "Transcribe-sanity_sample.wav: 1423.2138671875 ms"
+    },
+    {
+      "type": "info",
+      "text": "[ort] session created wasm blob:http://127.0.0.1:4190/4673e3d8-2d75-480f-80a4-07bde04a695e 2576ms"
+    },
+    {
+      "type": "log",
+      "text": "[MicWorker] Ready {source: local, modelId: undefined, info: Object, selection: Object}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] enqueue {sourceLabel: microphone-stop-23:42:52, durationSeconds: 20.5, pending: 1, transcriber: worker}"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] start {sourceLabel: microphone-stop-23:42:52, durationSeconds: 20.5, pending: 0, transcriber: worker}"
+    },
+    {
+      "type": "error",
+      "text": "[Mic] Transcription failed: TypeError: window.__asrCaptureMicPcm is not a function\n    at window.Worker.postMessage (<anonymous>:58:38)\n    at http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:13134\n    at new Promise (<anonymous>)\n    at m (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:12608)\n    at Object.transcribeMonoPcm (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:13760)\n    at Rr (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:43889)\n    at http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:46568\n    at new Promise (<anonymous>)\n    at Kt (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:45593)\n    at transcribe (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:46908)"
+    },
+    {
+      "type": "debug",
+      "text": "[MicQueue] failed {sourceLabel: microphone-stop-23:42:52, pending: 0, error: window.__asrCaptureMicPcm is not a function}"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "[Mic] Transcription failed: TypeError: window.__asrCaptureMicPcm is not a function\n    at window.Worker.postMessage (<anonymous>:58:38)\n    at http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:13134\n    at new Promise (<anonymous>)\n    at m (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:12608)\n    at Object.transcribeMonoPcm (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:111:13760)\n    at Rr (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:43889)\n    at http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:46568\n    at new Promise (<anonymous>)\n    at Kt (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:45593)\n    at transcribe (http://127.0.0.1:4190/realtime/assets/index-BIINUfta.js:144:46908)"
+    }
+  ],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 0,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T23:42:19+0300",
+  "testBrowserProfile": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture\\chrome-profile",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "actualBackend": "wasm",
+  "activeStage": "file-flow-running",
+  "loadPageText": "A\nASRJS\nLive transcription\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nRealtime VAD Lab\nTranscript & Subtitles\ntune\nModel ready · wasm · Microphone idle\nLoad\nready\nmedasr-onnx\nLocal assets\nModel Loaded\nValidation\nInput language\nEnglish\nexpand_more\nLoad Sample\nupload_file\nDrop or click to transcribe\nModel Settings\nArtifact source\nHugging Face\nLocal folder\nexpand_more\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nexpand_more\nLocal folder\nmedasr-onnx\nfolder_open\nFiles: 81\nEncoder: fp32\nDecoder: fp32\nTokenizer: tokens.txt\nFrontend: none\nGoogle MedASR (Medical English)\nRuntime Settings\nRuntime backend\nWebGPU\nWASM\nexpand_more\nEncoder\nwebgpu\nwasm\nexpand_more\nDecoder\nwebgpu\nwasm\nexpand_more\nThreads\nStride\nPrompt Settings\nTokenizer\ntokens.txt\nexpand_more\nVerbose logging\nLog results\nEnable profiling\nCapture\n0.00\nSIG\n-100.0\nAVG\n-100.0\nGATE\n-21.9\nNOISE\n-46.0\nSEGS\n0/0\nAUDIO\n16000Hz\nBUF\n12.0s\nSNR\n0.00\nTHR\n3.00\nWAVEFORM\nidle · main\nRATE target 16000 Hz\n·\nCHUNK 16 ms/256f\n·\nWIN 12.00 s\n·\nSEG inactive\n·\nBUF 0/750 pad 750\n·\nPUB/PAINT 0/s 0/s\nMODE rough-only\n·\nRELEASE 400 ms\n·\nNOISE -46.0 dBFS\n·\nGATE -21.9 dBFS\n·\nFINAL GATE --\n·\nGATE LINES on\n·\nFIRERED on\n·\nSCALE physical\nWaveform display\nSurface\ncompact stats + waveform + footer metrics\nFull\nStats Only\nWaveform Only\nView\nraw amplitude\nPhysical\nFocus\nBalanced\nGate lines\nwaveform legend\nshow\nhide\nFireRed line\ndiagnostic only\nshow\nhide\nRMS\ndiagnostic\nhide\nshow\nFinal Acceptance\nDuration and normalized 16 kHz energy thresholds used after live segmentation.\nFinal segment gate\nrough-only\nenabled\ndisabled\nAcceptance preset\nUpdates the final segment acceptance thresholds together.\nOpen\nBalanced\nStrict\nCustom\nMin final duration\n240 ms\nMin power\n5.00\nMin integral\n22.00\nAdaptive noise-scaled acceptance controls.\nShow advanced\nDetector tuning\nPreset\nMedium\nMedium\nFast\nSlow\nCustom\nDefault mode\nmanual\nVAD backend\n10 ms hop / 20 ms visual\nFireRed VAD\nTEN-VAD\nGate mode\nrough-only\nRough only\nHybrid\nVAD only\nLive Segmenter\nPeak-energy speech trigger, smoothing, and silence release.\nEnergy threshold\n0.08\nAnalysis window\n80 ms\nEnergy smoothing\n480 ms\nSilence release\n400 ms\nMax segment\n4800 ms\nExtraction Timing\nLookback, overlap, and tail padding applied when a segment is extracted.\nLookback\n128 ms\nOverlap\n80 ms\nTail padding\n160 ms\nNoise Adaptation\nHow the baseline noise floor and onset backtracking adapt over time.\nInitial noise\n0.00500\nFast adapt\n0.15\nSlow adapt\n0.05\nBlend duration\n1.0 s\nSNR display gate\n3.00\nOnset SNR floor\n1.00\nRise threshold\n0.08\nMicrophone\n\nStart capture, switch mode, and send buffered speech.\n\nMode\nManual\nSpeech Detect\nStart Mic\nAdvanced\nMicrophone idle\nDetector readout\n\nLive rough-gate state, adaptive noise floor, and final segment energy metrics.\n\nLEVEL\n-100.0 dBFS\nwindow -100.0 dBFS\nNOISE FLOOR\n-46.0 dBFS\nconfirmed -46.0 dBFS · rejected -46.0 dBFS\nFINAL POWER\n--\nmin --\nFINAL INTEGRAL\n--\nmin --\nDETECTOR MODE\nrough-only\nreq rough-only\nFIRERED-VAD\n0.00\ndiagnostic only\nFILTER\narmed\nwaiting\nVAD BUFFER\nempty\nmax 0.00\nWarnings\nSpeech segmentation is running on the rough gate. FireRed VAD is diagnostics-only.\nDecisions\nNo decisions yet.\nSegments\nNo segments yet.\nTranscript & Word Alignment\nNo text yet.\nTOTAL\n--\nAwaiting result\nDECODE\n--\nAwaiting result\nCONFIDENCE\n--\nNo finished utterance\nQUEUE\nclear\nReady\nReference\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "google/medasr",
+  "transcript": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal. No abnormalities are noted in the popliteal fossa.",
+  "micFlowError": "Page.wait_for_function: Timeout 180000ms exceeded.",
+  "verificationErrors": [
+    "Browser console errors present"
+  ],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-24T23:45:52+0300"
+}

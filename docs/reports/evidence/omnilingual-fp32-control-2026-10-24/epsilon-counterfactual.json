@@ -1,0 +1,65 @@
+{
+  "scope": "Same Linux CPU ONNX Runtime 1.30 session and INT8 graph; controlled Torch normalization counterfactual only. Does not isolate cross-runtime SDK-versus-native differences.",
+  "runtime": {
+    "torch": "2.8.0+cpu",
+    "onnxruntime": "1.30.0",
+    "provider": "CPUExecutionProvider",
+    "intraOpThreads": 2
+  },
+  "source": {
+    "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "graphSha256": "38a6cc569d46eb382f27d85b3208b883e834ff281b2057a606ec79e4ae501545"
+  },
+  "waveforms": {
+    "official_meta": {
+      "sha256Float32LE": "ed1689e6d2515827b26aeb57f837915a6b34018693ea6df00d43adc6c0d6733d",
+      "mean": 7.033348126128658e-09,
+      "stdPopulation": 0.9997526407241821,
+      "min": -5.090773105621338,
+      "max": 5.506680011749268
+    },
+    "torch_layer_norm_eps_1e-5": {
+      "sha256Float32LE": "ed1689e6d2515827b26aeb57f837915a6b34018693ea6df00d43adc6c0d6733d",
+      "mean": 7.033348126128658e-09,
+      "stdPopulation": 0.9997526407241821,
+      "min": -5.090773105621338,
+      "max": 5.506680011749268
+    },
+    "torch_layer_norm_eps_1e-7": {
+      "sha256Float32LE": "3fc5629db0a1588a300ca77f0b910d33e279d7e41862442c8faa1df350cb6152",
+      "mean": 6.997449730761218e-09,
+      "stdPopulation": 0.999997615814209,
+      "min": -5.092020511627197,
+      "max": 5.508029460906982
+    }
+  },
+  "comparisons": {
+    "official_meta_vs_torch_layer_norm_eps_1e-5": {
+      "frameArgmaxAgreement": 1.0,
+      "changedFrames": [],
+      "changedFrameCount": 0,
+      "maxAbsLogitDiff": 0.0,
+      "meanAbsLogitDiff": 0.0
+    },
+    "official_meta_vs_torch_layer_norm_eps_1e-7": {
+      "frameArgmaxAgreement": 0.9963570127504554,
+      "changedFrames": [
+        65,
+        75
+      ],
+      "changedFrameCount": 2,
+      "maxAbsLogitDiff": 4.4431851506233215,
+      "meanAbsLogitDiff": 0.06867649002089186
+    },
+    "torch_layer_norm_eps_1e-5_vs_torch_layer_norm_eps_1e-7": {
+      "frameArgmaxAgreement": 0.9963570127504554,
+      "changedFrames": [
+        65,
+        75
+      ],
+      "changedFrameCount": 2,
+      "maxAbsLogitDiff": 4.4431851506233215,
+      "meanAbsLogitDiff": 0.06867649002089186
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "scope": "parent independent source/target payload and stripped graph IR equality; every target sidecar byte covered",
+  "graphs": [
+    {
+      "graph": "encoder_model.onnx",
+      "tensorCount": 1229,
+      "allTensorPayloadHashesEqual": true,
+      "strippedGraphIrSha256": "d93e9bba5ed11bb04b7354394d71fe2b3a7513d96382e9ab55094fad0d207af1",
+      "strippedGraphIrEqual": true,
+      "sidecars": [
+        {
+          "name": "encoder_model.onnx.data",
+          "bytes": 1273937920,
+          "allBytesSourceMatched": true
+        }
+      ]
+    },
+    {
+      "graph": "decoder_init.onnx",
+      "tensorCount": 2212,
+      "allTensorPayloadHashesEqual": true,
+      "strippedGraphIrSha256": "eb250a4bd6e867c8854a06d138860cfd707379b196934a72b7b082fa080a7b34",
+      "strippedGraphIrEqual": true,
+      "sidecars": [
+        {
+          "name": "decoder_init.onnx.data",
+          "bytes": 1945820160,
+          "allBytesSourceMatched": true
+        }
+      ]
+    },
+    {
+      "graph": "decoder_step.onnx",
+      "tensorCount": 1864,
+      "allTensorPayloadHashesEqual": true,
+      "strippedGraphIrSha256": "0b353e2a18305e001ae6fd2efb8b2d456084196c91e3ae9bffa224767ca7da52",
+      "strippedGraphIrEqual": true,
+      "sidecars": [
+        {
+          "name": "decoder_step.onnx.data",
+          "bytes": 1603246080,
+          "allBytesSourceMatched": true
+        }
+      ]
+    },
+    {
+      "graph": "decoder_align.onnx",
+      "tensorCount": 1852,
+      "allTensorPayloadHashesEqual": true,
+      "strippedGraphIrSha256": "565ce1938446f60300f2f6864483398575c5697f1032da1782775474834ba123",
+      "strippedGraphIrEqual": true,
+      "sidecars": [
+        {
+          "name": "decoder_align.onnx.data",
+          "bytes": 1465413120,
+          "allBytesSourceMatched": true
+        }
+      ]
+    }
+  ],
+  "gpuAcceptance": "separate v14 actual demo receipts",
+  "discardedFirstAttributeExternalCandidate": "INVALID; original candidate files/per-tensor evidence not retained"
+}

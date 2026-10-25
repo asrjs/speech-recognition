@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "app": "realtime",
+  "modelId": "google/medasr",
+  "source": "local",
+  "descriptorSources": [
+    "local"
+  ],
+  "sourceSelectionStatus": "UNVERIFIED",
+  "flow": "mic-speech-detect-vad-only-ten-vad",
+  "requestedBackend": "wasm",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": "N:\\github\\ysdede\\medasr.js\\medasr-onnx",
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tools\\model-debugging\\reference\\medasrjs\\upstream-tests\\fixtures\\sanity_sample.wav",
+  "fixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "expectedFixtureSha256": "719445c26e8e35d1dd9c61a3d49512ef4f3585f4cb3e873118bf14e66d07ab95",
+  "fixtureBytes": 334444,
+  "oracle": "The articular cartilage of the femoral trochlea and the medial and lateral articular surfaces of the patella appear normal No abnormalities are noted in the popliteal fossa",
+  "status": "FAIL",
+  "loadStatus": "UNVERIFIED",
+  "runtimeStatus": "FAIL",
+  "transcriptStatus": "UNVERIFIED",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 0,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-24T23:45:52+0300",
+  "error": "Page.wait_for_function: Timeout 180000ms exceeded."
+}

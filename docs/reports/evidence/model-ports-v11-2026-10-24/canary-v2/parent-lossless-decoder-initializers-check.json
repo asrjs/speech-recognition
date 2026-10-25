@@ -1,0 +1,9 @@
+{
+  "source": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-bundle-publisher\\decoder-model.onnx",
+  "variant": "C:\\Users\\steam\\AppData\\Local\\Temp\\asrjs-canary-v2-port-20261024\\onnx-bundle-external-decoder\\decoder-model.onnx",
+  "tensorCount": 674,
+  "allTensorPayloadHashesEqual": true,
+  "strippedGraphStructureHashEqual": true,
+  "structureSha256": "223e7fe8a94e55ffdab5110c9e6d6eb8c402fd4c408cc2308e853995e05ac8c3",
+  "scope": "parent independent storage-only decoder graph/tensor verification; not WASM inference"
+}

@@ -1,0 +1,85 @@
+{
+  "checkedAt": "2026-10-24 13:50:38 UTC",
+  "results": [
+    {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "issues": []
+        },
+        "isError": false
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "issues": []
+        },
+        "isError": false
+      }
+    },
+    {
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "url": "https://github.com/asrjs/speech-recognition/pull/237",
+          "number": 237,
+          "state": "closed",
+          "merged": false,
+          "mergeable": true,
+          "draft": false,
+          "body": "## Summary\n \n- Inlines `getReflectPaddedSample` logic directly inside `WhisperMelProcessor.process`.\n- Hoists the calculation of loop invariants (`originalStart` and `originalEnd`) outside the inner frame loops.\n- Removes the unused private `getReflectPaddedSample` method.\n- Modifies `src/audio/whisper-mel.ts`.\n \n## Why this change\n \nAddresses performance inefficiency in a hot path. The `getReflectPaddedSample` method is called inside tight inner loops executed millions of times per audio file. By inlining this logic and pre-calculating the pad boundaries `originalStart` and `originalEnd`, we avoid massive function call overhead and repeated arithmetic, substantially improving audio preprocessing throughput without changing output semantics.\n \n## Implementation notes\n \nThe math within the `if`/`else` block exactly replicates the original method. By introducing the inline logic to both the fast FFT and standard path loops, we eliminate the need for the helper method while retaining 100% correctness.\n \n## Verification\n \n- Built successfully using `npm run build`.\n- Mel preprocessing integration logic verified using `node tests/smoke/verify-step1-mel.mjs` against JFK audio with exact parity.\n- Tested hot path performance and unit test regressions using `node tests/smoke/benchmark-whisper-mel.mjs` and `npm run test` (all passed).\n \n## Risk\n \nNo major risks. The logic mathematically translates directly from the original function call to an inlined equivalent with zero semantic shift. It modifies an internal processing stage without altering any public APIs or descriptor typings.\n \n## Performance impact\n \nSignificantly reduces execution time during raw audio to Mel feature extraction by eliminating millions of micro-method invocations and redundant property lookups. Confirmed reduction in average processing time across 10s/30s inputs in `benchmark-whisper-mel.mjs`.\n\n---\n*PR created automatically by Jules for task [12540623741648036537](https://jules.google.com/task/12540623741648036537) started by @ysdede*",
+          "title": "Bolt: inline reflect padding logic in whisper-mel to reduce overhead",
+          "base": "main",
+          "base_sha": "e534fb517dcd15a52ac8b52bff85551df89d3673",
+          "head": "bolt-optimize-whisper-mel-12540623741648036537",
+          "head_sha": "9b6e4e8862ff3b47fe6bc1cc90618a450d18edf9",
+          "head_repo_id": 1182389006,
+          "head_repo_full_name": "asrjs/speech-recognition",
+          "merge_commit_sha": "1a694c926849c9bbc4388e328f96bb1f47f8112b",
+          "user": {
+            "login": "ysdede",
+            "name": "ysdede",
+            "email": null,
+            "avatar_url": "https://avatars.githubusercontent.com/u/5496750?v=4",
+            "id": 5496750
+          },
+          "requested_reviewers": null,
+          "requested_team_reviewers": null,
+          "diff": null,
+          "comments": null,
+          "created_at": "2026-10-23T08:10:53Z",
+          "updated_at": "2026-10-24T12:18:59Z",
+          "closed_at": "2026-10-24T12:18:59Z",
+          "merged_at": null,
+          "commits": 1,
+          "changed_files": 1,
+          "additions": 18,
+          "deletions": 18,
+          "display_url": "https://github.com/asrjs/speech-recognition/pull/237",
+          "display_title": "Bolt: inline reflect padding logic in whisper-mel to reduce overhead"
+        },
+        "isError": false
+      }
+    }
+  ]
+}

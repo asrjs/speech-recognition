@@ -1,0 +1,262 @@
+{
+  "prHead": "9b6e4e8862ff3b47fe6bc1cc90618a450d18edf9",
+  "baseHead": "e534fb517dcd15a52ac8b52bff85551df89d3673",
+  "baseBlobFromGit": "e5109b57ff19aeb3fa24385734e7fca7e70c879b",
+  "baseBlobFromScratch": "e5109b57ff19aeb3fa24385734e7fca7e70c879b",
+  "baseMatchesHead": true,
+  "baselineSha256": "9B3D1AE0882BE394631A546C4D294C156C5DAEB1DA6E508B98DA0CC372717CC0",
+  "variantSha256": "63C3A614D86AA0D112932329D2042EE03384326239A870C05074F248F5057998",
+  "parityCases": 26,
+  "parityMismatchCount": 0,
+  "parityResults": [
+    {
+      "mode": "400-exact",
+      "case": "boundary-1",
+      "samples": 1,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-2",
+      "samples": 2,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-199",
+      "samples": 199,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-200",
+      "samples": 200,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-201",
+      "samples": 201,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "9d02c5afe4f57aed4a59b3989d4997306356fdfeed2cf12a7bb8f129a07329e5"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-399",
+      "samples": 399,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "4283628845cc042277c23a24a0d1b6fd405c2fa759d13006b825ef14064e1acf"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-400",
+      "samples": 400,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "4283628845cc042277c23a24a0d1b6fd405c2fa759d13006b825ef14064e1acf"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-401",
+      "samples": 401,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "4283628845cc042277c23a24a0d1b6fd405c2fa759d13006b825ef14064e1acf"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-159",
+      "samples": 159,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-160",
+      "samples": 160,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "400-exact",
+      "case": "boundary-161",
+      "samples": 161,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "400-exact",
+      "case": "1s",
+      "samples": 16000,
+      "frameCount": 100,
+      "equal": true,
+      "baselineSha256": "91d94d266fa72d12d8240cc19470157978c6e1986433676e5041fd5b1d19c814"
+    },
+    {
+      "mode": "400-exact",
+      "case": "11s",
+      "samples": 176000,
+      "frameCount": 1100,
+      "equal": true,
+      "baselineSha256": "d86ce27e846272eccebb9c39bac32f541c499ee9f91ec57ea3b2640b206c6029"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-1",
+      "samples": 1,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-2",
+      "samples": 2,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-199",
+      "samples": 199,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-200",
+      "samples": 200,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-201",
+      "samples": 201,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "2379acbdadab6d1013a6031dbc914fedf1a2548d807ee1c824745d94e175f2a4"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-399",
+      "samples": 399,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "c0c09a6d14650159d94d204f9d49326deb3f72f35010f26cb0494b015b54849b"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-400",
+      "samples": 400,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "c0c09a6d14650159d94d204f9d49326deb3f72f35010f26cb0494b015b54849b"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-401",
+      "samples": 401,
+      "frameCount": 2,
+      "equal": true,
+      "baselineSha256": "c0c09a6d14650159d94d204f9d49326deb3f72f35010f26cb0494b015b54849b"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-159",
+      "samples": 159,
+      "frameCount": 0,
+      "equal": true,
+      "baselineSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-160",
+      "samples": 160,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "512-fast",
+      "case": "boundary-161",
+      "samples": 161,
+      "frameCount": 1,
+      "equal": true,
+      "baselineSha256": "22b1a3e3c4ac41a30f70b6295dfd529aa4454b183e07960ade33becf44108739"
+    },
+    {
+      "mode": "512-fast",
+      "case": "1s",
+      "samples": 16000,
+      "frameCount": 100,
+      "equal": true,
+      "baselineSha256": "88c95a64b72c56854e84d3aa9a195c9f51798edc4050104d8a9044dc4b7c0741"
+    },
+    {
+      "mode": "512-fast",
+      "case": "11s",
+      "samples": 176000,
+      "frameCount": 1100,
+      "equal": true,
+      "baselineSha256": "8db49c9efd5355b8ad1248a3945e5f1c653f0a95fa820b4f00d74cd7cee70d11"
+    }
+  ],
+  "timings": [
+    {
+      "mode": "400-exact",
+      "durationSec": 1,
+      "runs": 8,
+      "baselineMedianMs": 2.99,
+      "prMedianMs": 3.166,
+      "medianDeltaPct": 5.9
+    },
+    {
+      "mode": "400-exact",
+      "durationSec": 11,
+      "runs": 8,
+      "baselineMedianMs": 34.263,
+      "prMedianMs": 34.035,
+      "medianDeltaPct": -0.67
+    },
+    {
+      "mode": "512-fast",
+      "durationSec": 1,
+      "runs": 8,
+      "baselineMedianMs": 2.065,
+      "prMedianMs": 2.064,
+      "medianDeltaPct": -0.02
+    },
+    {
+      "mode": "512-fast",
+      "durationSec": 11,
+      "runs": 8,
+      "baselineMedianMs": 20.057,
+      "prMedianMs": 20.331,
+      "medianDeltaPct": 1.36
+    }
+  ],
+  "tests": "Vitest: whisper-mel-validation.test.ts + whisper-integration.test.ts",
+  "testsPassed": 17,
+  "testsSkipped": 1,
+  "skippedReason": "OpenAI reference fixture whisper_mel_ref_440hz_1s.json absent",
+  "nodeVersion": "v26.2.0",
+  "validationScope": "isolated scratch copies only; PR source reconstructed from connector patch because git object unavailable",
+  "createdUtc": "2026-10-24T12:11:58.2764593Z"
+}

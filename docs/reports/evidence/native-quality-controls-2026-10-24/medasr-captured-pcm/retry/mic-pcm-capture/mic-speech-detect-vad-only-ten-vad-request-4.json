@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "flow": "mic-speech-detect-vad-only-ten-vad",
+  "requestId": 4,
+  "sampleRate": 16000,
+  "frames": 29696,
+  "pcmFormat": "mono-float32-little-endian",
+  "pcmBytes": 118784,
+  "pcmSha256": "ec2dbbbd7b185b2653332c59dfc42ecbdac64f6e847b736c27134ed87bf3163e",
+  "capturePoint": "TRANSCRIBE_MONO_PCM postMessage before original transfer",
+  "pcmPath": "N:\\github\\asrjs\\demos\\tmp\\real-e2e\\remaining-models-20261024\\medasr-medical-v14-wasm-pcm-capture-retry\\realtime\\mic-pcm-capture\\mic-speech-detect-vad-only-ten-vad-request-4.f32le"
+}

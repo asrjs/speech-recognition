@@ -1,0 +1,38 @@
+{
+  "checkedAt": "2026-10-24T20:57:57.543Z",
+  "repositories": [
+    {
+      "repository": "asrjs/speech-recognition",
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "issues": []
+        },
+        "isError": false
+      }
+    },
+    {
+      "repository": "asrjs/demos",
+      "status": "fulfilled",
+      "value": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "issues": []
+        },
+        "isError": false
+      }
+    }
+  ],
+  "scope": "Read-only open PR searches; no remote mutation"
+}
