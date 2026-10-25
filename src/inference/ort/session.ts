@@ -1,5 +1,8 @@
 import { importNodeModule, isNodeLikeRuntime } from '../../io/node-compat.js';
-import { resolveOrtExternalDataMounts } from '../../io/ort-external-data.js';
+import {
+  resolveOrtExternalDataMounts,
+  validateNativeOrtExternalDataFiles,
+} from '../../io/ort-external-data.js';
 import {
   honorAbortAfterCreate,
   throwIfAssetAborted,
@@ -102,8 +105,26 @@ export async function createUnifiedOrtSession(
     baseSessionOptions.freeDimensionOverrides = options.freeDimensionOverrides;
   }
 
-  // External data handling
-  if (options.externalData && options.externalData.length > 0) {
+  // Native ORT resolves sidecars from the graph directory. Validate those
+  // paths without loading potentially multi-gigabyte files into JS memory.
+  const hasExternalDataLocator = Boolean(options.externalDataUrl || options.externalDataPath);
+  if (isNativeCpu && ((options.externalData?.length ?? 0) > 0 || hasExternalDataLocator)) {
+    if (typeof sessionModel !== 'string') {
+      throw new Error('Native external data requires a local model path or file URL.');
+    }
+    if (Boolean(options.externalDataUrl) !== Boolean(options.externalDataPath)) {
+      throw new Error('Native external data requires both a locator and graph-relative path.');
+    }
+    await validateNativeOrtExternalDataFiles(sessionModel, [
+      ...(options.externalData ?? []),
+      ...(options.externalDataUrl && options.externalDataPath
+        ? [{ dataUrl: options.externalDataUrl, path: options.externalDataPath }]
+        : []),
+    ]);
+  }
+
+  // ORT Web external data handling
+  if (!isNativeCpu && options.externalData && options.externalData.length > 0) {
     let fileUrlToPath: ((url: string) => string) | undefined;
     if (isNodeLikeRuntime()) {
       const nodeUrl = await importNodeModule<typeof import('node:url')>('node:url');
@@ -117,6 +138,7 @@ export async function createUnifiedOrtSession(
       path: entry.path,
     }));
   } else if (
+    !isNativeCpu &&
     options.externalDataUrl &&
     options.externalDataPath &&
     typeof sessionModel === 'string'

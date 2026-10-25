@@ -363,6 +363,305 @@ describe('browser realtime microphone controller', () => {
     await controller.dispose();
   });
 
+  it('sends cumulative original PCM and stable revision metadata across overlapping VAD segments', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const transcribeUtterance = vi.fn(async () => null);
+    starter.controller = { transcribeUtterance, noteIngest: vi.fn() } as never;
+    const emit = (type: string, payload: unknown) => listeners.forEach((listener) => listener({ type, payload }));
+    const captured: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      transcriptionContext: { maxDurationSeconds: 10, maxGapSeconds: 3, prerollSeconds: 0 },
+      onUtterance: (utterance) => captured.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 4, chunkDurationMs: 0.25, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    await controller.start();
+    capture({ pcm: Float32Array.of(1, 2, 3, 4), sampleRate: 16000, startFrame: 0, endFrame: 4 });
+    emit('segment-ready', {
+      startFrame: 1, endFrame: 3, sampleRate: 16000, reason: 'pause', metadata: { logicalStartFrame: 1, logicalEndFrame: 2 },
+      readPcm: () => Float32Array.of(2, 3),
+    });
+    capture({ pcm: Float32Array.of(5, 6, 7, 8), sampleRate: 16000, startFrame: 4, endFrame: 8 });
+    emit('segment-ready', {
+      startFrame: 2, endFrame: 6, sampleRate: 16000, reason: 'pause', metadata: { logicalStartFrame: 3, logicalEndFrame: 5 },
+      readPcm: () => Float32Array.of(3, 4, 5, 6),
+    });
+
+    await vi.waitFor(() => expect(transcribeUtterance).toHaveBeenCalledTimes(2));
+    const first = transcribeUtterance.mock.calls[0]!;
+    const second = transcribeUtterance.mock.calls[1]!;
+    expect(Array.from(first[0] as Float32Array)).toEqual([2, 3]);
+    expect(Array.from(second[0] as Float32Array)).toEqual([2, 3, 4, 5, 6]);
+    expect((second[1] as any).context).toMatchObject({ id: (first[1] as any).context.id, revision: 2, startFrame: 1, endFrame: 6 });
+    expect(Array.from(captured[1].pcm)).toEqual([2, 3, 4, 5, 6]);
+    expect(captured[1].pcm.length).toBe(captured[1].context.endFrame - captured[1].context.startFrame);
+    await controller.dispose();
+  });
+
+  it('publishes one finalized context revision with bounded captured tail on flush stop', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const transcribeUtterance = vi.fn(async () => null);
+    starter.controller = { transcribeUtterance, noteIngest: vi.fn() } as never;
+    const emit = (type: string, payload: unknown) => listeners.forEach((listener) => listener({ type, payload }));
+    const utterances: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      transcriptionContext: { maxDurationSeconds: 1, maxGapSeconds: 3, prerollSeconds: 0.001 },
+      onUtterance: (utterance) => utterances.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 100, chunkDurationMs: 6.25, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    const pcm = Float32Array.from({ length: 100 }, (_, index) => index + 1);
+    await controller.start();
+    capture({ pcm, sampleRate: 16000, startFrame: 0, endFrame: pcm.length });
+    emit('segment-ready', {
+      startFrame: 10, endFrame: 50, sampleRate: 16000, reason: 'pause',
+      metadata: { logicalStartFrame: 10, logicalEndFrame: 50 },
+      readPcm: () => pcm.slice(10, 50),
+    });
+
+    await controller.stop({ flush: true });
+
+    expect(utterances).toHaveLength(2);
+    expect(utterances[0].context).toMatchObject({ startFrame: 0, endFrame: 50, revision: 1, finalized: false });
+    expect(utterances[1].context).toMatchObject({
+      id: utterances[0].context.id,
+      startFrame: 0,
+      endFrame: 66,
+      revision: 2,
+      finalized: true,
+    });
+    expect(utterances[1].reason).toBe('stop');
+    expect(utterances[1].pcm).toEqual(pcm.slice(0, 66));
+    expect(transcribeUtterance).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not publish a finalized context revision when stop skips flushing', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const utterances: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      transcriptionContext: { maxDurationSeconds: 1, maxGapSeconds: 3, prerollSeconds: 0.001 },
+      onUtterance: (utterance) => utterances.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 100, chunkDurationMs: 6.25, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    const pcm = Float32Array.from({ length: 100 }, (_, index) => index + 1);
+    await controller.start();
+    capture({ pcm, sampleRate: 16000, startFrame: 0, endFrame: pcm.length });
+    listeners.forEach((listener) => listener({
+      type: 'segment-ready',
+      payload: {
+        startFrame: 10, endFrame: 50, sampleRate: 16000, reason: 'pause',
+        metadata: { logicalStartFrame: 10, logicalEndFrame: 50 },
+        readPcm: () => pcm.slice(10, 50),
+      },
+    }));
+
+    await controller.stop({ flush: false });
+
+    expect(utterances).toHaveLength(1);
+    expect(utterances[0].context).toMatchObject({ finalized: false });
+  });
+
+  it('does not emit a batch context final revision for native VAD streaming', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const streamingTranscriber = {
+      pushAudio: vi.fn(async () => null),
+      finalize: vi.fn(async () => ({ text: 'stream result' })),
+      reset: vi.fn(async () => undefined),
+    };
+    const utterances: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      streamingTranscriber: streamingTranscriber as never,
+      transcriptionContext: { maxDurationSeconds: 1, maxGapSeconds: 3, prerollSeconds: 0.001 },
+      onUtterance: (utterance) => utterances.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 100, chunkDurationMs: 6.25, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    const pcm = Float32Array.from({ length: 100 }, (_, index) => index + 1);
+    await controller.start();
+    capture({ pcm, sampleRate: 16000, startFrame: 0, endFrame: pcm.length });
+    listeners.forEach((listener) => listener({
+      type: 'segment-ready',
+      payload: {
+        startFrame: 10, endFrame: 50, sampleRate: 16000, reason: 'pause',
+        metadata: { logicalStartFrame: 10, logicalEndFrame: 50 },
+        readPcm: () => pcm.slice(10, 50),
+      },
+    }));
+
+    await controller.stop({ flush: true });
+
+    expect(utterances).toHaveLength(1);
+    expect(utterances[0].context).toMatchObject({ finalized: false });
+    expect(streamingTranscriber.finalize).not.toHaveBeenCalled();
+  });
+
+  it('does not emit a finalized context after the detector stop rejects', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const stopStarter = vi.fn(async () => null);
+    starter.stop = stopStarter;
+    const utterances: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      transcriptionContext: { maxDurationSeconds: 1, maxGapSeconds: 3, prerollSeconds: 0.001 },
+      onUtterance: (utterance) => utterances.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 100, chunkDurationMs: 6.25, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    const pcm = Float32Array.from({ length: 100 }, (_, index) => index + 1);
+    await controller.start();
+    capture({ pcm, sampleRate: 16000, startFrame: 0, endFrame: pcm.length });
+    listeners.forEach((listener) => listener({
+      type: 'segment-ready',
+      payload: {
+        startFrame: 10, endFrame: 50, sampleRate: 16000, reason: 'pause',
+        metadata: { logicalStartFrame: 10, logicalEndFrame: 50 },
+        readPcm: () => pcm.slice(10, 50),
+      },
+    }));
+    stopStarter.mockRejectedValueOnce(new Error('detector stop failed'));
+
+    await expect(controller.stop({ flush: true })).rejects.toThrow('detector stop failed');
+
+    expect(utterances).toHaveLength(1);
+    expect(utterances[0].context).toMatchObject({ finalized: false });
+  });
+
+  it('keeps captured audio before delayed VAD onset by default and caps each context at its duration limit', async () => {
+    const listeners = new Set<(event: any) => void>();
+    const starter = createFakeStarter();
+    starter.subscribe = (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+    const transcribeUtterance = vi.fn(async () => null);
+    starter.controller = { transcribeUtterance, noteIngest: vi.fn() } as never;
+    const emit = (type: string, payload: unknown) => listeners.forEach((listener) => listener({ type, payload }));
+    const captured: any[] = [];
+    let capture!: (chunk: any) => void;
+    const controller = createBrowserRealtimeMicrophoneController({
+      micMode: 'speech-detect',
+      transcriptionContext: { maxDurationSeconds: 1, maxGapSeconds: 3 },
+      onUtterance: (utterance) => captured.push(utterance),
+      createStarter: () => starter,
+      createMonitor: createFakeMonitor,
+      startCapture: async (captureOptions) => {
+        capture = captureOptions.onChunk;
+        return {
+          sampleRate: 16000, deviceSampleRate: null, contextSampleRate: 16000,
+          chunkFrames: 256, chunkDurationMs: 16, stream: {} as MediaStream,
+          stop: async () => undefined,
+        };
+      },
+    });
+    const pcm = Float32Array.from({ length: 16001 }, (_, frame) => frame / 20000);
+    await controller.start();
+    capture({ pcm, sampleRate: 16000, startFrame: 0, endFrame: pcm.length });
+
+    // A 600ms extracted delay requires the 600ms default to retain frame zero;
+    // the previous 300ms default would discard the first 4800 captured frames.
+    emit('segment-ready', {
+      startFrame: 9600, endFrame: 12000, sampleRate: 16000, reason: 'pause',
+      metadata: { logicalStartFrame: 9600, logicalEndFrame: 12000 },
+      readPcm: () => pcm.slice(9600, 12000),
+    });
+    emit('segment-ready', {
+      startFrame: 11000, endFrame: 16000, sampleRate: 16000, reason: 'pause',
+      metadata: { logicalStartFrame: 12000, logicalEndFrame: 15500 },
+      readPcm: () => pcm.slice(11000, 16000),
+    });
+    emit('segment-ready', {
+      startFrame: 16000, endFrame: 16001, sampleRate: 16000, reason: 'pause',
+      metadata: { logicalStartFrame: 16000, logicalEndFrame: 16001 },
+      readPcm: () => pcm.slice(16000, 16001),
+    });
+
+    await vi.waitFor(() => expect(transcribeUtterance).toHaveBeenCalledTimes(3));
+    expect(captured[0].context).toMatchObject({ startFrame: 0, endFrame: 12000 });
+    expect(captured[0].pcm).toEqual(pcm.slice(0, 12000));
+    expect(captured[1].context).toMatchObject({ id: captured[0].context.id, revision: 2, startFrame: 0, endFrame: 16000 });
+    expect(captured[2].context).toMatchObject({ startFrame: 16000, endFrame: 16001 });
+    for (const utterance of captured) {
+      expect(utterance.pcm.length).toBeLessThanOrEqual(16000);
+      expect(utterance.pcm.length).toBe(utterance.context.endFrame - utterance.context.startFrame);
+    }
+    await controller.dispose();
+  });
+
   it('stops a capture that resolves after stop invalidates start', async () => {
     let resolveCapture!: (handle: any) => void;
     const captureReady = new Promise<any>((resolve) => {

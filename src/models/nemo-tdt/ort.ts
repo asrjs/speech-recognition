@@ -25,6 +25,10 @@ import {
   configureUnifiedOrtEnv,
   releaseUnifiedOrtSession,
 } from '../../inference/ort/index.js';
+import {
+  resolveOrtExternalDataMounts,
+  validateNativeOrtExternalDataFiles,
+} from '../../io/ort-external-data.js';
 
 interface OrtEnv {
   wasm: {
@@ -360,32 +364,30 @@ export async function createOrtSession(
   }
 
   if (native) {
-    const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
-    if (!nodePath.isAbsolute(modelUrl)) {
-      throw new Error('Native CPU inference requires a local absolute model path or file URL.');
-    }
     if (externalDataUrl) {
-      const graphRelativePath = options.externalDataPath;
-      const expectedPath = graphRelativePath
-        ? nodePath.resolve(nodePath.dirname(modelUrl), graphRelativePath)
-        : undefined;
-      if (!expectedPath || nodePath.resolve(externalDataUrl) !== expectedPath) {
-        throw new Error('Native external data must be colocated at its graph-relative location.');
-      }
-      const fs = await importNodeModule<typeof import('node:fs/promises')>('node:fs/promises');
-      if (!(await fs.stat(expectedPath)).isFile()) {
-        throw new Error('Native external data locator is not a regular file.');
+      await validateNativeOrtExternalDataFiles(modelUrl, [
+        { dataUrl: externalDataUrl, path: options.externalDataPath ?? '' },
+      ]);
+    } else if (!isNodeLikeRuntime()) {
+      throw new Error('Native CPU inference requires a local absolute model path or file URL.');
+    } else {
+      const nodePath = await importNodeModule<typeof import('node:path')>('node:path');
+      if (!nodePath.isAbsolute(modelUrl)) {
+        throw new Error('Native CPU inference requires a local absolute model path or file URL.');
       }
     }
     // Native ORT resolves graph-referenced sidecars from the model's directory.
     // Do not read multi-GB data into JS or pass ORT Web's externalData mounts.
   } else if (externalDataUrl && options.externalDataPath) {
-    sessionOptions.externalData = [
-      {
-        data: externalDataUrl,
-        path: options.externalDataPath,
-      },
-    ];
+    const externalData = await resolveOrtExternalDataMounts({
+      backendId: options.backendId.startsWith('webgpu') ? 'webgpu' : 'wasm',
+      sessionModelUrl: modelUrl,
+      externalDataUrl,
+      externalDataPath: options.externalDataPath,
+    });
+    if (externalData) {
+      sessionOptions.externalData = externalData;
+    }
   }
 
   const createOptions =

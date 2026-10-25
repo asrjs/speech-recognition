@@ -12,12 +12,17 @@ import {
 import type { LasrCtcNativeTranscript } from '../lasr-ctc/types.js';
 import { OmnilingualCtcTokenizer } from './tokenizer.js';
 
+/** Meta Omnilingual's wav2vec2 waveform LayerNorm contract. */
+export const DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON = 1e-5;
+
 export interface OmnilingualCtcOptions {
   readonly modelUrl: string;
   readonly tokensUrl: string;
   readonly externalDataUrl?: string;
   readonly externalDataFilename?: string;
   readonly sampleRate?: number;
+  /** Population-variance epsilon used by the raw-waveform LayerNorm frontend. */
+  readonly normalizationEpsilon?: number;
   readonly vocabularySize?: number;
   readonly blankId?: number;
   readonly backendId?: 'wasm' | 'webgpu';
@@ -76,7 +81,10 @@ export async function loadOmnilingualCtc(
   return {
     vocabularySize,
     async transcribe(pcm: Float32Array): Promise<LasrCtcNativeTranscript> {
-      const normalized = normalizeWav2Vec2Waveform(pcm);
+      const normalized = normalizeWav2Vec2Waveform(
+        pcm,
+        options.normalizationEpsilon ?? DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON,
+      );
       const input = new ort.Tensor('float32', normalized, [1, normalized.length]);
       let outputs: Record<string, OrtTensorLike> | undefined;
       try {

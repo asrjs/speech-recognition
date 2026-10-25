@@ -7,6 +7,8 @@ describe('resolveMedAsrPresetManifest', () => {
     const manifest = resolveMedAsrPresetManifest('google/medasr');
 
     expect(manifest?.modelId).toBe('google/medasr');
+    expect(manifest?.config.vocabularySize).toBe(512);
+    expect(manifest?.config.tokenizer?.blankTokenId).toBe(0);
     expect(resolveMedAsrPresetManifest('medasr')).toBe(manifest);
     expect(resolveMedAsrPresetManifest('google-medasr')).toBe(manifest);
   });

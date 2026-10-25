@@ -8,7 +8,11 @@ import exportsBeforeRefactor from './fixtures/root-runtime-exports.json';
 
 describe('public root API compatibility', () => {
   it('retains the complete runtime export surface from before the import refactor', () => {
-    expect(Object.keys(root).sort()).toEqual([...exportsBeforeRefactor].sort());
+    // Keep the historical baseline intact; enumerate intentional API additions.
+    expect(Object.keys(root).sort()).toEqual(
+      [...exportsBeforeRefactor, 'transcribeSpeechFromAudioSource'].sort(),
+    );
+    expect(root.transcribeSpeechFromAudioSource).toBeTypeOf('function');
   });
   it('shares constructors and functions across root and public subpaths', () => {
     expect(root.PcmAudioBuffer).toBe(audio.PcmAudioBuffer);

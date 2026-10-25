@@ -65,12 +65,99 @@ describe('media helpers', () => {
     expect(await resolved.text()).toBe('audio');
   });
 
+  it('stops before fetching or creating a decoder when already aborted', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    const fetchImpl = vi.fn();
+    const createAudioContext = vi.fn();
+
+    await expect(
+      decodeAudioSourceToMonoPcm('https://example.test/audio.wav', {
+        signal: abort.signal,
+        fetchImpl,
+        createAudioContext,
+      }),
+    ).rejects.toMatchObject({ name: 'AssetLoadAbortedError', stageId: 'audio-source' });
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(createAudioContext).not.toHaveBeenCalled();
+  });
+
+  it('aborts an in-flight audio URL request', async () => {
+    const abort = new AbortController();
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+    );
+    const pending = resolveAudioSourceToBlob('https://example.test/audio.wav', {
+      signal: abort.signal,
+      fetchImpl,
+    });
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledOnce());
+    abort.abort();
+
+    await expect(pending).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      stageId: 'audio-fetch',
+    });
+    expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBe(abort.signal);
+  });
+
+  it('closes the AudioContext and rejects when cancelled during browser decoding', async () => {
+    const abort = new AbortController();
+    const closeError = new Error('AudioContext cleanup failed');
+    const close = vi.fn(async () => {
+      throw closeError;
+    });
+    let finishDecode!: (value: {
+      numberOfChannels: number;
+      length: number;
+      sampleRate: number;
+      getChannelData: () => Float32Array;
+    }) => void;
+    const decodeAudioData = vi.fn(
+      () =>
+        new Promise<{
+          numberOfChannels: number;
+          length: number;
+          sampleRate: number;
+          getChannelData: () => Float32Array;
+        }>((resolve) => {
+          finishDecode = resolve;
+        }),
+    );
+    const pending = decodeAudioSourceToMonoPcm(new Blob(['audio']), {
+      signal: abort.signal,
+      createAudioContext: () => ({ decodeAudioData, close }),
+    });
+    await vi.waitFor(() => expect(decodeAudioData).toHaveBeenCalledOnce());
+    abort.abort();
+    finishDecode({
+      numberOfChannels: 1,
+      length: 1,
+      sampleRate: 16000,
+      getChannelData: () => new Float32Array([0.25]),
+    });
+
+    await expect(pending).rejects.toMatchObject({
+      name: 'AggregateError',
+      errors: [{ name: 'AssetLoadAbortedError', stageId: 'audio-decode' }, closeError],
+    });
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it('encodes mono PCM into a WAV blob', async () => {
     const blob = encodeMonoPcmToWavBlob(new Float32Array([0, 1, -1]), { sampleRate: 8000 });
     const buffer = await blob.arrayBuffer();
     const view = new DataView(buffer);
     const readAscii = (offset: number, length: number) =>
-      Array.from({ length }, (_, index) => String.fromCharCode(view.getUint8(offset + index))).join('');
+      Array.from({ length }, (_, index) => String.fromCharCode(view.getUint8(offset + index))).join(
+        '',
+      );
 
     expect(blob.type).toBe('audio/wav');
     expect(readAscii(0, 4)).toBe('RIFF');
@@ -179,10 +266,9 @@ describe('media helpers', () => {
       close: vi.fn(),
     }));
 
-    const decoded = await decodeAudioBufferToMonoPcm(
-      await new Blob(['audio']).arrayBuffer(),
-      { createAudioContext },
-    );
+    const decoded = await decodeAudioBufferToMonoPcm(await new Blob(['audio']).arrayBuffer(), {
+      createAudioContext,
+    });
 
     expect(createAudioContext).toHaveBeenCalledWith(16000);
     expect(Array.from(decoded.pcm)).toEqual([0.25, -0.25]);

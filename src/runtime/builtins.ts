@@ -38,6 +38,10 @@ import { createParakeetCtcPresetFactory } from '../presets/parakeet/ctc-factory.
 import { createNemotronPresetFactory } from '../presets/nemotron/factory.js';
 import { createWhisperPresetFactory } from '../presets/whisper/factory.js';
 import { createWav2Vec2PresetFactory } from '../presets/wav2vec2/factory.js';
+import { createGigaAmCtcPresetFactory } from '../presets/gigaam-ctc-local.js';
+import { createGigaAmRnntPresetFactory } from '../presets/gigaam-rnnt-local.js';
+import { createSenseVoicePresetFactory } from '../presets/sensevoice-local.js';
+import { createXAsrPresetFactory } from '../presets/x-asr-local.js';
 import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
 import {
   createExperimentalArtifactMissingError,
@@ -350,7 +354,15 @@ export function registerBuiltInPresets(
   runtime.registerPreset(createMoonshinePresetFactory());
   runtime.registerPreset(createQwen3AsrPresetFactory());
   runtime.registerPreset(createMedAsrPresetFactory());
-  runtime.registerPreset(createWhisperPresetFactory());
+  runtime.registerPreset(createGigaAmCtcPresetFactory());
+  runtime.registerPreset(createGigaAmRnntPresetFactory());
+  runtime.registerPreset(createSenseVoicePresetFactory());
+  runtime.registerPreset(createXAsrPresetFactory());
+  runtime.registerPreset(
+    createWhisperPresetFactory({
+      useManifestSource: options.useManifestSources ?? true,
+    }),
+  );
   runtime.registerPreset(
     createWav2Vec2PresetFactory({
       useManifestSource: options.useManifestSources ?? true,

@@ -26,6 +26,8 @@ export interface NemoAedPromptSettings {
    * change it for speech translation.
    */
   readonly targetLanguage: string;
+  /** Task slot used by the original `canary` prompt format. */
+  readonly task?: 'asr' | 'translation';
   /**
    * Optional free-form decoder context slot supported by the prompt format.
    * The current runtime keeps this empty because Canary text-context prompting
@@ -163,7 +165,14 @@ export interface NemoAedTranscriptionOptions extends BaseTranscriptionOptions {
    * runtime, so `asr` is modeled as `sourceLanguage === targetLanguage`, while
    * translation-style values are modeled as `sourceLanguage !== targetLanguage`.
    */
-  readonly task?: 'asr' | 'ast' | 'translate' | 'translation' | 'speech-translation';
+  readonly task?:
+    | 'asr'
+    | 'ast'
+    | 'transcribe'
+    | 'translate'
+    | 'translation'
+    | 'speech-translation'
+    | 's2t_translation';
   /** Upper bound on newly generated decoder tokens. */
   readonly maxNewTokens?: number;
   readonly returnTokenIds?: boolean;

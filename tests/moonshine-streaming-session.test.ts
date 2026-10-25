@@ -11,7 +11,7 @@ const LOOKAHEAD = 60;
 const VOCAB = 32;
 
 class FakeTensor {
-  constructor(readonly type: string, readonly data: Float32Array | BigInt64Array, readonly dims: readonly number[]) {}
+  constructor(readonly type: string, readonly data: Float32Array | Int32Array | BigInt64Array, readonly dims: readonly number[]) {}
 }
 
 const ort = { Tensor: FakeTensor as unknown as new (type: string, data: ArrayBufferView, dims: readonly number[]) => unknown };
@@ -186,7 +186,30 @@ describe('MoonshineStreamingSession window contract', () => {
     const { session } = streamingSession(emit);
     await session.pushAudio(new Float32Array(3 * (emit + LOOKAHEAD) * FRAME));
     // @ts-expect-error private field inspection for the retention bound
-    expect(session.retained.length).toBeLessThanOrEqual(480);
+    expect(session.retained.length).toBeLessThanOrEqual(480 * FRAME);
+  });
+
+  it('flushes a contiguous original-audio tail across re-fed lookahead and the 480-frame horizon', async () => {
+    const emit = 64;
+    const { session, wholeEncoder } = streamingSession(emit);
+    const totalFrames = 9 * emit + LOOKAHEAD;
+    const samples = Float32Array.from(
+      { length: totalFrames * FRAME },
+      (_, index) => (index % 997) / 997,
+    );
+
+    await session.pushAudio(samples);
+    expect(session.committedEncoderFrames).toBe(9 * (emit / 4));
+    await session.finalize();
+
+    const feeds = wholeEncoder.run.mock.calls[0]![0] as Record<string, FakeTensor>;
+    const values = feeds['input_values']!.data as Float32Array;
+    const validSamples = (feeds['attention_mask']!.data as Int32Array)
+      .reduce((sum, value) => sum + value, 0);
+    const expectedTail = samples.subarray(samples.length - (480 + LOOKAHEAD) * FRAME);
+
+    expect(validSamples).toBe(expectedTail.length);
+    expect(Array.from(values.subarray(0, validSamples))).toEqual(Array.from(expectedTail));
   });
 
   it('finalize flushes the tail through the whole encoder to the whole-utterance framing', async () => {
@@ -206,6 +229,81 @@ describe('MoonshineStreamingSession window contract', () => {
     // Greedy loop: prefill says 7, step(7) says 8, step(8) says EOS.
     expect(result.tokenIds).toEqual([7, 8]);
     expect(result.text).toBe('t7 t8');
+  });
+
+  it('pads ragged samples to 80-sample frames and masks the padded suffix', async () => {
+    const { session, wholeEncoder } = streamingSession(64);
+    const samples = new Float32Array(8_584).fill(0.25);
+    await session.pushAudio(samples);
+
+    const result = await session.finalize();
+    const feeds = wholeEncoder.run.mock.calls[0]![0] as Record<string, FakeTensor>;
+    const values = feeds['input_values']!;
+    const mask = feeds['attention_mask']!;
+
+    expect(values.dims).toEqual([1, 8_640]);
+    expect(Array.from((values.data as Float32Array).slice(0, 8_584))).toEqual(Array.from(samples));
+    expect(Array.from((values.data as Float32Array).slice(8_584))).toEqual(Array(56).fill(0));
+    expect(mask.dims).toEqual([1, 8_640]);
+    expect((mask.data as Int32Array).reduce((sum, value) => sum + value, 0)).toBe(8_584);
+    expect(Array.from((mask.data as Int32Array).slice(8_584))).toEqual(Array(56).fill(0));
+    // Processor mask semantics count only complete 80-sample frames.
+    expect(result.encoderFrames).toBe(embeddedFrameCount(107));
+  });
+
+  it('keeps the valid hidden prefix when an incomplete padded frame adds an output row', async () => {
+    const { session, wholeEncoder } = streamingSession(64);
+    const samples = new Float32Array(108 * FRAME + 64).fill(0.25);
+    await session.pushAudio(samples);
+
+    const result = await session.finalize();
+    const feeds = wholeEncoder.run.mock.calls[0]![0] as Record<string, FakeTensor>;
+    expect(feeds['input_values']!.dims).toEqual([1, 8_720]);
+    // The whole graph returns 28 rows for 109 padded frames, but only the
+    // first 27 rows correspond to the 108 complete valid frames.
+    expect(result.encoderFrames).toBe(27);
+    // @ts-expect-error private hidden data pins prefix-vs-suffix selection
+    expect(session.hiddens[0]).toBe(1_000);
+    // @ts-expect-error private hidden data pins prefix-vs-suffix selection
+    expect(session.hiddens[(27 - 1) * 320]).toBe(1_026);
+  });
+
+  it('crops padded hidden rows after removing committed tail context', async () => {
+    const { session } = streamingSession(64);
+    const samples = new Float32Array(192 * FRAME + 40).fill(0.25);
+    await session.pushAudio(samples);
+
+    const result = await session.finalize();
+    expect(result.encoderFrames).toBe(embeddedFrameCount(192));
+    // 32 committed frames precede 16 fresh valid rows; the 49th whole-graph
+    // row came from padding and must not replace either edge of that slice.
+    // @ts-expect-error private hidden data pins the committed-context offset
+    expect(session.hiddens[32 * 320]).toBe(1_032);
+    // @ts-expect-error private hidden data pins the valid-tail endpoint
+    expect(session.hiddens[(48 - 1) * 320]).toBe(1_047);
+  });
+
+  it('does not append masked encoder frames when fewer than 80 samples remain', async () => {
+    const { session, trace, wholeEncoder } = streamingSession(64);
+    await session.pushAudio(new Float32Array(79).fill(0.25));
+
+    const result = await session.finalize();
+    const feeds = wholeEncoder.run.mock.calls[0]![0] as Record<string, FakeTensor>;
+    expect((feeds['input_values']!.data as Float32Array).length).toBe(80);
+    expect((feeds['attention_mask']!.data as Int32Array).reduce((sum, value) => sum + value, 0)).toBe(79);
+    expect(result).toEqual({ text: '', tokenIds: [], encoderFrames: 0 });
+    expect(trace.prefills).toBe(0);
+  });
+
+  it('keeps the whole-utterance framing at an exact 80-sample boundary', async () => {
+    const { session, wholeEncoder } = streamingSession(64);
+    await session.pushAudio(new Float32Array(80).fill(0.25));
+
+    const result = await session.finalize();
+    const feeds = wholeEncoder.run.mock.calls[0]![0] as Record<string, FakeTensor>;
+    expect(feeds['input_values']!.dims).toEqual([1, 80]);
+    expect((feeds['attention_mask']!.data as Int32Array).reduce((sum, value) => sum + value, 0)).toBe(80);
+    expect(result.encoderFrames).toBe(embeddedFrameCount(1));
   });
 
   it('wires per-layer past tensors from present outputs into step feeds', async () => {

@@ -95,4 +95,68 @@ describe('CanaryTokenizer', () => {
     });
     expect(tokenizer.buildPromptIds(prompt)).toEqual([7, 4, 16, 76, 76, 6, 9, 10, 13]);
   });
+
+  it('builds the native legacy canary prompt and keeps task explicit', () => {
+    const payload = createTokenizerPayload();
+    const specialTokens = {
+      '<pad>': 1,
+      '<|endoftext|>': 2,
+      '<|startoftranscript|>': 3,
+      '<|en|>': 4,
+      '<|es|>': 5,
+      '<|de|>': 6,
+      '<|fr|>': 7,
+      '<|transcribe|>': 8,
+      '<|translate|>': 9,
+      '<|nopnc|>': 10,
+      '<|pnc|>': 11,
+      '<|nospeech|>': 12,
+    };
+    const pieces = Array.from({ length: 32 }, (_, index) => `<|spltoken${index}|>`);
+    for (const [token, id] of Object.entries(specialTokens)) pieces[id] = token;
+    const tokenizer = CanaryTokenizer.fromPayload({
+      ...payload,
+      prompt_format: 'canary',
+      langs: ['spl_tokens', 'en', 'de', 'es', 'fr'],
+      language_codes: ['en', 'de', 'es', 'fr'],
+      bos_id: 3,
+      eos_id: 2,
+      pad_id: 1,
+      special_tokens: specialTokens,
+      subtokenizers: {
+        spl_tokens: { offset: 0, size: 32, pieces },
+        en: { offset: 32, size: 13, pieces: Array.from({ length: 13 }, (_, i) => `en-${i}`) },
+        de: { offset: 45, size: 13, pieces: Array.from({ length: 13 }, (_, i) => `de-${i}`) },
+        es: { offset: 58, size: 13, pieces: Array.from({ length: 13 }, (_, i) => `es-${i}`) },
+        fr: { offset: 71, size: 13, pieces: Array.from({ length: 13 }, (_, i) => `fr-${i}`) },
+      },
+    });
+    const config = parseNemoAedConfig('nvidia/canary-1b', {
+      promptFormat: 'canary',
+      promptDefaults: [{
+        sourceLanguage: 'en', targetLanguage: 'en', task: 'asr', decoderContext: '',
+        emotion: '<|emo:undefined|>', punctuate: true, inverseTextNormalization: false,
+        timestamps: false, diarize: false,
+      }],
+    });
+
+    const asr = tokenizer.resolvePromptSettings(config, { task: 'asr' });
+    expect(asr.task).toBe('asr');
+    expect(tokenizer.buildPromptIds(asr)).toEqual([3, 4, 8, 4, 11]);
+
+    const translation = tokenizer.resolvePromptSettings(config, {
+      source_lang: 'en', target_lang: 'de', task: 's2t_translation', pnc: 'no',
+    });
+    expect(translation.task).toBe('translation');
+    expect(tokenizer.buildPromptIds(translation)).toEqual([3, 4, 9, 6, 10]);
+  });
+
+  it('rejects Canary 2-only prompt controls for the legacy canary format', () => {
+    const payload = createTokenizerPayload();
+    const tokenizer = CanaryTokenizer.fromPayload({ ...payload, prompt_format: 'unsupported' });
+    const config = parseNemoAedConfig('test-canary');
+    expect(() => tokenizer.buildPromptIds(tokenizer.resolvePromptSettings(config))).toThrow(
+      /Unsupported Canary prompt format/,
+    );
+  });
 });

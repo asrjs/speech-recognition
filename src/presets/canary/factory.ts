@@ -44,6 +44,11 @@ export function createCanaryPresetFactory(
       const manifestSource = options.useManifestSource
         ? resolveCanaryArtifactSource(modelId)
         : undefined;
+      if (options.useManifestSource && !request.options?.source && !manifestSource) {
+        throw new Error(
+          `No verified Canary ONNX artifact source is registered for "${modelId}"; a compatible adapter/export is required before default Hub loading.`,
+        );
+      }
 
       return {
         family: 'nemo-aed',

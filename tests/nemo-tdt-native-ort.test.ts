@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   createOrtSession,
   initOrt,
@@ -96,6 +98,28 @@ describe('NeMo TDT explicit native CPU path', () => {
       }),
     );
     expect(create.mock.calls[0]?.[1]).not.toHaveProperty('preferredOutputLocation');
+  });
+
+  it('lets native CPU resolve colocated sidecars without mounting their bytes', async () => {
+    const directory = await mkdtemp(join(os.tmpdir(), 'asrjs-native-ort-'));
+    const graphPath = join(directory, 'model.onnx');
+    const sidecarPath = join(directory, 'model.onnx.data');
+    const create = vi.fn(async () => ({ run: vi.fn(), release: vi.fn() }));
+    const ort = { ...native, InferenceSession: { create } } as unknown as OrtModuleLike;
+    try {
+      await writeFile(graphPath, new Uint8Array([1]));
+      await writeFile(sidecarPath, new Uint8Array([2, 3, 4]));
+      await createOrtSession(ort, pathToFileURL(graphPath).href, {
+        backendId: 'native-cpu',
+        externalDataUrl: pathToFileURL(sidecarPath).href,
+        externalDataPath: 'model.onnx.data',
+      });
+
+      const [, options] = create.mock.calls[0] as unknown as [string, Record<string, unknown>];
+      expect(options).not.toHaveProperty('externalData');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it('rejects a remote native graph before ORT can silently choose another engine', async () => {

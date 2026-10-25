@@ -117,11 +117,12 @@ function normalizeTaskOption(task: NemoAedTranscriptionOptions['task']): 'asr' |
   }
 
   const normalized = String(task).trim().toLowerCase();
-  if (normalized === 'asr') {
+  if (normalized === 'asr' || normalized === 'transcribe') {
     return 'asr';
   }
   if (
     normalized === 'ast' ||
+    normalized === 's2t_translation' ||
     normalized === 'translate' ||
     normalized === 'translation' ||
     normalized === 'speech-translation'
@@ -228,9 +229,12 @@ export class CanaryTokenizer implements NemoTokenizer {
       options.target_lang ??
       (task === 'asr' ? resolvedSource : options.language) ??
       fallbackTarget;
+    const resolvedTask =
+      task ?? defaults?.task ?? (resolvedSource === resolvedTarget ? 'asr' : 'translation');
     return {
       sourceLanguage: resolvedSource,
       targetLanguage: resolvedTarget,
+      task: resolvedTask,
       decoderContext: options.decoderContext ?? defaults?.decoderContext ?? '',
       emotion: normalizeEmotionToken(options.emotion ?? defaults?.emotion ?? 'undefined'),
       punctuate: normalizeBooleanOption(
@@ -254,6 +258,29 @@ export class CanaryTokenizer implements NemoTokenizer {
       throw new Error(
         'Canary decoder_context prompt text is not supported yet. Use the default empty decoder context.',
       );
+    }
+
+    if (this.promptFormat === 'canary') {
+      if (settings.inverseTextNormalization || settings.timestamps || settings.diarize) {
+        throw new Error(
+          'The Canary `canary` prompt format does not support ITN, timestamps, or diarization options.',
+        );
+      }
+      const taskToken =
+        settings.task === 'translation' ||
+        (settings.task === undefined && settings.sourceLanguage !== settings.targetLanguage)
+          ? '<|translate|>'
+          : '<|transcribe|>';
+      return [
+        this.requireTokenId('<|startoftranscript|>'),
+        this.requireTokenId(normalizeLanguageToken(settings.sourceLanguage)),
+        this.requireTokenId(taskToken),
+        this.requireTokenId(normalizeLanguageToken(settings.targetLanguage)),
+        this.requireTokenId(normalizeBooleanToken('pnc', settings.punctuate)),
+      ];
+    }
+    if (this.promptFormat !== 'canary2') {
+      throw new Error(`Unsupported Canary prompt format "${this.promptFormat}".`);
     }
 
     // Canary `canary2` prompt layout:

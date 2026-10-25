@@ -78,6 +78,14 @@ export interface CanaryPresetManifest {
 
 export const DEFAULT_MODEL = 'nvidia/canary-180m-flash';
 
+export const CANARY_1B_V2_LANGUAGES = [
+  'bg', 'hr', 'cs', 'da', 'nl', 'en', 'et', 'fi', 'fr', 'de', 'el', 'hu', 'it',
+  'lv', 'lt', 'mt', 'pl', 'pt', 'ro', 'sk', 'sl', 'es', 'sv', 'ru', 'uk',
+] as const;
+export const CANARY_1B_V2_VOCABULARY_SIZE = 16_384;
+export const CANARY_1B_V2_ENCODER_LAYERS = 32;
+export const CANARY_1B_V2_DECODER_LAYERS = 8;
+
 /**
  * Ordered special-token prompt consumed by the Canary decoder in this runtime.
  *
@@ -241,14 +249,19 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      vocabularySize: 5248,
+      vocabularySize: 4128,
       languages: ['en', 'de', 'es', 'fr'],
       melBins: 128,
-      promptFormat: 'canary2',
+      encoderHiddenSize: 1024,
+      decoderHiddenSize: 1024,
+      encoderOutputSize: 1024,
+      maxTargetPositions: 512,
+      promptFormat: 'canary',
       promptDefaults: [
         {
           sourceLanguage: 'en',
           targetLanguage: 'en',
+          task: 'asr',
           decoderContext: '',
           emotion: '<|emo:undefined|>',
           punctuate: true,
@@ -257,13 +270,14 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
           diarize: false,
         },
       ],
+      tokenizer: {
+        kind: 'aggregate',
+        bosTokenId: 3,
+        eosTokenId: 2,
+        padTokenId: 1,
+        vocabSize: 4128,
+      },
     },
-    source: {
-      kind: 'huggingface',
-      repoId: 'nvidia/canary-1b',
-      preprocessorBackend: 'js',
-    },
-    docs: CANARY_180M_FLASH_DOCS,
   },
   {
     preset: 'canary',
@@ -280,8 +294,8 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
       task: 'multitask-asr-translation',
     },
     config: {
-      vocabularySize: 5248,
-      languages: ['en', 'de', 'es', 'fr'],
+      vocabularySize: CANARY_1B_V2_VOCABULARY_SIZE,
+      languages: CANARY_1B_V2_LANGUAGES,
       melBins: 128,
       promptFormat: 'canary2',
       promptDefaults: [
@@ -297,12 +311,6 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
         },
       ],
     },
-    source: {
-      kind: 'huggingface',
-      repoId: 'nvidia/canary-1b-v2',
-      preprocessorBackend: 'js',
-    },
-    docs: CANARY_180M_FLASH_DOCS,
   },
 ];
 

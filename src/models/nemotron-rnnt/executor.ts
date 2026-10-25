@@ -28,8 +28,14 @@ import {
   type ResolvedNemotronRnntArtifacts,
   type ResolvedNemotronRnntOptions,
 } from './ort.js';
+import {
+  getNemotronRnntStableFrameEnd,
+  planNemotronRnntEncoderWindows,
+  type NemotronRnntEncoderWindow,
+} from './config.js';
 import type {
   NemotronRnntArtifactSource,
+  NemotronRnntEncoderWindowing,
   NemotronRnntExecutor,
   NemotronRnntModelConfig,
   NemotronRnntNativeTranscript,
@@ -54,12 +60,43 @@ interface LoadedNemotronExecutorState {
   readonly preprocessor: JsNemoPreprocessor;
   readonly warnings: readonly TranscriptWarning[];
   readonly promptIdDefault: number;
+  readonly encoderWindowing?: NemotronRnntEncoderWindowing;
   readonly options: ResolvedNemotronRnntOptions;
   readonly assetHandles: readonly ResolvedAssetHandle[];
 }
 
 type Float32Buffer = Float32Array<ArrayBuffer>;
 type BigInt64Buffer = BigInt64Array<ArrayBuffer>;
+
+const REQUIRED_NEMOTRON_ENCODER_INPUTS = [
+  'audio_signal',
+  'length',
+  'cache_last_channel',
+  'cache_last_time',
+  'cache_last_channel_len',
+  'lang_id',
+] as const;
+
+function assertNemotronEncoderContract(session: OrtSessionLike): void {
+  const inputNames = session.inputNames;
+  if (!Array.isArray(inputNames)) {
+    throw new Error(
+      'Cannot validate Nemotron encoder graph: ONNX session metadata did not expose inputNames.',
+    );
+  }
+
+  const missingInputs = REQUIRED_NEMOTRON_ENCODER_INPUTS.filter(
+    (inputName) => !inputNames.includes(inputName),
+  );
+  const unexpectedInputs = inputNames.filter(
+    (inputName) => !REQUIRED_NEMOTRON_ENCODER_INPUTS.some((expected) => expected === inputName),
+  );
+  if (missingInputs.length > 0 || unexpectedInputs.length > 0) {
+    throw new Error(
+      `Unsupported Nemotron encoder graph: missing required legacy RNNT inputs (${missingInputs.join(', ')}); unsupported inputs (${unexpectedInputs.join(', ')}). This executor requires audio_signal and streaming cache inputs; exports with input_features need a compatible adapter.`,
+    );
+  }
+}
 
 interface NemotronEncoderCacheState {
   liveCh: Float32Buffer;
@@ -89,7 +126,6 @@ interface NemotronStreamingState {
   liveH: Float32Buffer;
   liveC: Float32Buffer;
 }
-
 
 function emitTranscriptionProgress(
   options: NemotronRnntTranscriptionOptions,
@@ -294,6 +330,12 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
         ? `${artifacts.encoderFilename}.data`
         : undefined,
     });
+    try {
+      assertNemotronEncoderContract(encoderSession);
+    } catch (error) {
+      await releaseOrtSession(encoderSession);
+      throw error;
+    }
     if (this.disposed) {
       releaseOrtSession(encoderSession);
       throw new Error(`Nemotron RNNT executor disposed during load for "${this.modelId}".`);
@@ -343,6 +385,7 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       preprocessor,
       warnings,
       promptIdDefault: this.config.defaultPromptId,
+      encoderWindowing: this.config.encoderWindowing,
       options,
       assetHandles: this.assetHandles,
     };
@@ -600,7 +643,8 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     const promptId = options.promptId ?? loaded.promptIdDefault;
     const blankId = loaded.tokenizer.blankId ?? this.config.blankTokenId;
     if (!this.streamingState) {
-      const { channelLayers, channelFrames, channelDim, timeFrames, timeDim } = this.config.encoderCache;
+      const { channelLayers, channelFrames, channelDim, timeFrames, timeDim } =
+        this.config.encoderCache;
       const predSize = this.config.predictionHiddenSize;
       this.streamingState = {
         melProcessor: new IncrementalJSMelProcessor({
@@ -613,9 +657,16 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
           liveT: new Float32Array(channelLayers * timeDim * timeFrames),
           liveChLen: new BigInt64Array(1),
         },
-        tokenIds: [], frameIndices: [], confidences: [], logProbs: [],
+        tokenIds: [],
+        frameIndices: [],
+        confidences: [],
+        logProbs: [],
         frameConfidenceStats: new Map(),
-        preprocessMs: 0, encodeMs: 0, decodeMs: 0, decodeIterations: 0, totalMs: 0,
+        preprocessMs: 0,
+        encodeMs: 0,
+        decodeMs: 0,
+        decodeIterations: 0,
+        totalMs: 0,
         previousAudioSamples: 0,
         encodedMelFrames: 0,
         encodedFrames: 0,
@@ -634,7 +685,9 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       throw new Error('Nemotron streaming audio must be cumulative until resetStreaming().');
     }
     if (state.finalized && pcm.length !== state.previousAudioSamples) {
-      throw new Error('Nemotron streaming is finalized; call resetStreaming() before appending audio.');
+      throw new Error(
+        'Nemotron streaming is finalized; call resetStreaming() before appending audio.',
+      );
     }
 
     const processStart = nowMs();
@@ -645,7 +698,9 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       : Math.max(0, Math.floor(pcm.length / 160) - 3);
     const melFrameEnd = finalize
       ? safeMelFrames
-      : Math.floor(safeMelFrames / this.config.chunkFrames) * this.config.chunkFrames;
+      : loaded.encoderWindowing
+        ? getNemotronRnntStableFrameEnd(safeMelFrames, loaded.encoderWindowing)
+        : Math.floor(safeMelFrames / this.config.chunkFrames) * this.config.chunkFrames;
     if (melFrameEnd < state.encodedMelFrames) {
       throw new Error('Nemotron streaming frontend stable-frame boundary moved backwards.');
     }
@@ -673,18 +728,25 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       liveH: state.liveH.slice() as Float32Buffer,
       liveC: state.liveC.slice() as Float32Buffer,
     };
-    const decoded = encFlat.length > 0
-      ? await this.runGreedyDecoder(
-          loaded,
-          encFlat,
-          blankId,
-          Math.max(loaded.tokenizer.vocabSize, this.config.vocabularySize ?? 0, blankId + 1),
-          options.signal ?? null,
-          workingDecoderState,
-          state.encodedFrames,
-        )
-      : { tokenIds: [], frameIndices: [], confidences: [], logProbs: [], iterations: 0,
-          frameConfidenceStats: new Map<number, { sum: number; count: number }>() };
+    const decoded =
+      encFlat.length > 0
+        ? await this.runGreedyDecoder(
+            loaded,
+            encFlat,
+            blankId,
+            Math.max(loaded.tokenizer.vocabSize, this.config.vocabularySize ?? 0, blankId + 1),
+            options.signal ?? null,
+            workingDecoderState,
+            state.encodedFrames,
+          )
+        : {
+            tokenIds: [],
+            frameIndices: [],
+            confidences: [],
+            logProbs: [],
+            iterations: 0,
+            frameConfidenceStats: new Map<number, { sum: number; count: number }>(),
+          };
     const decodeMs = nowMs() - decodeStart;
     state.encoderCache.liveCh = workingEncoderCache.liveCh;
     state.encoderCache.liveT = workingEncoderCache.liveT;
@@ -736,26 +798,36 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       tokens: details.tokens,
       specialTokens: details.specialTokens,
       confidence: {
-        utterance: tokenAverage, tokenAverage, averageLogProb,
+        utterance: tokenAverage,
+        tokenAverage,
+        averageLogProb,
         frames: frameConfidences,
         frameAverage: frameConfidences.length
           ? frameConfidences.reduce((sum, value) => sum + value, 0) / frameConfidences.length
           : undefined,
       },
       metrics: {
-        preprocessMs: roundMetric(state.preprocessMs), encodeMs: roundMetric(state.encodeMs),
-        decodeMs: roundMetric(state.decodeMs), totalMs, wallMs: totalMs,
+        preprocessMs: roundMetric(state.preprocessMs),
+        encodeMs: roundMetric(state.encodeMs),
+        decodeMs: roundMetric(state.decodeMs),
+        totalMs,
+        wallMs: totalMs,
         audioDurationSec: roundMetric(durationSeconds, 4),
         rtf: durationSeconds > 0 ? roundMetric(totalMs / (durationSeconds * 1000), 4) : 0,
-        preprocessorBackend: 'js', encoderFrameCount: state.encodedFrames,
-        decodeIterations: state.decodeIterations, emittedTokenCount: state.tokenIds.length,
+        preprocessorBackend: 'js',
+        encoderFrameCount: state.encodedFrames,
+        decodeIterations: state.decodeIterations,
+        emittedTokenCount: state.tokenIds.length,
         emittedWordCount: details.words.length,
       } as TranscriptMetrics,
       warnings: [
         ...loaded.warnings,
-        { code: 'nemotron-rnnt.streaming-numerical-parity-unverified',
-          message: 'Persistent streaming state is experimental; numerical parity against the active exported graph is unverified.',
-          recoverable: true },
+        {
+          code: 'nemotron-rnnt.streaming-numerical-parity-unverified',
+          message:
+            'Persistent streaming state is experimental; numerical parity against the active exported graph is unverified.',
+          recoverable: true,
+        },
       ],
       debug: {
         tokenIds: options.returnTokenIds ? [...state.tokenIds] : undefined,
@@ -782,22 +854,33 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
     const { channelLayers, channelFrames, channelDim, timeFrames, timeDim } =
       this.config.encoderCache;
 
-    const cacheCh = cacheState?.liveCh ?? new Float32Array(
-      new ArrayBuffer(1 * channelLayers * channelFrames * channelDim * 4),
-    );
-    const cacheT = cacheState?.liveT ?? new Float32Array(
-      new ArrayBuffer(1 * channelLayers * timeDim * timeFrames * 4),
-    );
+    const cacheCh =
+      cacheState?.liveCh ??
+      new Float32Array(new ArrayBuffer(1 * channelLayers * channelFrames * channelDim * 4));
+    const cacheT =
+      cacheState?.liveT ??
+      new Float32Array(new ArrayBuffer(1 * channelLayers * timeDim * timeFrames * 4));
     let liveCh: Float32Buffer = cacheCh;
     let liveT: Float32Buffer = cacheT;
     let liveChLen: BigInt64Buffer = cacheState?.liveChLen ?? new BigInt64Array(new ArrayBuffer(8));
 
-    const flatChunk = new Float32Array(
-      new ArrayBuffer(chunkFrames * featureDim * 4),
-    );
     const melFrameCount = Math.max(0, frameEnd - frameStart);
-    const totalFrames = Math.ceil(melFrameCount / chunkFrames) * framesPerChunk;
-    const encFlat = new Float32Array(new ArrayBuffer(totalFrames * hiddenDim * 4));
+    const windowing = loaded.encoderWindowing;
+    const windows: readonly NemotronRnntEncoderWindow[] = windowing
+      ? planNemotronRnntEncoderWindows(frameStart, frameEnd, windowing)
+      : Array.from({ length: Math.ceil(melFrameCount / chunkFrames) }, (_, index) => {
+          const startFrame = frameStart + index * chunkFrames;
+          return {
+            startFrame,
+            inputFrames: chunkFrames,
+            advanceFrames: Math.min(chunkFrames, frameEnd - startFrame),
+            first: startFrame === 0,
+          };
+        });
+    const encFlat = windowing
+      ? undefined
+      : new Float32Array(new ArrayBuffer(windows.length * framesPerChunk * hiddenDim * 4));
+    const encodedParts: Float32Buffer[] = [];
 
     const langIdTensor = new loaded.ort.Tensor(
       'int64',
@@ -807,29 +890,35 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
 
     try {
       let chunkIndex = 0;
-      for (let melIdx = frameStart; melIdx < frameEnd; melIdx += chunkFrames) {
+      for (const window of windows) {
         throwIfDecodeAborted(signal);
 
-        const take = Math.min(chunkFrames, frameCount - melIdx);
+        const tensorFrames = windowing ? window.inputFrames : chunkFrames;
+        const take = Math.min(tensorFrames, frameCount - window.startFrame);
+        if (windowing && take !== tensorFrames) {
+          throw new Error(
+            `Nemotron encoder window exceeds available features: start=${window.startFrame}, input=${tensorFrames}, available=${frameCount}.`,
+          );
+        }
+        const flatChunk = new Float32Array(new ArrayBuffer(tensorFrames * featureDim * 4));
         const melLengthTensor = new loaded.ort.Tensor(
           'int64',
-          BigInt64Array.from([BigInt(chunkFrames)]),
+          BigInt64Array.from([BigInt(windowing ? tensorFrames : chunkFrames)]),
           [1],
         );
-        flatChunk.fill(0);
         // JSMelProcessor emits bin-major layout: element (bin, frame) at
         // bin * frameCount + frame. The encoder wants [1, chunkFrames, bins]
         // (frame-major rows), so transpose each chunk's slice.
         for (let i = 0; i < take; i += 1) {
           const dst = i * featureDim;
           for (let d = 0; d < featureDim; d += 1) {
-            flatChunk[dst + d] = features[d * frameCount + (melIdx + i)] ?? 0;
+            flatChunk[dst + d] = features[d * frameCount + (window.startFrame + i)] ?? 0;
           }
         }
 
         const audioTensor = new loaded.ort.Tensor('float32', flatChunk, [
           1,
-          chunkFrames,
+          tensorFrames,
           featureDim,
         ]);
         const cacheChTensor = new loaded.ort.Tensor('float32', liveCh, [
@@ -859,32 +948,62 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
 
           const encoderTensor = (encoderOut.outputs ??
             Object.values(encoderOut)[0]) as OrtTensorLike<Float32Array>;
+          const outputRows = encoderTensor.dims[1];
           if (
             encoderTensor.dims[0] !== 1 ||
-            encoderTensor.dims[1] !== framesPerChunk ||
+            typeof outputRows !== 'number' ||
+            !Number.isSafeInteger(outputRows) ||
+            outputRows <= 0 ||
+            (windowing === undefined && outputRows !== framesPerChunk) ||
             encoderTensor.dims[2] !== hiddenDim
           ) {
             throw new Error(
-              `Nemotron encoder chunk shape mismatch: expected [1, ${framesPerChunk}, ${hiddenDim}], received [${encoderTensor.dims.join(', ')}].`,
+              `Nemotron encoder chunk shape mismatch: expected [1, ${windowing ? 'a positive row count' : framesPerChunk}, ${hiddenDim}], received [${encoderTensor.dims.join(', ')}].`,
             );
           }
           const data = copyTensorData(encoderTensor);
-          // Cache-aware encoder emits framesPerChunk rows per chunk;
-          // write them contiguously into the flat encoder buffer.
-          const chunkOutOffset = chunkIndex * framesPerChunk * hiddenDim;
-          for (let f = 0; f < framesPerChunk; f += 1) {
-            for (let d = 0; d < hiddenDim; d += 1) {
-              encFlat[chunkOutOffset + f * hiddenDim + d] =
-                data[f * hiddenDim + d] ?? 0;
+          if (windowing) {
+            const encodedLengthTensor = encoderOut.encoded_lengths as OrtTensorLike | undefined;
+            if (!encodedLengthTensor) {
+              throw new Error('Nemotron conditional-window encoder must return encoded_lengths.');
+            }
+            const encodedLengths = copyBigInt64Data(encodedLengthTensor);
+            const encodedFrames = Number(encodedLengths[0]);
+            if (
+              encodedLengths.length !== 1 ||
+              !Number.isSafeInteger(encodedFrames) ||
+              encodedFrames <= 0 ||
+              encodedFrames > outputRows ||
+              data.length < encodedFrames * hiddenDim
+            ) {
+              throw new Error(
+                `Nemotron encoder returned invalid encoded_lengths for window ${chunkIndex}.`,
+              );
+            }
+            if (
+              window.first &&
+              window.inputFrames === windowing.firstChunkFrames &&
+              (outputRows !== framesPerChunk || encodedFrames !== framesPerChunk)
+            ) {
+              throw new Error(
+                `Nemotron conditional-window metadata does not match the encoder graph: a ${windowing.firstChunkFrames}-frame first window must produce ${framesPerChunk} encoded frames; graph produced ${encodedFrames} in ${outputRows} rows.`,
+              );
+            }
+            encodedParts.push(data.slice(0, encodedFrames * hiddenDim));
+          } else {
+            // Preserve the legacy static-window graph contract unchanged.
+            const chunkOutOffset = chunkIndex * framesPerChunk * hiddenDim;
+            for (let f = 0; f < framesPerChunk; f += 1) {
+              for (let d = 0; d < hiddenDim; d += 1) {
+                encFlat![chunkOutOffset + f * hiddenDim + d] = data[f * hiddenDim + d] ?? 0;
+              }
             }
           }
           chunkIndex += 1;
 
           const nextCh = encoderOut.cache_last_channel_next as OrtTensorLike | undefined;
           const nextT = encoderOut.cache_last_time_next as OrtTensorLike | undefined;
-          const nextChLen = encoderOut.cache_last_channel_len_next as
-            | OrtTensorLike
-            | undefined;
+          const nextChLen = encoderOut.cache_last_channel_len_next as OrtTensorLike | undefined;
           if (!nextCh || !nextT || !nextChLen) {
             throw new Error('Nemotron encoder did not return all streaming cache outputs.');
           }
@@ -921,7 +1040,15 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
       langIdTensor.dispose?.();
     }
 
-    return encFlat;
+    if (encFlat) return encFlat;
+    const totalEncodedValues = encodedParts.reduce((sum, part) => sum + part.length, 0);
+    const combined = new Float32Array(new ArrayBuffer(totalEncodedValues * 4));
+    let offset = 0;
+    for (const part of encodedParts) {
+      combined.set(part, offset);
+      offset += part.length;
+    }
+    return combined;
   }
 
   private async runGreedyDecoder(
@@ -1030,16 +1157,8 @@ export class OrtNemotronRnntExecutor implements NemotronRnntExecutor {
         const encRem = new Float32Array(new ArrayBuffer(encRemLength * 4));
         encRem.set(encFlat.subarray(encRemOffset, encRemOffset + encRemLength));
 
-        const encTensor = new loaded.ort.Tensor('float32', encRem, [
-          1,
-          T_window,
-          hiddenDim,
-        ]);
-        const decTensor = new loaded.ort.Tensor('float32', decoderT, [
-          1,
-          decoderFrameCount,
-          640,
-        ]);
+        const encTensor = new loaded.ort.Tensor('float32', encRem, [1, T_window, hiddenDim]);
+        const decTensor = new loaded.ort.Tensor('float32', decoderT, [1, decoderFrameCount, 640]);
 
         let jointOut: Record<string, OrtTensorLike> | undefined;
         let logits: Float32Array;

@@ -1,7 +1,37 @@
 import { measureBrowserMemory } from '@asrjs/speech-recognition/bench/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('browser benchmark measurements', () => {
+  it('bounds a pending optional measurement without inventing memory bytes', async () => {
+    vi.useFakeTimers();
+    try {
+      const pending = measureBrowserMemory({
+        performance: { measureUserAgentSpecificMemory: () => new Promise(() => {}) },
+        timeoutMs: 1000,
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(pending).resolves.toMatchObject({
+        source: 'unavailable', scope: 'unavailable', bytes: null, reason: 'timeout',
+      });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the deadline after a successful measurement', async () => {
+    vi.useFakeTimers();
+    try {
+      await expect(measureBrowserMemory({
+        performance: { measureUserAgentSpecificMemory: async () => ({ bytes: 4096 }) },
+        timeoutMs: 1000,
+      })).resolves.toMatchObject({ bytes: 4096 });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('records User-Agent Specific Memory results with explicit scope', async () => {
     const snapshot = await measureBrowserMemory({
       performance: {

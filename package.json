@@ -63,6 +63,11 @@
       "import": "./dist/browser-media.js",
       "default": "./dist/browser-media.js"
     },
+    "./controller": {
+      "types": "./dist/controller.d.ts",
+      "import": "./dist/controller.js",
+      "default": "./dist/controller.js"
+    },
     "./worker": {
       "types": "./dist/worker.d.ts",
       "import": "./dist/worker.js",

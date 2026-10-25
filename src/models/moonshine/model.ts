@@ -226,6 +226,23 @@ export class MoonshineSpeechSession implements SpeechSession<
       }
       this.offlineOrtSessions.push(encoderGraph, crossKvGraph, decoderGraph);
 
+      const decoderInputs = 'inputNames' in decoderGraph ? decoderGraph.inputNames : undefined;
+      const decoderOutputs = 'outputNames' in decoderGraph ? decoderGraph.outputNames : undefined;
+      const requiredDecoderInputs = ['input_ids', 'self_past', 'cross_past', 'encoder_states'];
+      if (
+        !Array.isArray(decoderInputs) ||
+        !requiredDecoderInputs.every((name) => decoderInputs.includes(name)) ||
+        !Array.isArray(decoderOutputs) ||
+        decoderOutputs[0] !== 'logits' ||
+        decoderOutputs[1] !== 'self_present'
+      ) {
+        throw new Error(
+          'Unsupported Moonshine offline decoder graph: expected the stacked self_past/cross_past ' +
+            'cache interface with logits/self_present outputs. Use a matching stacked-cache export; ' +
+            'per-layer past_key_values graphs require a different adapter.',
+        );
+      }
+
       const readJsonFromUrl = async <T = unknown>(targetUrl: string): Promise<T> => {
         if (targetUrl.startsWith('file://')) {
           try {

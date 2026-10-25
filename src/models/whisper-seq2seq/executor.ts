@@ -494,6 +494,40 @@ export function disposeOwnedDecoderFeeds(
   }
 }
 
+export async function withOwnedDecoderFeeds<T>(
+  feeds: Record<string, unknown>,
+  retain: ReadonlySet<unknown>,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await run();
+  } finally {
+    disposeOwnedDecoderFeeds(feeds, retain);
+  }
+}
+
+export function disposeOwnedWhisperTensors(tensors: Set<OrtTensorLike | undefined>): void {
+  for (const tensor of tensors) {
+    disposeOrtTensor(tensor);
+  }
+  tensors.clear();
+}
+
+export function disposeWhisperEncoderKvCache(
+  cache: Map<string, { readonly tensor: OrtTensorLike }>,
+): void {
+  disposeWhisperEncoderKvCaches(cache);
+}
+
+export function disposeWhisperEncoderKvCaches(
+  ...caches: Array<Map<string, { readonly tensor: OrtTensorLike }>>
+): void {
+  disposeOwnedWhisperTensors(
+    new Set(caches.flatMap((cache) => [...cache.values()].map((entry) => entry.tensor))),
+  );
+  for (const cache of caches) cache.clear();
+}
+
 export function disposeReplacedOrtKv(
   previous: Record<string, OrtTensorLike | undefined>,
   next: Record<string, OrtTensorLike | undefined>,
@@ -730,6 +764,73 @@ function normalizeWhisperKvCacheValue(
     return { data: value };
   }
   return value;
+}
+
+function getWhisperDecoderCacheLength(
+  pastKv: Record<string, WhisperKvCacheValue>,
+  allowEmpty = false,
+): number {
+  const lengths = Object.entries(pastKv)
+    .filter(([name]) => /^(?:past_key_values|present)\.\d+\.decoder\.(?:key|value)$/.test(name))
+    .map(([name, value]) => {
+      const dims = normalizeWhisperKvCacheValue(value).dims;
+      const length = dims?.[2];
+      if (!Number.isSafeInteger(length) || length! < 0) {
+        throw new Error(`Whisper decoder cache "${name}" has no valid sequence length at dimension 2.`);
+      }
+      return length!;
+    });
+  if (lengths.length === 0) {
+    if (allowEmpty) return 0;
+    throw new Error('Whisper decoder cache_position requires decoder KV cache tensors.');
+  }
+  const length = lengths[0]!;
+  if (lengths.some((candidate) => candidate !== length)) {
+    throw new Error('Whisper decoder KV tensors have mismatched sequence lengths.');
+  }
+  return length;
+}
+
+function createWhisperCachePosition(start: number, tokenCount: number): BigInt64Array {
+  if (!Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(tokenCount) || tokenCount < 1) {
+    throw new Error('Whisper cache_position requires a non-negative cache length and at least one input token.');
+  }
+  const positions = new BigInt64Array(tokenCount);
+  for (let index = 0; index < tokenCount; index++) positions[index] = BigInt(start + index);
+  return positions;
+}
+
+export function createWhisperBatchedCachePosition(
+  pastKvs: readonly Record<string, WhisperKvCacheValue>[],
+  tokenCount: number,
+): BigInt64Array {
+  const lengths = pastKvs.map((pastKv) => getWhisperDecoderCacheLength(pastKv));
+  const cacheLength = lengths[0];
+  if (cacheLength === undefined) {
+    throw new Error('Whisper batched cache_position requires at least one active beam.');
+  }
+  if (lengths.some((length) => length !== cacheLength)) {
+    throw new Error('Cannot batch Whisper beams with different decoder cache_position lengths.');
+  }
+  return createWhisperCachePosition(cacheLength, tokenCount);
+}
+
+export function createWhisperBatchedStepFeedTensors(
+  ort: Pick<OrtModuleLike, 'Tensor'>,
+  tokenIds: readonly number[],
+  pastKvs: readonly Record<string, WhisperKvCacheValue>[],
+  includeCachePosition: boolean,
+): Record<string, unknown> {
+  const cachePosition = includeCachePosition
+    ? createWhisperBatchedCachePosition(pastKvs, 1)
+    : undefined;
+  const feeds: Record<string, unknown> = {
+    input_ids: new ort.Tensor('int64', createWhisperInt64TokenIds(tokenIds), [tokenIds.length, 1]),
+  };
+  if (cachePosition) {
+    feeds.cache_position = new ort.Tensor('int64', cachePosition, [cachePosition.length]);
+  }
+  return feeds;
 }
 
 /**
@@ -1350,8 +1451,8 @@ export class WhisperOnnxExecutor {
           ...resolved.artifacts,
           encoderUrl,
           decoderUrl: decoderInitUrl ?? resolved.artifacts.decoderUrl,
-          // Keep tokenizerUrl remote/file based so config.json and
-          // generation_config.json remain derivable by sibling path replacement.
+        // Keep tokenizerUrl as supplied. Explicit metadata URLs cover opaque
+        // locators; legacy remote sources still derive sibling metadata paths.
           tokenizerUrl: resolved.artifacts.tokenizerUrl,
         },
         decoderInitUrl,
@@ -1419,20 +1520,26 @@ export class WhisperOnnxExecutor {
       }
     };
 
+    const resolveArtifactFile = async (url: string): Promise<string> => {
+      const repoPath = source.repoId.split('/').map(encodeURIComponent).join('/');
+      const resolvePrefix = `/${repoPath}/resolve/${encodeURIComponent(revision)}/`;
+      const pathname = new URL(url).pathname;
+      const filename = pathname.startsWith(resolvePrefix)
+        ? pathname.slice(resolvePrefix.length).split('/').map(decodeURIComponent).join('/')
+        : pathname.split('/').pop();
+      return (await resolveFile(filename)) ?? url;
+    };
+
     void resolveOptionalFile;
 
     return {
       ...resolved,
       artifacts: {
         ...resolved.artifacts,
-        encoderUrl:
-          (await resolveFile(resolved.artifacts.encoderUrl.split('/').pop())) ??
-          resolved.artifacts.encoderUrl,
-        decoderUrl:
-          (await resolveFile(resolved.artifacts.decoderUrl.split('/').pop())) ??
-          resolved.artifacts.decoderUrl,
-        // Keep tokenizerUrl remote/file based so config.json and generation_config.json
-        // remain derivable by sibling path replacement.
+        encoderUrl: await resolveArtifactFile(resolved.artifacts.encoderUrl),
+        decoderUrl: await resolveArtifactFile(resolved.artifacts.decoderUrl),
+        // Keep tokenizerUrl as supplied. Explicit metadata URLs cover opaque
+        // locators; legacy remote sources still derive sibling metadata paths.
         tokenizerUrl: resolved.artifacts.tokenizerUrl,
       },
     };
@@ -1786,6 +1893,7 @@ export class WhisperOnnxExecutor {
     paddedFeatures: Float32Array,
     melBins: number,
     melInputFrames: number,
+    ownedEncoderTensors: Set<OrtTensorLike>,
   ): Promise<{
     readonly encoderHiddenStates: OrtTensorLike<Float32Array>;
     readonly alignmentRuntime: WhisperAlignmentRuntime;
@@ -1811,6 +1919,7 @@ export class WhisperOnnxExecutor {
       loaded.ort,
     );
     const encoderOutputs = await runWhisperEncoderOnFeatures(encoderSession, featureTensor);
+    for (const tensor of Object.values(encoderOutputs)) ownedEncoderTensors.add(tensor);
     const outputKey = Object.keys(encoderOutputs)[0];
     if (!outputKey) {
       throw new Error('Whisper alignment-reference encoder returned no output tensor.');
@@ -1820,6 +1929,7 @@ export class WhisperOnnxExecutor {
       alignmentRuntime.decoderAlignSession,
       loaded.ort,
     );
+    ownedEncoderTensors.add(encoderHiddenStates);
     return { encoderHiddenStates, alignmentRuntime };
   }
 
@@ -1827,6 +1937,7 @@ export class WhisperOnnxExecutor {
     loaded: LoadedExecutorState,
     encoderHiddenStates: OrtTensorLike<Float32Array>,
     alignSession: OrtSessionLike,
+    ownedEncoderTensors?: Set<OrtTensorLike>,
   ): Promise<OrtTensorLike<Float32Array>> {
     let tensor = encoderHiddenStates;
     if (isGpuBufferTensor(tensor)) {
@@ -1837,8 +1948,11 @@ export class WhisperOnnxExecutor {
         data,
         [...tensor.dims],
       ) as OrtTensorLike<Float32Array>;
+      ownedEncoderTensors?.add(tensor);
     }
-    return maybeCastEncoderHiddenStates(tensor, alignSession, loaded.ort);
+    const cast = await maybeCastEncoderHiddenStates(tensor, alignSession, loaded.ort);
+    if (cast !== encoderHiddenStates) ownedEncoderTensors?.add(cast);
+    return cast;
   }
 
   private async runDecoderStep(
@@ -1848,18 +1962,41 @@ export class WhisperOnnxExecutor {
     pastKeyValues: Record<string, OrtTensorLike<Float32Array>>,
     isFirstStep: boolean,
   ): Promise<DecoderStepResult> {
-    const inputIds = createWhisperInt64TokenIds(generatedTokens);
-    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, generatedTokens.length]);
+    const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
+    const shouldFeed = (name: string): boolean =>
+      decoderInputNames.length === 0 || decoderInputNames.includes(name);
+    const hasDecoderPast = !isFirstStep && Object.entries(pastKeyValues).some(
+      ([name, tensor]) =>
+        shouldFeed(name) &&
+        /^past_key_values\.\d+\.decoder\.(?:key|value)$/.test(name) &&
+        (tensor.dims[2] ?? 0) > 0,
+    );
+    // The cached Whisper branch advances the decoder KV by one position. Feed
+    // only the newest token when a decoder cache is present; cacheless graphs
+    // still need the full prefix on every call.
+    const decoderTokens = hasDecoderPast ? generatedTokens.slice(-1) : generatedTokens;
+    const cachePosition = decoderInputNames.includes('cache_position')
+      ? createWhisperCachePosition(
+          getWhisperDecoderCacheLength(pastKeyValues, isFirstStep || !hasDecoderPast),
+          decoderTokens.length,
+        )
+      : undefined;
+    const inputIds = createWhisperInt64TokenIds(decoderTokens);
+    const inputIdsTensor = new loaded.ort.Tensor('int64', inputIds, [1, decoderTokens.length]);
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
       encoder_hidden_states: encoderHiddenStates,
     };
+    if (cachePosition) {
+      feeds.cache_position = new loaded.ort.Tensor(
+        'int64',
+        cachePosition,
+        [cachePosition.length],
+      );
+    }
 
-    const decoderInputNames = loaded.decoderSession!.inputNames ?? [];
-    const shouldFeed = (name: string): boolean =>
-      decoderInputNames.length === 0 || decoderInputNames.includes(name);
     if (decoderInputNames.includes('use_cache_branch')) {
-      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 1 : 0]), [1]);
+      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([isFirstStep ? 0 : 1]), [1]);
     }
 
     if (!isFirstStep) {
@@ -1927,6 +2064,18 @@ export class WhisperOnnxExecutor {
       for (const [key, value] of Object.entries(outputs)) {
         if (key.startsWith('present')) {
           const pastName = key.replace(/^present/, 'past_key_values');
+          const previousTensor = pastKeyValues[pastName];
+          if (
+            /^present\.\d+\.encoder\.(?:key|value)$/.test(key) &&
+            value.dims.some((dimension) => dimension === 0) &&
+            previousTensor &&
+            previousTensor.dims.every((dimension) => dimension > 0)
+          ) {
+            // Some merged Whisper graphs return empty encoder-cache placeholders
+            // on the cached branch; encoder KV is immutable and must be retained.
+            nextPastKeyValues[pastName] = previousTensor;
+            continue;
+          }
           nextPastKeyValues[pastName] = value as OrtTensorLike<Float32Array>;
         }
       }
@@ -1950,6 +2099,7 @@ export class WhisperOnnxExecutor {
     language: string,
     textTokenIds: number[],
     task: 'transcribe' | 'translate' = 'transcribe',
+    ownedEncoderTensors?: Set<OrtTensorLike>,
   ): Promise<{
     readonly crossAttentions: readonly OrtTensorLike<Float32Array>[];
     readonly logitsForText: Float32Array;
@@ -1975,6 +2125,7 @@ export class WhisperOnnxExecutor {
       decoderSession,
       loaded.ort,
     );
+    ownedEncoderTensors?.add(encoderForAlignment);
 
     const feeds: Record<string, unknown> = {
       input_ids: inputIdsTensor,
@@ -1985,7 +2136,7 @@ export class WhisperOnnxExecutor {
     const shouldFeed = (name: string): boolean =>
       decoderInputNames.length === 0 || decoderInputNames.includes(name);
     if (decoderInputNames.includes('use_cache_branch')) {
-      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([1]), [1]);
+      feeds.use_cache_branch = new loaded.ort.Tensor('bool', new Uint8Array([0]), [1]);
     }
 
     // First step: provide empty past_key_values
@@ -2070,8 +2221,9 @@ export class WhisperOnnxExecutor {
     };
 
     const retain = new Set<unknown>([encoderHiddenStates]);
-    const outputs = await loaded.decoderAlignSession.run(feeds);
+    let outputs: Record<string, OrtTensorLike> | undefined;
     try {
+    outputs = await loaded.decoderAlignSession.run(feeds);
     const alignKey = Object.keys(outputs)[0]!;
     const alignTensor = outputs[alignKey] as OrtTensorLike<Float32Array>;
     const rawData = isGpuBufferTensor(alignTensor)
@@ -2083,7 +2235,7 @@ export class WhisperOnnxExecutor {
     };
     } finally {
       disposeOwnedDecoderFeeds(feeds, retain);
-      disposeUnusedDecoderOutputs(outputs, new Set());
+      if (outputs) disposeUnusedDecoderOutputs(outputs, new Set());
     }
   }
 
@@ -2100,6 +2252,7 @@ export class WhisperOnnxExecutor {
     warnings?: TranscriptWarning[],
     alignmentRuntime?: WhisperAlignmentRuntime,
     alignmentReferenceRequiredButUnavailable = false,
+    ownedEncoderTensors?: Set<OrtTensorLike>,
   ): Promise<WhisperNativeTranscript['words']> {
     const { tokenIds: textTokenIds, rowIndices } = collectSplitGraphTextTokenRows(
       allTokens,
@@ -2159,7 +2312,9 @@ export class WhisperOnnxExecutor {
         loaded,
         encoderHiddenStates,
         decoderAlignSession,
+        ownedEncoderTensors,
       );
+      ownedEncoderTensors?.add(encoderForAlign);
       // Match Whisper/faster-whisper's find_alignment contract: run the
       // decoder-align graph once with a no-timestamps teacher-forced prompt.
       // Generated timestamp tokens remain useful for segment boundaries, but
@@ -2261,6 +2416,7 @@ export class WhisperOnnxExecutor {
     options: WhisperSeq2SeqTranscriptionOptions,
     audioDurationSeconds?: number,
     warnings?: TranscriptWarning[],
+    ownedEncoderTensors?: Set<OrtTensorLike>,
   ): Promise<WhisperNativeTranscript['words']> {
     const alignmentHeads = loaded.generationConfig.alignmentHeads;
     if (alignmentHeads.length === 0) {
@@ -2311,6 +2467,7 @@ export class WhisperOnnxExecutor {
         language,
         textTokenIds,
         options.task ?? 'transcribe',
+        ownedEncoderTensors,
       );
       const crossAttentions = alignment.crossAttentions;
       if (crossAttentions.length === 0) {
@@ -2494,10 +2651,11 @@ export class WhisperOnnxExecutor {
   }
 
   private async loadGenerationConfig(
-    artifacts: { readonly tokenizerUrl: string },
+    artifacts: { readonly tokenizerUrl: string; readonly generationConfigUrl?: string },
   ): Promise<WhisperGenerationConfig> {
     try {
-      const genConfigUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
+      const genConfigUrl = artifacts.generationConfigUrl ??
+        artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
       const text = await fetchText(genConfigUrl, this.signal);
       const json = JSON.parse(text) as Record<string, unknown>;
       return parseWhisperGenerationConfig(json);
@@ -2524,10 +2682,14 @@ export class WhisperOnnxExecutor {
   }
 
   private async loadModelConfig(
-    artifacts: { readonly tokenizerUrl: string },
+    artifacts: {
+      readonly tokenizerUrl: string;
+      readonly configUrl?: string;
+      readonly generationConfigUrl?: string;
+    },
   ): Promise<WhisperModelConfig> {
     try {
-      const configUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'config.json');
+      const configUrl = artifacts.configUrl ?? artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'config.json');
       const text = await fetchText(configUrl, this.signal);
       const json = JSON.parse(text) as Record<string, unknown>;
       const config = parseWhisperModelConfig(json);
@@ -2535,7 +2697,8 @@ export class WhisperOnnxExecutor {
       // Also try generation_config.json for num_mel_bins (not in HF config.json)
       if (!config.numMelBins) {
         try {
-          const genUrl = artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
+          const genUrl = artifacts.generationConfigUrl ??
+            artifacts.tokenizerUrl.replace(/tokenizer\.json$/, 'generation_config.json');
           const genText = await fetchText(genUrl, this.signal);
           const genJson = JSON.parse(genText) as Record<string, unknown>;
           if (typeof genJson.num_mel_bins === 'number') {
@@ -2656,8 +2819,18 @@ export class WhisperOnnxExecutor {
   }> {
     const K = tokenIds.length;
     const inputStart = nowMs();
+    const cachePosition = loaded.decoderStepSession.inputNames?.includes('cache_position')
+      ? createWhisperCachePosition(getWhisperDecoderCacheLength(pastKv), K)
+      : undefined;
     const inputIdsTensor = new loaded.ort.Tensor('int64', createWhisperInt64TokenIds(tokenIds), [1, K]);
     const feeds: Record<string, unknown> = { input_ids: inputIdsTensor };
+    if (cachePosition) {
+      feeds.cache_position = new loaded.ort.Tensor(
+        'int64',
+        cachePosition,
+        [cachePosition.length],
+      );
+    }
 
     // Add all past_key_values (decoder + encoder KV). Step model expects both.
     // CRITICAL: Clone tensor data for cross-session safety. ORT WASM cannot
@@ -2785,13 +2958,17 @@ export class WhisperOnnxExecutor {
       [1, melBins, melInputFrames],
     ), loaded.encoderSession, loaded.ort);
 
+    const ownedEncoderTensors = new Set<OrtTensorLike>();
+    try {
     // 2. Run encoder
     const encoderOutputs = await runWhisperEncoderOnFeatures(loaded.encoderSession, featureTensor);
+    for (const tensor of Object.values(encoderOutputs)) ownedEncoderTensors.add(tensor);
     const encoderHiddenStates = await maybeCastEncoderHiddenStates(
       encoderOutputs[Object.keys(encoderOutputs)[0]!] as OrtTensorLike<Float32Array>,
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
     );
+    ownedEncoderTensors.add(encoderHiddenStates);
 
     // 3. Detect language if auto
     const tokenizer = loaded.tokenizer;
@@ -3025,6 +3202,7 @@ export class WhisperOnnxExecutor {
           options,
           audio.durationSeconds,
           warnings,
+          ownedEncoderTensors,
         )
       : [];
     const words = this.shouldReturnWordTimestamps(options)
@@ -3052,6 +3230,9 @@ export class WhisperOnnxExecutor {
       ...(selectedTokenTraces.length > 0 ? { tokenTraces: selectedTokenTraces } : {}),
       warnings,
     };
+    } finally {
+      disposeOwnedWhisperTensors(ownedEncoderTensors);
+    }
   }
 
   private buildSegments(
@@ -3480,10 +3661,13 @@ export class WhisperOnnxExecutor {
       [1, melBins, melInputFrames],
     ), loaded.encoderSession, loaded.ort);
 
+    const ownedEncoderTensors = new Set<OrtTensorLike>();
+    try {
     // 2. Run encoder
     const encodeStart = nowMs();
     const encoderRunStart = nowMs();
     const encoderOutputs = await runWhisperEncoderOnFeatures(loaded.encoderSession, featureTensor);
+    for (const tensor of Object.values(encoderOutputs)) ownedEncoderTensors.add(tensor);
     const encoderRunEnd = nowMs();
     const encoderOutputTensorStart = nowMs();
     let encoderHiddenStates = await maybeCastEncoderHiddenStates(
@@ -3491,6 +3675,7 @@ export class WhisperOnnxExecutor {
       loaded.decoderInitSession ?? loaded.decoderSession!,
       loaded.ort,
     );
+    ownedEncoderTensors.add(encoderHiddenStates);
     const encoderOutputCastEnd = nowMs();
     const encoderOutputEnd = nowMs();
     const encodeMs = nowMs() - encodeStart;
@@ -3523,6 +3708,7 @@ export class WhisperOnnxExecutor {
           dispose: undefined,
         });
         encoderHiddenStates = rewrapped as unknown as OrtTensorLike<Float32Array>;
+        ownedEncoderTensors.add(encoderHiddenStates);
       }
       encoderBufferRewrapMs = nowMs() - rewrapStart;
     }
@@ -3553,6 +3739,7 @@ export class WhisperOnnxExecutor {
           download: flushedData ? async () => flushedData : undefined,
           dispose: undefined,
         }) as unknown as OrtTensorLike<Float32Array>;
+        ownedEncoderTensors.add(encoderHiddenStates);
       }
       encoderGpuFlushMs = nowMs() - flushStart;
     }
@@ -3593,6 +3780,7 @@ export class WhisperOnnxExecutor {
           download: drainedData ? async () => drainedData : undefined,
           dispose: undefined,
         }) as unknown as OrtTensorLike<Float32Array>;
+        ownedEncoderTensors.add(encoderHiddenStates);
       }
       encoderGpuDrainMs = nowMs() - drainStart;
     }
@@ -3939,12 +4127,14 @@ export class WhisperOnnxExecutor {
               }
             }
             decoderStepFeedBuildMs += nowMs() - feedBuildStart;
-            const step = await this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true });
-            for (const [name, tensor] of Object.entries(feeds)) {
-              const cached = scalarEncoderKvTensors.get(name);
-              if (cached?.tensor === tensor) continue;
-              disposeOrtTensor(tensor);
-            }
+            const retainedFeeds = new Set(
+              [...scalarEncoderKvTensors.values()].map((entry) => entry.tensor),
+            );
+            const step = await withOwnedDecoderFeeds(
+              feeds,
+              retainedFeeds,
+              () => this.runDecoderStepSplit(splitLoaded, tokenId, feeds, { preparedPastKv: true }),
+            );
             const decoderStepTotal = nowMs() - decoderStepStart;
             decoderStepMs += decoderStepTotal;
             decoderStepTensorCloneMs += step.timings.inputMs;
@@ -3990,13 +4180,12 @@ export class WhisperOnnxExecutor {
                 if (batchSize === 0) return [];
                 const decoderStepStart = nowMs();
                 const feedBuildStart = nowMs();
-                const feeds: Record<string, unknown> = {
-                  input_ids: new splitLoaded.ort.Tensor(
-                    'int64',
-                    createWhisperInt64TokenIds(tokenIds),
-                    [batchSize, 1],
-                  ),
-                };
+                const feeds = createWhisperBatchedStepFeedTensors(
+                  splitLoaded.ort,
+                  tokenIds,
+                  pastKvs,
+                  splitLoaded.decoderStepSession.inputNames?.includes('cache_position') === true,
+                );
 
                 const firstKv = pastKvs[0] ?? {};
                 for (const name of Object.keys(firstKv)) {
@@ -4200,6 +4389,7 @@ export class WhisperOnnxExecutor {
       });
       } finally {
         gpuKvBeamTracker.disposeAll();
+        disposeWhisperEncoderKvCaches(scalarEncoderKvTensors, batchedEncoderKvTensors);
       }
     }
     const decodeMs = nowMs() - decoderStart;
@@ -4294,6 +4484,7 @@ export class WhisperOnnxExecutor {
           paddedFeatures,
           melBins,
           melInputFrames,
+          ownedEncoderTensors,
         );
         alignmentEncoderHiddenStates = reference.encoderHiddenStates;
         alignmentRuntime = reference.alignmentRuntime;
@@ -4325,6 +4516,7 @@ export class WhisperOnnxExecutor {
           warnings,
           alignmentRuntime,
           alignmentReferenceRequiredButUnavailable,
+          ownedEncoderTensors,
         )
       : [];
     if (
@@ -4458,6 +4650,9 @@ export class WhisperOnnxExecutor {
       metrics,
       warnings,
     };
+    } finally {
+      disposeOwnedWhisperTensors(ownedEncoderTensors);
+    }
   }
 
   private async transcribeLongAudio(

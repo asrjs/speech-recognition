@@ -13,6 +13,7 @@ import type {
   TranscriptMetrics,
   TranscriptResponse,
   TranscriptResponseFlavor,
+  TranscriptWarning,
 } from './transcript.js';
 import type { StreamingSessionOptions, StreamingTranscriber } from './streaming.js';
 
@@ -34,6 +35,8 @@ export interface RuntimeProgressEvent {
   readonly modelId?: string;
   readonly backendId?: string;
   readonly message?: string;
+  /** Recoverable load decision, retained separately from transient download progress. */
+  readonly warning?: TranscriptWarning;
 }
 
 export type RuntimeProgressCallback = (event: RuntimeProgressEvent) => void;

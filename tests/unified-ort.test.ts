@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   configureUnifiedOrtEnv,
   createUnifiedOrtSession,
@@ -227,6 +232,92 @@ describe('Unified ORT Runtime Layer', () => {
       expect(calledOptions.externalData).toEqual([
         { data: 'http://localhost/model.onnx.data', path: 'model.onnx.data' },
       ]);
+    });
+
+    it('validates native colocated sidecars without reading or mounting bytes', async () => {
+      const directory = await mkdtemp(path.join(os.tmpdir(), 'asrjs-unified-native-'));
+      const graphPath = path.join(directory, 'model.onnx');
+      const firstDataPath = path.join(directory, 'model.onnx.data');
+      const secondDirectory = path.join(directory, 'parts');
+      const secondDataPath = path.join(secondDirectory, 'weights.data');
+      const fsPromises = createRequire(import.meta.url)(
+        'node:fs/promises',
+      ) as typeof import('node:fs/promises');
+      const readFile = vi.spyOn(fsPromises, 'readFile');
+      const createFn = vi.fn().mockResolvedValue({ run: vi.fn() });
+      try {
+        await mkdir(secondDirectory);
+        await writeFile(graphPath, new Uint8Array([1]));
+        await writeFile(firstDataPath, new Uint8Array([2, 3]));
+        await writeFile(secondDataPath, new Uint8Array([4, 5]));
+        await fsPromises.readFile(graphPath);
+        readFile.mockClear();
+
+        await createUnifiedOrtSession(createMockOrt(createFn), pathToFileURL(graphPath).href, {
+          backendId: 'native-cpu',
+          externalData: [
+            {
+              dataUrl: pathToFileURL(firstDataPath).href,
+              path: 'model.onnx.data',
+            },
+          ],
+          externalDataUrl: pathToFileURL(secondDataPath).href,
+          externalDataPath: 'parts/weights.data',
+        });
+
+        const [, options] = createFn.mock.calls[0] as unknown as [string, Record<string, unknown>];
+        expect(options).not.toHaveProperty('externalData');
+        expect(readFile).not.toHaveBeenCalled();
+      } finally {
+        readFile.mockRestore();
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it('rejects native external data that is not colocated or has no file base', async () => {
+      const directory = await mkdtemp(path.join(os.tmpdir(), 'asrjs-unified-native-'));
+      const graphPath = path.join(directory, 'model.onnx');
+      const sidecarPath = path.join(directory, 'model.onnx.data');
+      const createFn = vi.fn().mockResolvedValue({ run: vi.fn() });
+      const ort = createMockOrt(createFn);
+      try {
+        await writeFile(graphPath, new Uint8Array([1]));
+        await writeFile(sidecarPath, new Uint8Array([2]));
+
+        await expect(
+          createUnifiedOrtSession(ort, pathToFileURL(graphPath).href, {
+            backendId: 'native-cpu',
+            externalDataUrl: pathToFileURL(sidecarPath).href,
+            externalDataPath: 'other.data',
+          }),
+        ).rejects.toThrow('colocated');
+
+        await expect(
+          createUnifiedOrtSession(ort, new Uint8Array([8, 7]), {
+            backendId: 'native-cpu',
+            externalDataUrl: pathToFileURL(sidecarPath).href,
+            externalDataPath: 'model.onnx.data',
+          }),
+        ).rejects.toThrow('local model path');
+
+        expect(createFn).not.toHaveBeenCalled();
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    });
+
+    it('keeps native inline Uint8Array models without external data supported', async () => {
+      const createFn = vi.fn().mockResolvedValue({ run: vi.fn() });
+      const source = new Uint8Array([8, 7, 6]);
+      const result = await createUnifiedOrtSession(createMockOrt(createFn), source, {
+        backendId: 'native-cpu',
+      });
+
+      expect(result.resolvedBackendId).toBe('native-cpu');
+      expect(createFn).toHaveBeenCalledWith(
+        source,
+        expect.not.objectContaining({ externalData: expect.anything() }),
+      );
     });
 
     it('aborts early if signal is already aborted', async () => {

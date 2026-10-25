@@ -11,6 +11,8 @@ interface BrowserMemoryPerformanceLike {
 export interface MeasureBrowserMemoryOptions {
   readonly performance?: BrowserMemoryPerformanceLike | null;
   readonly now?: () => string;
+  /** Optional deadline for browser measurements that may wait for a future GC. */
+  readonly timeoutMs?: number;
 }
 
 function unavailableSnapshot(
@@ -45,8 +47,23 @@ export async function measureBrowserMemory(
     return unavailableSnapshot(capturedAt, 'unsupported');
   }
 
+  const timeoutMs = options.timeoutMs;
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) {
+    throw new RangeError('Memory measurement timeoutMs must be positive and finite.');
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
   try {
-    const result = await measure.call(browserPerformance);
+    const pending = measure.call(browserPerformance);
+    const result = timeoutMs === undefined ? await pending : await Promise.race([
+      pending,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          reject(new Error('Memory measurement timed out.'));
+        }, timeoutMs);
+      }),
+    ]);
     const bytes = Number(result?.bytes);
     if (!Number.isFinite(bytes) || bytes < 0) {
       return unavailableSnapshot(capturedAt, 'invalid-result');
@@ -58,6 +75,8 @@ export async function measureBrowserMemory(
       bytes,
     };
   } catch {
-    return unavailableSnapshot(capturedAt, 'measurement-failed');
+    return unavailableSnapshot(capturedAt, timedOut ? 'timeout' : 'measurement-failed');
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }

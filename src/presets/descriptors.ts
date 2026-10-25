@@ -15,7 +15,11 @@ export type BuiltInPresetId =
   | 'moonshine'
   | 'qwen3-asr'
   | 'parakeet-ctc'
-  | 'omnilingual-ctc';
+  | 'omnilingual-ctc'
+  | 'gigaam-ctc'
+  | 'gigaam-rnnt'
+  | 'sensevoice'
+  | 'x-asr';
 export type BuiltInModelTask = 'asr' | 'speech-translation';
 export type BuiltInWarmupMode = 'expected-text' | 'non-empty';
 export type BuiltInControlType = 'boolean' | 'enum' | 'language';
@@ -81,6 +85,8 @@ export interface BuiltInModelWarmupDescriptor {
 }
 
 export interface BuiltInModelDescriptor {
+  /** Marks a discoverable catalog entry whose local integration is still experimental. */
+  readonly status?: 'experimental';
   readonly modelId: string;
   readonly aliases: readonly string[];
   readonly preset: BuiltInPresetId;
@@ -366,7 +372,15 @@ export function buildBuiltInHubLoadOptions(
     case 'canary': {
       const source = getCatalogArtifactSource(descriptor.modelId);
       if (!source || source.kind !== 'huggingface') {
-        throw new Error(`Could not resolve Canary artifact source for "${descriptor.modelId}".`);
+        // Keep the request intact so the preset can report its artifact/adapter
+        // requirement. Do not invent a Hub path for an unconfigured export.
+        return {
+          ...base,
+          options: {
+            cpuThreads: input.cpuThreads,
+            enableProfiling: input.enableProfiling,
+          },
+        };
       }
       return {
         ...base,

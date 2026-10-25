@@ -11,6 +11,7 @@ const defaultEntryPoints = [
   'inference.js',
   'browser.js',
   'browser-media.js',
+  'controller.js',
   'worker.js',
   'realtime.js',
   'bench.js',

@@ -10,6 +10,7 @@ import {
   type BuiltInModelDescriptor,
 } from '@asrjs/speech-recognition/presets';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { resolveBuiltInLocalModelAdapter } from '../src/runtime/local-adapter-registry.js';
 
 describe('built-in preset descriptors', () => {
   it('lists built-in models with consolidated metadata', () => {
@@ -25,11 +26,32 @@ describe('built-in preset descriptors', () => {
         'nvidia/canary-180m-flash',
         'google/medasr',
         'facebook/wav2vec2-base-960h',
+        'gigaam-multilingual-ctc',
+        'gigaam-v3-e2e-rnnt',
+        'FunAudioLLM/SenseVoiceSmall',
       ]),
     );
     expect(options.find((option) => option.key === 'nvidia/canary-180m-flash')?.preset).toBe(
       'canary',
     );
+  });
+
+  it('declares local experimental GigaAM and SenseVoice capabilities conservatively', () => {
+    const ctc = getBuiltInModelDescriptor('gigaam-multilingual-ctc');
+    const rnnt = getBuiltInModelDescriptor('gigaam-v3-e2e-rnnt');
+    const senseVoice = getBuiltInModelDescriptor('FunAudioLLM/SenseVoiceSmall');
+
+    for (const descriptor of [ctc, rnnt, senseVoice]) {
+      expect(descriptor?.loading.supportsHubSource).toBe(false);
+      expect(descriptor?.loading.supportsLocalSource).toBe(true);
+      expect(descriptor?.warmup.mode).toBe('non-empty');
+      expect(descriptor?.capabilities.supportsTranslation).toBe(false);
+    }
+    expect(rnnt?.languages).toEqual(['ru']);
+    expect(rnnt?.inference.defaultMergeStrategy).toBe('concat');
+    expect(senseVoice?.inference.maxInputDurationSec).toBe(30);
+    expect(senseVoice?.inference.maxWindowDurationSec).toBe(30);
+    expect(senseVoice?.inference.autoWindowThresholdSec).toBe(30);
   });
 
   it('exposes Canary capabilities, controls, and loading defaults', () => {
@@ -54,6 +76,28 @@ describe('built-in preset descriptors', () => {
       'punctuate',
       'timestamps',
     ]);
+  });
+
+  it('lists the custom Whisper Turbo artifact as its own WebGPU local-capable model', () => {
+    const turbo = getBuiltInModelDescriptor('ysdede/whisper-large-v3-turbo-onnx-4graph');
+    const publicLarge = getBuiltInModelDescriptor('openai/whisper-large-v3');
+
+    expect(turbo).toMatchObject({
+      modelId: 'ysdede/whisper-large-v3-turbo-onnx-4graph',
+      preset: 'whisper',
+      loading: {
+        supportsHubSource: true,
+        supportsLocalSource: true,
+        availableEncoderBackends: ['webgpu'],
+        availableDecoderBackends: ['webgpu'],
+        availableEncoderQuantizations: ['fp16'],
+        availableDecoderQuantizations: ['fp16'],
+      },
+    });
+    expect(publicLarge?.modelId).toBe('openai/whisper-large-v3');
+    expect(
+      resolveBuiltInLocalModelAdapter('ysdede/whisper-large-v3-turbo-onnx-4graph').preset,
+    ).toBe('whisper');
   });
 
   it('exposes split quantization metadata for Parakeet too', () => {

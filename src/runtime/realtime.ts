@@ -1,6 +1,38 @@
 import type { TranscriptResult, TranscriptWord } from '../types/index.js';
 import { STREAMING_PROCESSING_SAMPLE_RATE } from './audio-timeline.js';
 
+export interface CaptureTranscriptContext {
+  readonly id: string;
+  readonly revision: number;
+}
+
+export interface CaptureTranscript {
+  update(text: string | null | undefined, context?: CaptureTranscriptContext | null): string;
+  text(): string;
+}
+
+/** Collects a capture's context revisions without appending an older hypothesis twice. */
+export function createCaptureTranscript(prefix = ''): CaptureTranscript {
+  const entries: { id?: string; revision?: number; text: string }[] = [];
+  const text = (): string =>
+    [String(prefix).trim(), ...entries.map((entry) => entry.text)].filter(Boolean).join(' ');
+  return {
+    update(value, context) {
+      const normalized = String(value ?? '').trim();
+      if (context) {
+        const previous = entries.find((entry) => entry.id === context.id);
+        if (previous && context.revision <= previous.revision!) return text();
+        if (previous) Object.assign(previous, { text: normalized, revision: context.revision });
+        else entries.push({ id: context.id, revision: context.revision, text: normalized });
+      } else {
+        entries.push({ text: normalized });
+      }
+      return text();
+    },
+    text,
+  };
+}
+
 export interface AudioRingBufferOptions {
   readonly sampleRate: number;
   readonly durationSeconds: number;

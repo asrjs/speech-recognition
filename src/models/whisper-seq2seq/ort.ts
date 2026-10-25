@@ -147,11 +147,11 @@ export interface ResolvedWhisperArtifacts {
 }
 
 const QUANTIZATION_SUFFIX: Record<WhisperQuantization, string> = {
-  fp32: '_model.onnx',
-  fp16: '_model_fp16.onnx',
-  int8: '_model_int8.onnx',
-  q4: '_model_q4.onnx',
-  uint8: '_model_uint8.onnx',
+  fp32: '.onnx',
+  fp16: '_fp16.onnx',
+  int8: '_int8.onnx',
+  q4: '_q4.onnx',
+  uint8: '_uint8.onnx',
 };
 
 function buildResolveUrl(repoId: string, revision: string, filename: string): string {
@@ -217,8 +217,11 @@ function resolveHuggingFaceArtifacts(
     encoderBackendForOrt === 'webgpu' || decoderBackendForOrt === 'webgpu' ? 'webgpu' : 'wasm';
   const encoderQuant = resolveQuantization(source.encoderQuant, encoderBackendForOrt, 'encoder');
   const decoderQuant = resolveQuantization(source.decoderQuant, decoderBackendForOrt, 'decoder');
-  const encoderFilename = getQuantizedFilename('onnx/encoder', encoderQuant);
-  const decoderFilename = getQuantizedFilename('onnx/decoder_model_merged', decoderQuant);
+  const artifactSubfolder = (source.artifactSubfolder ?? 'onnx').replace(/^\/+|\/+$/g, '');
+  const artifactPath = (filename: string): string =>
+    artifactSubfolder ? `${artifactSubfolder}/${filename}` : filename;
+  const encoderFilename = getQuantizedFilename(artifactPath('encoder_model'), encoderQuant);
+  const decoderFilename = getQuantizedFilename(artifactPath('decoder_model_merged'), decoderQuant);
 
   return {
     artifacts: {
@@ -340,6 +343,8 @@ function resolveSplitGraphArtifacts(
       encoderUrl,
       decoderUrl: decoderInitUrl,
       tokenizerUrl: source.artifacts.tokenizerUrl,
+      configUrl: source.artifacts.configUrl,
+      generationConfigUrl: source.artifacts.generationConfigUrl,
     },
     warnings: [],
     ortBackend:

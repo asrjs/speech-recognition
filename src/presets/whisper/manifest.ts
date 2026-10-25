@@ -11,6 +11,11 @@ export interface WhisperPresetManifest {
   readonly description: string;
   readonly classification: ModelClassification;
   readonly config: Partial<WhisperSeq2SeqModelConfig>;
+  readonly localGeometry?: {
+    readonly decoderLayers: number;
+    readonly hiddenSize: number;
+    readonly decoderAttentionHeads: number;
+  };
   readonly source?: WhisperArtifactSource;
 }
 
@@ -27,6 +32,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
   {
     preset: 'whisper',
     modelId: WHISPER_4GRAPH_REPO_ID,
+    localGeometry: { decoderLayers: 4, hiddenSize: 1280, decoderAttentionHeads: 20 },
     aliases: ['whisper-large-v3-turbo-onnx-4graph', 'whisper-large-v3-turbo-4graph'],
     description:
       'Whisper Large-v3 Turbo ONNX 4-graph split decoder port with KV-cache decode for WebGPU.',
@@ -68,6 +74,29 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
   },
   {
     preset: 'whisper',
+    modelId: 'openai/whisper-large-v3',
+    aliases: ['whisper-large-v3'],
+    description: 'Whisper Large v3 with a local four-graph ONNX export.',
+    classification: {
+      ecosystem: 'openai',
+      processor: 'whisper-mel',
+      encoder: 'whisper-transformer',
+      decoder: 'transformer-decoder',
+      topology: 'aed',
+      family: 'whisper',
+      task: 'multitask-asr-translation',
+    },
+    config: {
+      maxSourcePositions: 3000,
+      maxTargetPositions: 448,
+      melBins: 128,
+      vocabularySize: 51866,
+      languages: ['auto'],
+    },
+    localGeometry: { decoderLayers: 32, hiddenSize: 1280, decoderAttentionHeads: 20 },
+  },
+  {
+    preset: 'whisper',
     modelId: 'onnx-community/whisper-tiny',
     aliases: ['whisper-tiny', 'openai/whisper-tiny'],
     description:
@@ -91,6 +120,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'onnx-community/whisper-tiny_timestamped',
+      artifactSubfolder: 'onnx',
     },
   },
   {
@@ -118,6 +148,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'onnx-community/whisper-base_timestamped',
+      artifactSubfolder: 'onnx',
     },
   },
   {
@@ -145,6 +176,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'onnx-community/whisper-small_timestamped',
+      artifactSubfolder: 'onnx',
     },
   },
   {
@@ -172,6 +204,7 @@ export const WHISPER_PRESET_MANIFESTS: readonly WhisperPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'onnx-community/whisper-large-v3-turbo_timestamped',
+      artifactSubfolder: 'onnx',
     },
   },
 ];

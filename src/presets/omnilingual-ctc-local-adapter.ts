@@ -6,6 +6,7 @@ import {
   getLocalEntryFile,
 } from '../runtime/local-entry-files.js';
 import { createBlobAssetProvider } from '../io/index.js';
+import { DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON } from '../models/omnilingual-ctc/model.js';
 import type {
   BuiltInLocalModelAdapter,
   LoadSpeechModelFromLocalEntriesOptions,
@@ -96,6 +97,8 @@ export const omnilingualCtcBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = 
           externalDataUrl: dataEntry ? await toLocator(dataEntry) : undefined,
           externalDataFilename: graphEntry.basename,
           sampleRate: 16000,
+          // The exported Omnilingual graph's official LayerNorm uses eps=1e-5.
+          normalizationEpsilon: DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON,
           vocabularySize: inspection.tokenizerNames.length ? 10288 : undefined,
           backendId: options.encoderBackend,
           cpuThreads: options.cpuThreads,

@@ -44,6 +44,16 @@ export interface RealtimeTranscriptionRequest {
   readonly reason: 'push' | 'flush' | 'finalize';
   /** Detector or manual flush reason for segmented utterances (`pause`, `stop`, …). */
   readonly segmentReason?: string;
+  readonly context?: RealtimeTranscriptionContext;
+}
+
+export interface RealtimeTranscriptionContext {
+  readonly id: string;
+  readonly revision: number;
+  readonly startFrame: number;
+  readonly endFrame: number;
+  readonly sampleRate: number;
+  readonly finalized?: boolean;
 }
 
 export type RealtimeTranscriptionCallback = (
@@ -55,6 +65,7 @@ export interface RealtimeUtteranceTranscriptionOptions {
   readonly endFrame: number;
   readonly sampleRate?: number;
   readonly reason?: string;
+  readonly context?: RealtimeTranscriptionContext;
 }
 
 export interface RealtimeControllerPushOptions {
@@ -84,6 +95,7 @@ export interface RealtimeTranscriptionUpdate {
   readonly canonical: TranscriptResult;
   readonly window: StreamingWindow;
   readonly activity: VoiceActivityTimelineSnapshot | null;
+  readonly context?: RealtimeTranscriptionContext;
 }
 
 export interface RealtimeTranscriptionControllerState {
@@ -338,6 +350,7 @@ export class RealtimeTranscriptionController {
       matureCursorTimeSeconds: endFrame / sampleRate,
       reason: 'flush',
       segmentReason: options.reason,
+      context: options.context,
     };
     this.latencyTracker?.noteTranscribeStart();
     let canonical: TranscriptResult;
@@ -391,6 +404,7 @@ export class RealtimeTranscriptionController {
       canonical,
       window: this.lastWindow,
       activity: this.activity?.createSnapshot() ?? null,
+      context: options.context,
     };
   }
 

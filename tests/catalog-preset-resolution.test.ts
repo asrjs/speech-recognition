@@ -22,6 +22,10 @@ const EXPECTED_PRESET_IDS: readonly BuiltInPresetId[] = [
   'qwen3-asr',
   'parakeet-ctc',
   'omnilingual-ctc',
+  'gigaam-ctc',
+  'gigaam-rnnt',
+  'sensevoice',
+  'x-asr',
 ];
 
 const EXPECTED_MODEL_FAMILIES = [
@@ -77,6 +81,23 @@ describe('Catalog & Preset Resolution', () => {
         }
       }
     }
+    const streamingMoonshine = getSpeechModelDescriptor('moonshine-streaming-tiny');
+    expect(streamingMoonshine).toMatchObject({
+      modelId: 'moonshine-ai/moonshine-streaming-tiny',
+      status: 'experimental',
+      loading: { supportsHubSource: false, supportsLocalSource: true, supportsSplitBackends: false },
+      warmup: { mode: 'expected-text' },
+    });
+    expect(streamingMoonshine?.loading.availableEncoderBackends).toEqual(['wasm', 'webgpu']);
+    expect(streamingMoonshine?.loading.availableDecoderBackends).toEqual(['wasm', 'webgpu']);
+    expect(streamingMoonshine?.capabilities.supportsWordTimestamps).toBe(false);
+    expect(streamingMoonshine?.capabilities.supportsSegmentTimestamps).toBe(false);
+    expect(streamingMoonshine?.inference).toMatchObject({
+      supportsWordTimestamps: false,
+      supportsTokenTimestamps: false,
+      supportsSegmentTimestamps: false,
+      supportsConfidence: false,
+    });
   });
 
   it('validates capabilities and inference limits for each catalog model', () => {
@@ -137,7 +158,7 @@ describe('Catalog & Preset Resolution', () => {
     }
   });
 
-  it('registers all 11 presets and 16 families in createBuiltInSpeechRuntime', () => {
+  it('registers all 15 presets and 16 families in createBuiltInSpeechRuntime', () => {
     const runtime = createBuiltInSpeechRuntime();
 
     const registeredPresetNames = runtime.listPresets().map((p) => p.preset);

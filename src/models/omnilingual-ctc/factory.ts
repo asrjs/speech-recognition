@@ -27,6 +27,7 @@ export interface OmnilingualCtcLoadOptions {
   readonly externalDataUrl?: string;
   readonly externalDataFilename?: string;
   readonly sampleRate?: number;
+  readonly normalizationEpsilon?: number;
   readonly vocabularySize?: number;
   readonly blankId?: number;
   readonly backendId?: 'wasm' | 'webgpu';

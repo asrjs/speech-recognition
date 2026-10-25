@@ -1,4 +1,5 @@
 import { createBlobAssetProvider } from '../../io/index.js';
+import { parseNemotronRnntBundleConfig } from '../../models/nemotron-rnnt/config.js';
 import type { QuantizationMode } from '../../runtime/huggingface.js';
 import {
   collectLocalEntriesFromDirectory,
@@ -161,6 +162,21 @@ export const nemotronBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
       throw new Error(`Missing tokenizer file: ${tokenizerName ?? NEMOTRON_TOKENIZER_NAMES[0]}`);
     }
 
+    let bundleConfig: ReturnType<typeof parseNemotronRnntBundleConfig> | undefined;
+    const bundleConfigEntry = findLocalEntry(options.entries, 'config.json');
+    if (bundleConfigEntry) {
+      const configFile = await getLocalEntryFile(bundleConfigEntry);
+      let configPayload: unknown;
+      try {
+        configPayload = JSON.parse(await configFile.text());
+      } catch (error) {
+        throw new Error(
+          `Could not parse Nemotron config.json: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      bundleConfig = parseNemotronRnntBundleConfig(configPayload);
+    }
+
     const assetProvider = createBlobAssetProvider();
     const assetHandles: ResolvedAssetHandle[] = [];
     const toLocator = async (entry: SpeechModelLocalEntry): Promise<string> => {
@@ -193,6 +209,7 @@ export const nemotronBuiltInLocalModelAdapter: BuiltInLocalModelAdapter = {
         modelId: options.modelId,
         preset: 'nemotron',
         builtInLoadOptions: {
+          ...(bundleConfig ? { config: bundleConfig } : {}),
           source: {
             kind: 'direct',
             artifacts: {

@@ -30,6 +30,8 @@ export interface WhisperDirectArtifacts {
   readonly encoderUrl: string;
   readonly decoderUrl: string;
   readonly tokenizerUrl: string;
+  readonly configUrl?: string;
+  readonly generationConfigUrl?: string;
 }
 
 export interface WhisperDirectArtifactSource {
@@ -48,6 +50,8 @@ export interface WhisperDirectArtifactSource {
 export interface WhisperHuggingFaceSource {
   readonly kind: 'huggingface';
   readonly repoId: string;
+  /** Optional repository-relative directory containing the ONNX graphs. */
+  readonly artifactSubfolder?: string;
   readonly revision?: string;
   readonly cacheKeyFallbackRevisions?: readonly string[];
   readonly encoderBackend?: WhisperExecutionBackend;
@@ -101,6 +105,8 @@ export interface WhisperSplitGraphArtifacts {
   readonly decoderAlignUrl?: string;
   readonly tokenizerUrl: string;
   readonly manifestUrl: string;
+  readonly configUrl?: string;
+  readonly generationConfigUrl?: string;
   /** External data URLs for each graph file, keyed by graph name:
    *  encoder, decoder_init, decoder_step, decoder_align.
    *  Populated from manifest.json when the model uses external ONNX data. */
