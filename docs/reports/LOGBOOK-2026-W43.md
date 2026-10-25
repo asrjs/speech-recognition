@@ -91,3 +91,14 @@ root graph 44; lint zero errors / 16 warnings. Real-weight scope and unresolved
 model/physical-microphone gates are recorded in
 [week-close handoff](HANDOFF-WEEK-CLOSE-2026-10-25.md).
 User authorized commit/push and framework publication to demos/framework-examples.
+
+## 2026-10-25 — Week closed after verified merges
+
+Core PR #239 merged as 12dd390adb76d2aaa802020c3b2285cae6f5ff07 after
+successful CI run 40222763700. Demos initially had no CI; added a workflow
+rather than treating absent checks as success. Run 40223392075 passed install,
+93 tests and four-app build at 3d0a211; PR #2 merged as
+5cbdcb4543b86faa734db4b1d48c101f5957ce39. Framework examples stay on
+asrjs/demos branch framework-examples (008d11a). No HF upload performed.
+Next milestone: approved artifact manifests and automatic execution profiles;
+see the week-close handoff for design and explicit remaining model gates.
