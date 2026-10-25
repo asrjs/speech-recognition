@@ -19,6 +19,15 @@ python export_whisper.py openai/whisper-base ./output/whisper-base --fp16 --int8
 python export_whisper.py openai/whisper-tiny ./output --alignment-heads "2:2,3:0"
 ```
 
+`--external-data auto` selects external storage for models with at least 24
+encoder or decoder layers. In that large-model path, every initializer is
+stored externally (`size_threshold=0`); ONNX applies the threshold per tensor,
+so the default 100 MB threshold could otherwise leave many weights inline.
+Smaller `auto` exports retain the configured `--external-data-threshold`
+(100 MB by default). `--external-data always` continues to externalize every
+initializer, while explicit `--external-data never` keeps weights inline.
+Constant-node tensor attributes remain inline in all external-data modes.
+
 ## Output Structure
 
 ```

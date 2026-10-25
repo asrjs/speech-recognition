@@ -101,8 +101,65 @@ def summarize_numeric_diff(lhs: np.ndarray, rhs: np.ndarray) -> dict[str, Any]:
     }
 
 
-def main() -> None:
-    args = parse_args()
+def evaluate_verification(verification: dict[str, Any]) -> dict[str, Any]:
+    failures: list[str] = []
+    preprocessor = verification.get("preprocessor", {})
+    if preprocessor.get("skipped"):
+        preprocessor_scope = "SKIPPED_REFERENCE_FEATURES"
+    else:
+        preprocessor_scope = "CHECKED_ONNX"
+        if not preprocessor.get("shape_match"):
+            failures.append("preprocessor_shape_mismatch")
+        if not preprocessor.get("lengths_match"):
+            failures.append("preprocessor_length_mismatch")
+
+    encoder = verification.get("encoder", {})
+    if not encoder.get("shape_match"):
+        failures.append("encoder_shape_mismatch")
+    if not encoder.get("mask", {}).get("shape_match"):
+        failures.append("encoder_mask_shape_mismatch")
+    mask_values_match = (
+        encoder.get("mask", {}).get("max_abs_diff") == 0.0
+        and encoder.get("mask", {}).get("mean_abs_diff") == 0.0
+    )
+    if not mask_values_match:
+        failures.append("encoder_mask_value_mismatch")
+    if not encoder.get("lengths_match"):
+        failures.append("encoder_length_mismatch")
+
+    decoded = verification.get("decode", {})
+    if not decoded.get("token_ids_match"):
+        failures.append("decoder_token_ids_mismatch")
+    if not decoded.get("text_match"):
+        failures.append("decoder_text_mismatch")
+
+    verification["status"] = "FAIL_COMPONENT_GATES" if failures else "PASS_GATED_COMPONENTS"
+    verification["scope"] = {
+        "kind": "nemo-aed-onnx-component-parity",
+        "preprocessor": preprocessor_scope,
+        "encoder": "CHECKED",
+        "decoder": "CHECKED",
+        "browser_runtime": "NOT_RUN",
+    }
+    verification["gates"] = {
+        "preprocessor_shape_and_lengths": (
+            "SKIPPED" if preprocessor.get("skipped") else
+            bool(preprocessor.get("shape_match") and preprocessor.get("lengths_match"))
+        ),
+        "encoder_shapes_lengths_and_mask": bool(
+            encoder.get("shape_match")
+            and encoder.get("mask", {}).get("shape_match")
+            and mask_values_match
+            and encoder.get("lengths_match")
+        ),
+        "decoder_token_ids_and_text": bool(decoded.get("token_ids_match") and decoded.get("text_match")),
+        "numeric_differences": "MEASURED_NOT_GATED",
+    }
+    verification["failures"] = failures
+    return verification
+
+
+def run_verification(args: argparse.Namespace) -> dict[str, Any]:
     reference = load_reference(args.reference)
     tokenizer = load_tokenizer(args.model_dir / args.tokenizer_name)
 
@@ -150,7 +207,10 @@ def main() -> None:
         encoder_input = np.asarray(onnx_features, dtype=np.float32)
         encoder_lengths = np.asarray(onnx_feature_lengths, dtype=np.int64)
     else:
-        verification["preprocessor"] = {"skipped": True}
+        verification["preprocessor"] = {
+            "skipped": True,
+            "scope": "reference frontend features supplied directly to the encoder",
+        }
         encoder_input = reference_features.astype(np.float32, copy=False)
         encoder_lengths = feature_lengths
 
@@ -185,13 +245,36 @@ def main() -> None:
         "onnx_token_ids": decoded["token_ids"],
     }
 
+    return verification
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        verification = evaluate_verification(run_verification(args))
+        exit_code = 0 if verification["status"] == "PASS_GATED_COMPONENTS" else 1
+    except Exception as error:  # noqa: BLE001
+        verification = {
+            "status": "ERROR",
+            "scope": {
+                "kind": "nemo-aed-onnx-component-parity",
+                "preprocessor": "UNKNOWN",
+                "encoder": "UNKNOWN",
+                "decoder": "UNKNOWN",
+                "browser_runtime": "NOT_RUN",
+            },
+            "error": {"type": type(error).__name__, "message": str(error)},
+        }
+        exit_code = 2
+
     encoded = json.dumps(verification, indent=2, ensure_ascii=False)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded, encoding="utf-8")
     else:
         print(encoded)
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
