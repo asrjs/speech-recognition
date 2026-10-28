@@ -147,6 +147,9 @@ function withOptionalWavPath<T extends object>(value: T, wavPath?: string): T {
 }
 
 function mergeChunkProbabilities(chunks: Float32Array[]): Float32Array {
+  if (chunks.length === 0) return new Float32Array(0);
+  if (chunks.length === 1) return chunks[0]!;
+
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   const merged = new Float32Array(totalLength);
   let offset = 0;

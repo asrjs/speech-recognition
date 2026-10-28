@@ -127,6 +127,9 @@ export interface BrowserRealtimeMicrophoneController {
 const DEFAULT_FRAME_INTERVAL_MS = 33;
 
 function concatFloat32Chunks(chunks: readonly Float32Array[]): Float32Array {
+  if (chunks.length === 0) return new Float32Array(0);
+  if (chunks.length === 1) return chunks[0]!;
+
   const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   const result = new Float32Array(totalLength);
   let offset = 0;

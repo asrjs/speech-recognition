@@ -76,7 +76,10 @@ function getModelUrls(options: FireRedRuntimeOptions) {
 }
 
 function flattenFeatures(frames: Float32Array[]): Float32Array {
-  const merged = new Float32Array(frames.length * (frames[0]?.length ?? 0));
+  if (frames.length === 0) return new Float32Array(0);
+  if (frames.length === 1) return frames[0]!;
+
+  const merged = new Float32Array(frames.length * frames[0]!.length);
   let offset = 0;
   for (const frame of frames) {
     merged.set(frame, offset);
