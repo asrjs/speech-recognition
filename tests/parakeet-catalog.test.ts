@@ -42,7 +42,7 @@ describe('Parakeet catalog', () => {
     expect(config?.vocabSize).toBe(8193);
     expect(config?.topology).toBe('tdt');
     expect(config?.supportsWordTimestamps).toBe(true);
-    expect(config?.defaultRevision).toBe('main');
+    expect(config?.defaultRevision).toBe('f88260fa0777fe0868dda6df85d1a98f012a4a7a');
     expect(config?.cacheKeyFallbackRevisions).toEqual(['feat/fp16-canonical-v3']);
   });
 

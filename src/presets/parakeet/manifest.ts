@@ -76,6 +76,9 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+      // Pinned to the approved artifact revision so preset loads that bypass
+      // the execution planner never silently resolve `main`.
+      revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
       preprocessorName: 'nemo128',
       preprocessorBackend: 'js',
     },

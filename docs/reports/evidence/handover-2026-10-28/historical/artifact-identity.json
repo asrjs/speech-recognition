@@ -1,0 +1,36 @@
+{
+  "repoId": "ysdede/parakeet-tdt-0.6b-v3-onnx",
+  "revision": "f88260fa0777fe0868dda6df85d1a98f012a4a7a",
+  "files": [
+    {
+      "path": "encoder-model.fp16.onnx",
+      "bytes": 1238960452,
+      "localSha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+      "remoteSha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+      "match": true
+    },
+    {
+      "path": "decoder_joint-model.int8.onnx",
+      "bytes": 18202004,
+      "localSha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+      "remoteSha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+      "match": true
+    },
+    {
+      "path": "vocab.txt",
+      "bytes": 102132,
+      "localSha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+      "remoteSha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+      "match": true
+    },
+    {
+      "path": "config.json",
+      "bytes": 101,
+      "localSha256": "562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a",
+      "remoteSha256": "562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a",
+      "match": true
+    }
+  ],
+  "status": "ARTIFACT_IDENTITY_MATCH",
+  "accuracy": "NOT_EVALUATED_BY_THIS_CHECK"
+}

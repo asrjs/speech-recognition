@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-10-25T19:53:02.488Z",
+  "settings": {
+    "modelKey": "parakeet-tdt-0.6b-v3",
+    "backend": "webgpu-hybrid",
+    "encoderQuant": "fp16",
+    "decoderQuant": "int8"
+  },
+  "hardware": {
+    "cpuLabel": "12 logical cores",
+    "gpuLabel": "nvidia / blackwell",
+    "webgpuAvailable": true,
+    "memoryLabel": "32 GiB"
+  },
+  "summary": {
+    "runCount": 1,
+    "okCount": 1,
+    "errorCount": 0,
+    "totalMean": 501.485,
+    "totalP90": 501.485,
+    "preprocessMean": 25.48,
+    "encodeMean": 339.455,
+    "decodeMean": 134.41,
+    "decodeStd": 0,
+    "tokenizeMean": 1.045,
+    "rtfxMedian": 21.934853485149105,
+    "rtfxMean": 21.934853485149105,
+    "exactRate": 1,
+    "similarityMean": 1,
+    "referenceSimilarityMean": null,
+    "werMean": null
+  },
+  "runs": [
+    {
+      "id": "batch-1792957981862-0-0",
+      "batchId": "batch-1792957981862",
+      "startedAt": "2026-10-25T19:53:01.901Z",
+      "finishedAt": "2026-10-25T19:53:02.409Z",
+      "sampleKey": "jfk2.en.wav (11.0s)",
+      "sampleOrder": 1,
+      "rowIndex": 0,
+      "repeatIndex": 1,
+      "audioDurationSec": 11,
+      "transcription": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "referenceText": "",
+      "exactMatchToFirst": true,
+      "similarityToFirst": 1,
+      "wer": null,
+      "cer": null,
+      "referenceSimilarity": null,
+      "metrics": {
+        "preprocess_ms": 25.48,
+        "encode_ms": 339.455,
+        "decode_ms": 134.41,
+        "tokenize_ms": 1.045,
+        "total_ms": 501.485,
+        "rtf": 0.04558954545454545,
+        "rtfx": 21.934853485149105
+      },
+      "rtfx": 21.934853485149105,
+      "modelKey": "parakeet-tdt-0.6b-v3",
+      "backend": "webgpu-hybrid",
+      "encoderQuant": "fp16",
+      "decoderQuant": "int8",
+      "preprocessorBackend": "js",
+      "error": ""
+    }
+  ]
+}

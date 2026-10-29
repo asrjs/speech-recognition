@@ -1,7 +1,11 @@
 # Agent entrypoint — all coding harnesses
 
-Updated: 2026-10-25. This is the startup router, not another task queue.
+Updated: 2026-10-28. This is the startup router, not another task queue.
 Use it with Codex, OMP or another repository-aware harness.
+
+Current checkpoint: [2026-10-28 handover](reports/HANDOVER-2026-10-28.md).
+It separates merged work from the uncommitted approved-profile/Blob changes,
+preserves real-model receipts and records current verification limits.
 
 ## Read order and authority
 

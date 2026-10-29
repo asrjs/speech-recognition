@@ -6,6 +6,8 @@ import {
   getBuiltInModelLanguageName,
   listBuiltInModelDescriptors,
   listBuiltInModelOptions,
+  listApprovedSpeechModelManifests as listBuiltInApprovedSpeechModelManifests,
+  resolveApprovedSpeechExecutionPlan as resolveBuiltInApprovedSpeechExecutionPlan,
   resolveBuiltInModelComponentBackends,
   type BuildBuiltInHubLoadOptionsInput,
   type BuildBuiltInTranscriptionOptionsInput,
@@ -13,6 +15,8 @@ import {
   type BuiltInExecutionBackend,
   type BuiltInModelDescriptor,
   type BuiltInModelOption,
+  type ApprovedSpeechExecutionPlan,
+  type ResolveSpeechExecutionPlanInput,
 } from '../presets/descriptors.js';
 
 export {
@@ -38,6 +42,8 @@ export type SpeechExecutionBackend = BuiltInExecutionBackend;
 /** Root-friendly alias for detected quantization metadata. */
 export type SpeechModelQuantizations = BuiltInDetectedQuantizations;
 
+export type SpeechModelExecutionPlan = ApprovedSpeechExecutionPlan;
+
 /** Root-friendly alias for convenience load-option inputs. */
 export type BuildSpeechModelLoadOptionsInput = BuildBuiltInHubLoadOptionsInput;
 
@@ -52,6 +58,42 @@ export function listSpeechModels(): readonly SpeechModelDescriptor[] {
 /** Lists lightweight built-in speech model options for selectors and menus. */
 export function listSpeechModelOptions(): readonly SpeechModelOption[] {
   return listBuiltInModelOptions();
+}
+
+/** Lists approved immutable model artifacts and their execution profiles. */
+export function listApprovedSpeechModelManifests(): readonly (SpeechModelExecutionPlan & { readonly modelId: string })[] {
+  return listBuiltInApprovedSpeechModelManifests();
+}
+
+/** Selects a supported model execution plan and identifies exact approval matches. */
+export function resolveSpeechModelExecutionPlan(
+  modelId: string,
+  input: ResolveSpeechExecutionPlanInput,
+): SpeechModelExecutionPlan {
+  return resolveBuiltInApprovedSpeechExecutionPlan(modelId, input);
+}
+
+/** Probes the built-in browser backends before selecting a manifest profile. */
+export async function probeSpeechModelExecutionPlan(
+  modelId: string,
+  input: Omit<ResolveSpeechExecutionPlanInput, 'runtime'> = {},
+): Promise<{
+  readonly runtime: ResolveSpeechExecutionPlanInput['runtime'];
+  readonly plan: SpeechModelExecutionPlan;
+}> {
+  const { probeWebGpuCapabilities, probeWasmCapabilities } = await import('../inference/backends/builtin.js');
+  const [webgpu, wasm] = await Promise.all([probeWebGpuCapabilities(), probeWasmCapabilities()]);
+  const runtime = {
+    webgpu: webgpu.available,
+    wasm: wasm.available,
+    webgpuPrecisions: webgpu.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[],
+    // WASM's generic precision capabilities don't describe ONNX weight storage compatibility.
+    wasmPrecisions: wasm.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[],
+  };
+  return {
+    runtime,
+    plan: resolveBuiltInApprovedSpeechExecutionPlan(modelId, { ...input, runtime }),
+  };
 }
 
 /** Resolves a built-in speech model descriptor by model id or known alias. */

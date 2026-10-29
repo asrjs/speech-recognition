@@ -1,0 +1,10 @@
+{
+  "sourceRepo": "Qwen/Qwen3-ASR-0.6B",
+  "sourceRevision": "5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
+  "purpose": "Unmodified upstream metadata for provenance and model configuration reference. These files do not replace the custom ONNX graph contract in asrjs-manifest.json.",
+  "files": [
+    { "path": "config.json", "sizeBytes": 6193, "sha256": "76d3ae4601ce939830b2517f4a6cadb86cc51316c3900af6b020b051c21a478c" },
+    { "path": "generation_config.json", "sizeBytes": 142, "sha256": "1da527824d81e07118facff437e03f2e24a23311e3bdeb2368973fe77e5f275c" },
+    { "path": "preprocessor_config.json", "sizeBytes": 330, "sha256": "45e120a4eda2c20c5d7f2ea9354e63536bf35e27aa573fb7cdf78017b378770d" }
+  ]
+}

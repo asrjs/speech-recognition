@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "modelId": "Qwen/Qwen3-ASR-0.6B-hf",
+  "artifactSetId": "qwen3-asr-0.6b-fp32-encoder-fp16-decoder",
+  "status": "experimental",
+  "source": {
+    "repo": "Qwen/Qwen3-ASR-0.6B",
+    "revision": "5eb144179a02acc5e5ba31e748d22b0cf3e303b0",
+    "license": "Apache-2.0"
+  },
+  "graphs": {
+    "encoder": "audio-encoder-dynamic.onnx",
+    "decoderPrefill": "decoder-prefill-fp16.onnx",
+    "decoderStep": "decoder-step-fp16.onnx",
+    "decoderExternalData": "decoder-fp16.onnx.data",
+    "tokenizer": "tokenizer/tokenizer.json"
+  },
+  "artifacts": [
+    {
+      "path": "audio-encoder-dynamic.onnx",
+      "sizeBytes": 751103768,
+      "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+    },
+    {
+      "path": "decoder-prefill-fp16.onnx",
+      "sizeBytes": 732464,
+      "sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029"
+    },
+    {
+      "path": "decoder-step-fp16.onnx",
+      "sizeBytes": 741089,
+      "sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e"
+    },
+    {
+      "path": "decoder-fp16.onnx.data",
+      "sizeBytes": 1503250432,
+      "sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+    },
+    {
+      "path": "tokenizer/tokenizer.json",
+      "sizeBytes": 11429666,
+      "sha256": "765730b866a766806c9e61183cf3844357bec96a3b559eb466046316ed0029a4"
+    }
+  ],
+  "acceptance": {
+    "status": "PARTIAL_PASS",
+    "scope": "The real-weight four-demo matrix recorded 16/18 exact fixture flows; native streaming was unsupported. See the 2026-10-25 demos report.",
+    "physicalMicrophone": "UNVERIFIED",
+    "broadAccuracy": "UNVERIFIED",
+    "allBackendQuantizationCombinations": "UNVERIFIED"
+  }
+}

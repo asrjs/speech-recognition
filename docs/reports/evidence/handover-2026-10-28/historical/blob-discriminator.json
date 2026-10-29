@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "chunks",
+    "error": "Page.evaluate: TypeError: Failed to fetch\n    at eval (eval at evaluate (:234:30), <anonymous>:6:25)\n    at async <anonymous>:260:30"
+  },
+  {
+    "mode": "native",
+    "size": 1238960452,
+    "fetchStatus": 206,
+    "readBytes": 32
+  }
+]

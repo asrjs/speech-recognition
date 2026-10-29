@@ -308,6 +308,11 @@ describe('UrlAssetHandle', () => {
 
   it('can materialize remote URL locators as blob URLs with progress', async () => {
     const progressEvents: AssetProgressEvent[] = [];
+    let materializedBlob: Blob | undefined;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      materializedBlob = blob as Blob;
+      return 'blob:streamed-model';
+    });
     globalThis.fetch = vi.fn(async () => {
       return new Response(new Uint8Array([1, 2, 3, 4]), {
         status: 200,
@@ -337,7 +342,73 @@ describe('UrlAssetHandle', () => {
     expect(locator).toMatch(/^blob:/);
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     expect(progressEvents.at(-1)).toMatchObject({ loaded: 4, done: true, source: 'network' });
+    expect(materializedBlob?.type).toBe('application/octet-stream');
+    expect(Array.from(new Uint8Array(await materializedBlob!.arrayBuffer()))).toEqual([1, 2, 3, 4]);
     handle.dispose();
+  });
+
+  it('propagates streamed body errors while materializing blob URL locators', async () => {
+    const failure = new Error('model stream failed');
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2]));
+        controller.error(failure);
+      },
+    });
+    globalThis.fetch = vi.fn(
+      async () => new Response(stream, { status: 200 }),
+    ) as typeof fetch;
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:blob-stream-error',
+        provider: 'url',
+        url: 'https://example.com/model.onnx',
+        preferBlobUrl: true,
+      },
+      'https://example.com/model.onnx',
+    );
+
+    await expect(handle.getLocator('url')).rejects.toBe(failure);
+  });
+
+  it('aborts a streamed blob URL materialization without reporting completion', async () => {
+    const controller = new AbortController();
+    const progressEvents: AssetProgressEvent[] = [];
+    let pullCount = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(streamController) {
+        pullCount += 1;
+        if (pullCount === 2) controller.abort();
+        streamController.enqueue(new Uint8Array([pullCount]));
+      },
+    });
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+    ) as typeof fetch;
+    const handle = new UrlAssetHandle(
+      {
+        id: 'url:blob-stream-abort',
+        provider: 'url',
+        url: 'https://example.com/model.onnx',
+        preferBlobUrl: true,
+        signal: controller.signal,
+        onProgress(event) {
+          progressEvents.push(event);
+        },
+      },
+      'https://example.com/model.onnx',
+    );
+
+    await expect(handle.getLocator('url')).rejects.toMatchObject({
+      name: 'AssetLoadAbortedError',
+      code: 'asset-load-aborted',
+    });
+    expect(progressEvents.some((event) => event.done === true && !event.aborted)).toBe(false);
+    expect(progressEvents.at(-1)).toMatchObject({ aborted: true, done: true });
   });
 
   it('reports cache provenance when a blob URL locator is materialized from cache', async () => {

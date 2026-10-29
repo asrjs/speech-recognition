@@ -1,0 +1,94 @@
+npm notice run @asrjs/demos-monorepo@1.0.0 test
+npm notice run npm run test:suite && npm run test:apps
+npm notice run @asrjs/demos-monorepo@1.0.0 test:suite
+npm notice run node --test scripts/suite.test.mjs packages/demo-runtime/src/runtime.test.js packages/demo-runtime/src/model-loading.test.js vite.shared.test.js
+✔ a GPU-only registered export cannot silently run under a WASM request (1.479ms)
+✔ every registered model resolves only to one of its declared sources (1.2754ms)
+✔ new model policy needs registration data, not a family-specific code branch (0.5646ms)
+✔ shared loading policy delegates automatic component backend and precision selection to the library manifest (0.3335ms)
+✔ a model with no runtime-compatible backend stays inspectable and reports unavailable (0.4191ms)
+✔ load-time plan resolution uses the core runtime probe result, not navigator presence (0.349ms)
+✔ local inference receives the probed component choices but not runtime capability metadata (0.3157ms)
+✔ Qwen folder options reflect the registered adapter and requested component backends (1.0935ms)
+✔ Qwen and Streaming Tiny Hub bundles resolve to their pinned published revisions (0.196ms)
+✔ local-only models never reach the Hub pipeline even if called directly (0.6104ms)
+✔ bundled warmup oracle checks missing expected-text metadata without accepting arbitrary output (1.9576ms)
+✔ catalog coverage markers are never sent as decoder language tags (0.3915ms)
+✔ profiling defaults off and retains an explicitly saved boolean (0.9862ms)
+✔ shared requests preserve the public catalog contract for every listed model (2.7796ms)
+✔ cache keys distinguish configuration, normalize key order, and ignore callbacks (0.6336ms)
+✔ loader serializes requests, preserves progress ownership and evicts cached models (23.7814ms)
+✔ a failed request does not poison subsequent model loads (2.1351ms)
+✔ navigation supports nested suite deployment and honest standalone links (0.5851ms)
+✔ base paths normalize and reject traversal or URL syntax (1.4418ms)
+✔ nested app bases remain distinct from the shared suite base (1.9195ms)
+✔ static server serves portal and nested routes with isolation headers and MIME types (106.3774ms)
+✔ nested base routing redirects its bare path and serves app subpaths (47.4153ms)
+✔ static server rejects traversal, dotfiles, absent assets, and unsupported methods (46.2697ms)
+✔ HEAD returns metadata without a body (18.4677ms)
+(node:18996) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///N:/github/asrjs/demos/vite.shared.test.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\N:\github\asrjs\demos\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ package mode resolves installed package metadata without source aliases or sibling access (23.679ms)
+✔ source mode aliases the requested source tree and reports uncommitted provenance (179.3332ms)
+✔ rejects unsupported ASRJS_SOURCE values (9.2548ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 897.6973
+npm notice run @asrjs/demos-monorepo@1.0.0 test:apps
+npm notice run node node_modules/vitest/vitest.mjs run --config apps/realtime/vite.config.js packages/ui/src apps/realtime/src apps/benchmark/src apps/playground/src apps/realtime/scripts packages/demo-runtime/src/browser-runtime.test.js
+
+ RUN  v3.2.7 N:/github/asrjs/demos
+
+ ✓ packages/ui/src/theme.test.js (8 tests) 53ms
+ ✓ apps/realtime/src/app/transcriptionRecord.test.js (2 tests) 40ms
+ ✓ apps/realtime/scripts/prepare-ort-assets.test.mjs (3 tests) 106ms
+(node:31316) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/ui/src/components/DemoShell.test.jsx (2 tests) 16ms
+ ✓ apps/realtime/src/shared/streaming/usePersistentStreamingSettings.test.jsx (5 tests) 37ms
+ ✓ apps/realtime/src/shared/browser-console/components/TranscriptPanel.test.jsx (1 test) 12ms
+ ✓ apps/playground/src/capture-transcription.test.js (14 tests) 24ms
+ ✓ apps/realtime/src/app/localFolderHelpers.test.js (3 tests) 6ms
+ ✓ apps/playground/src/recorded-audio.test.js (7 tests) 19ms
+ ✓ apps/benchmark/src/dataset-selection.test.js (7 tests) 1252ms
+   ✓ dataset sampling public request/response contract > uses the full row population for seeded sampling, rather than defaulting to row zero  834ms
+stdout | apps/realtime/src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[LocalFolder] Starting model load from local artifacts
+
+stdout | apps/realtime/src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[LocalFolder] Selected artifacts {
+  encoder: 'encoder-model.fp16.onnx',
+  decoder: 'decoder_joint-model.int8.onnx',
+  tokenizer: 'vocab.txt',
+  preprocessorBackend: 'js',
+  preprocessor: null
+}
+[LocalFolder] Model sessions created from local artifacts
+[LoadModel] Running warm-up verification transcription
+
+stdout | apps/realtime/src/app/transcriptionFlows.test.js > loadModelFlow > uses the browser local-model handle shape so warm-up can call transcribeMonoPcm
+[App] Model verification successful.
+LoadModel: 3.62ms
+
+ ✓ apps/realtime/src/app/transcriptionFlows.test.js (1 test) 15ms
+ ✓ packages/ui/src/components/WordPills.test.jsx (1 test) 10ms
+ ✓ packages/demo-runtime/src/browser-runtime.test.js (2 tests) 9ms
+ ✓ apps/playground/src/codeSnippet.test.js (3 tests) 8ms
+ ✓ packages/ui/src/utils/subtitleExport.test.js (4 tests) 5ms
+ ✓ apps/realtime/src/app/captureTranscript.test.js (3 tests) 5ms
+ ✓ apps/realtime/src/shared/streaming/components/SignalMeter.test.js (2 tests) 4ms
+ ✓ apps/benchmark/src/benchmark-utils.test.jsx (2 tests) 4ms
+ ✓ apps/realtime/src/app/transcriptionHelpers.test.js (1 test) 3ms
+
+ Test Files  19 passed (19)
+      Tests  71 passed (71)
+   Start at  22:49:45
+   Duration  8.63s (transform 814ms, setup 0ms, collect 6.19s, tests 1.63s, environment 51.20s, prepare 7.35s)
+

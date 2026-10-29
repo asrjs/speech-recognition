@@ -87,7 +87,7 @@ resolution, model loading, and ready-session creation for you, start from
 import { loadSpeechModel } from '@asrjs/speech-recognition';
 
 const loaded = await loadSpeechModel({
-  modelId: 'parakeet-tdt-0.6b-v2',
+  modelId: 'parakeet-tdt-0.6b-v3',
   onProgress(event) {
     console.log(event.phase, event.loaded, event.total);
   },
@@ -121,7 +121,7 @@ Pass `signal` to cancel; decoding failures still release model resources.
 import { transcribeSpeechFromAudioSource } from '@asrjs/speech-recognition';
 
 const result = await transcribeSpeechFromAudioSource(file, {
-  modelId: 'parakeet-tdt-0.6b-v2',
+  modelId: 'parakeet-tdt-0.6b-v3',
   backend: 'webgpu-hybrid',
 });
 console.log(result.text);
@@ -241,7 +241,7 @@ to stay explicit about the built-ins namespace:
 
 ```ts
 const loaded = await loadBuiltInSpeechModel({
-  modelId: 'parakeet-tdt-0.6b-v2',
+  modelId: 'parakeet-tdt-0.6b-v3',
   onProgress(event) {
     console.log(event.phase, event.loaded, event.total);
   },
@@ -280,10 +280,12 @@ import { createLasrCtcModelFamily } from '@asrjs/speech-recognition/models/lasr-
 import { createWhisperSeq2SeqModelFamily } from '@asrjs/speech-recognition/models/whisper-seq2seq';
 ```
 
-Artifact-gated families such as Qwen3-ASR, SenseVoice, GigaAM, and X-ASR use
-the same model-family subpath convention. They require an explicit local
-artifact source and remain experimental until their full promotion evidence is
-complete.
+Artifact-gated families use the same model-family subpath convention. Qwen3-ASR
+and Moonshine Streaming Tiny have pinned ONNX Hub bundles as well as local
+loading paths. SenseVoice, GigaAM and X-ASR still require local artifacts.
+These integrations remain experimental until their full promotion evidence is
+complete; publishing weights does not approve every backend or precision.
+See [approved model profiles](APPROVED_MODEL_PROFILES.md).
 
 ### `@asrjs/speech-recognition/presets/*`
 

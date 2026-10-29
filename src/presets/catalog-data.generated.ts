@@ -199,7 +199,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: 'nemo128',
       encoderArtifactBaseName: 'encoder-model',
       decoderArtifactBaseName: 'decoder_joint-model',
-      defaultRevision: 'main'
+      defaultRevision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a'
     },
     controls: [],
     warmup: {
@@ -1870,11 +1870,12 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     status: 'experimental',
     modelId: 'moonshine-ai/moonshine-streaming-tiny',
     aliases: [
-      'moonshine-streaming-tiny'
+      'moonshine-streaming-tiny',
+      'ysdede/moonshine-streaming-tiny-onnx'
     ],
     preset: 'moonshine',
     displayName: 'Moonshine Tiny Streaming',
-    description: 'Local-only Moonshine Tiny export with native streaming graphs.',
+    description: 'Experimental Moonshine Tiny ONNX bundle with native streaming graphs.',
     classification: {
       ecosystem: 'moonshine',
       processor: 'raw-waveform-conv',
@@ -1916,7 +1917,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'concat'
     },
     loading: {
-      supportsHubSource: false,
+      repoId: 'ysdede/moonshine-streaming-tiny-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1944,7 +1946,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'encoder_model',
       decoderArtifactBaseName: 'decoder_step_model',
-      defaultRevision: 'local'
+      defaultRevision: 'cb347a0760c2d7d6cf9083eb770376ba108e5b31'
     },
     controls: [],
     warmup: {
@@ -1957,7 +1959,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
   {
     modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
     aliases: [
-      'qwen3-asr-0.6b'
+      'qwen3-asr-0.6b',
+      'ysdede/qwen3-asr-0.6b-onnx'
     ],
     preset: 'qwen3-asr',
     displayName: 'Qwen3-ASR 0.6B (multilingual, language-tagged)',
@@ -2003,8 +2006,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      repoId: 'Qwen/Qwen3-ASR-0.6B-hf',
-      supportsHubSource: false,
+      repoId: 'ysdede/qwen3-asr-0.6b-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: true,
@@ -2026,14 +2029,14 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
         'fp32'
       ],
       defaultEncoderQuantization: 'fp32',
-      defaultDecoderQuantization: 'fp32',
+      defaultDecoderQuantization: 'fp16',
       supportsPreprocessorBackend: false,
       preprocessorBackends: [],
       defaultPreprocessorBackend: null,
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'audio-encoder-dynamic',
       decoderArtifactBaseName: 'decoder-prefill',
-      defaultRevision: 'main'
+      defaultRevision: 'ac0bedcc0f1614c0b3982940c14bdb169ff2365d'
     },
     controls: [],
     warmup: {
@@ -2337,9 +2340,9 @@ const sources = {
   'parakeet-tdt-0.6b-v3': {
     kind: 'huggingface',
     repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+    revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
     preprocessorName: 'nemo128',
     preprocessorBackend: 'js',
-    revision: 'main',
     cacheKeyFallbackRevisions: [
       'feat/fp16-canonical-v3'
     ]

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "modelId": "moonshine-streaming-tiny",
+  "artifactSetId": "moonshine-streaming-tiny-remapped-4graph-fp32",
+  "status": "experimental",
+  "source": {
+    "repo": "moonshine-ai/moonshine-streaming-tiny",
+    "revision": "f8e9dfd8c562c257c151a907b7b7f2fe8ff8511a",
+    "license": "MIT",
+    "variant": "streaming tiny; custom remapped 4-graph bundle"
+  },
+  "graphs": {
+    "encoder": "encoder_model.onnx",
+    "chunkedEncoder": "encoder_chunked_model.onnx",
+    "decoderPrefill": "decoder_prefill_model.onnx",
+    "decoderStep": "decoder_step_model.onnx",
+    "externalData": "all matching *.onnx.data files"
+  },
+  "processor": "config.json + preprocessor_config.json + processor_config.json + tokenizer_config.json + generation_config.json + tokenizer.json",
+  "artifacts": [
+    {
+      "path": "encoder_model.onnx",
+      "sizeBytes": 841937,
+      "sha256": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "encoder_model.onnx.data",
+      "sizeBytes": 37912576,
+      "sha256": "b990c5914f11fe7b5a393afebdc1cc41c2f295e3aee04d3e4f6aef65b1f46dc9",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "encoder_chunked_model.onnx",
+      "sizeBytes": 38433741,
+      "sha256": "0d8111a8060f80ce525620cbca2d8470752f9843563e4e0b1a9c506ca939c4a8",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "encoder_chunked_model.onnx.data",
+      "sizeBytes": 37912576,
+      "sha256": "c20519f11bc55af170553fe4ad8ee632ad69e8307b83347ab1c8e387bf4e4813",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "decoder_prefill_model.onnx",
+      "sizeBytes": 138461619,
+      "sha256": "4d8ec59834ba5e777aed82fa9bcdddfd1f6cf3a3ea1e201e92b08cc6357a8684",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "decoder_prefill_model.onnx.data",
+      "sizeBytes": 138412032,
+      "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "decoder_step_model.onnx",
+      "sizeBytes": 138466052,
+      "sha256": "8a8bd7177aa2232090f74192266f649e8ac68bfdbfa5c5c37dd2f97ce30dcfeb",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "decoder_step_model.onnx.data",
+      "sizeBytes": 138412032,
+      "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "tokenizer.json",
+      "sizeBytes": 1676069,
+      "sha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "config.json",
+      "sizeBytes": 1421,
+      "sha256": "166861753adaf928ae99b3709bfb1da47cb76319be58f37c6f9b7a539ce371f0",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "generation_config.json",
+      "sizeBytes": 167,
+      "sha256": "ff376268d9f8176da72ae0a3ca993778eb972a2f13a4ba0a914dbc3d6c832abe",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "preprocessor_config.json",
+      "sizeBytes": 195,
+      "sha256": "859e62520a4e44be5bf9559205898ec7adfd2952bdc4f4e62ea724ac6ba460eb",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "processor_config.json",
+      "sizeBytes": 159,
+      "sha256": "a2325cec2c0f66ba9eadf11b0bc77930b25fa1af57e7c9e4fbbcf0cd3e620bf8",
+      "matchesIndependentModelArtifactReceipt": true
+    },
+    {
+      "path": "tokenizer_config.json",
+      "sizeBytes": 172,
+      "sha256": "93bb19c92de5c3d03e4a424ba033b2a81a32bdca6dc6f6dba176934dd8a9c6be",
+      "matchesIndependentModelArtifactReceipt": true
+    }
+  ],
+  "acceptance": {
+    "status": "PARTIAL_PASS",
+    "scope": "The 2026-10-24 real-weight app matrix recorded 13/18 requested flows. Manual captures and Playground recordings were empty on padded input; WebGPU FireRed missed one word. Native-stream flow accepted only in tested scenarios.",
+    "physicalMicrophone": "UNVERIFIED",
+    "broadAccuracy": "UNVERIFIED",
+    "allBackendQuantizationCombinations": "UNVERIFIED"
+  }
+}

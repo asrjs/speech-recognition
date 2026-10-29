@@ -35,7 +35,7 @@ transcription:
 import { createSpeechController } from '@asrjs/speech-recognition/controller';
 
 const speech = createSpeechController();
-await speech.load({ modelId: 'parakeet-tdt-0.6b-v2', backend: 'webgpu-hybrid' });
+await speech.load({ modelId: 'parakeet-tdt-0.6b-v3', backend: 'webgpu-hybrid' });
 speech.subscribe(() => console.log(speech.getSnapshot().microphone?.transcriptText));
 // Start from a user gesture.
 await speech.startMicrophone({
