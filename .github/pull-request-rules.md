@@ -1,5 +1,8 @@
 # Pull Request Rules
 
+Automated contributors (Jules, Bolt and similar) must also follow
+[BOT_CONTRIBUTION_RULES.md](BOT_CONTRIBUTION_RULES.md).
+
 ## GitHub Text Formatting
 
 Apply these rules for all GitHub write actions:
