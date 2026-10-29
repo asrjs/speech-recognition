@@ -199,7 +199,7 @@ Treat it as reference material until its current contents are rechecked.
 
 Remote model loading resilience is documented in [HUGGINGFACE_DOWNLOAD_RESILIENCE.md](./HUGGINGFACE_DOWNLOAD_RESILIENCE.md). FireRed diagnostic fallback behavior is documented in [FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md](./FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md).
 
-The Windows-to-WSL2 maintenance handoff is documented in [WSL2_PROJECT_HANDOFF.md](./WSL2_PROJECT_HANDOFF.md).
+The Windows-to-WSL2 maintenance handoff is documented in [WSL2_PROJECT_HANDOFF.md](archive/WSL2_PROJECT_HANDOFF.md).
 
 ## Delegating to OMP subagents in this workspace
 

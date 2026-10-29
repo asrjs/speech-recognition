@@ -14,7 +14,7 @@ preserves real-model receipts and records current verification limits.
 2. Read [PROJECT_CHARTER.md](PROJECT_CHARTER.md) and the
    [documentation index](README.md) first. The product is an easy-to-integrate
    offline and streaming speech library for browser and Node/Bun developers.
-   [ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and the dated review are historical
+   [ACTIVE_SPRINT.md](archive/ACTIVE_SPRINT.md) and the dated review are historical
    work records; verify task status before resuming them.
 3. Read the [engineering tool map](../tools/README.md#task-to-tool-map).
    For model ports, feature extraction, inference or parity work, read the
@@ -66,9 +66,9 @@ runtime merely to get a transcript. Preserve canonical output semantics.
 
 ## Historical records are not startup instructions
 
-`GOAL_PROMPT.md`, `HANDOVER.md`, `HANDOFF.md`, `SESSION_HANDOVER.md`,
-`AGENT_TASKS.md`, `AGENT_STATUS_REVIEW.md`, `WSL2_PROJECT_HANDOFF.md` and the
-archived recommended goal retain useful history. Their old branches, agent
+[`docs/archive/`](archive/) holds `GOAL_PROMPT.md`, `HANDOVER.md`, `HANDOFF.md`,
+`SESSION_HANDOVER.md`, `AGENT_TASKS.md`, `AGENT_STATUS_REVIEW.md` and
+`WSL2_PROJECT_HANDOFF.md`. They and the archived recommended goal retain useful history. Their old branches, agent
 names, resume prompts, queue entries and PASS claims do not direct current work.
 Follow them only when the user explicitly resumes that historical scope, after
 checking source/build/artifact freshness. Do not check out an old branch because
@@ -92,7 +92,7 @@ Read docs/AGENT_ENTRYPOINT.md and its required documents completely. Start
 tool discovery at tools/README.md; for model work read
 tools/model-debugging/SKILL.md and the matching porting playbook. Use
 docs/GOAL_PROMPT_RECOMMENDED.md as the whole-product goal and reconcile
-docs/OMP_HANDOVER_2026-10-03.md with live Git/source/build/artifacts. Preserve
+docs/archive/OMP_HANDOVER_2026-10-03.md with live Git/source/build/artifacts. Preserve
 protected dirty work and failed evidence. Resume the first safely actionable
 bounded slice in the existing task files, validate it, then commit only owned
 changes. Do not resume Nemotron, relax parity gates, repeat completed controls,
@@ -111,7 +111,7 @@ bounded task matching the latest user request.
 ## Historical focus overlays
 
 Historical sprint (2026-10-17): read
-[ACTIVE_SPRINT.md](ACTIVE_SPRINT.md) and
+[ACTIVE_SPRINT.md](archive/ACTIVE_SPRINT.md) and
 [reports/deep-review-2026-10-17.md](reports/deep-review-2026-10-17.md)
 for the active 7 task cards (T1–T7), 3-tier verification gates, and strategic roadmap.
 Also refer to [HANDOFF-subagents-2026-10-17.md](reports/HANDOFF-subagents-2026-10-17.md).

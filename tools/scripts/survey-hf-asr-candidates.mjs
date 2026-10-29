@@ -6,7 +6,7 @@
  *
  * This is discovery evidence only. It does not claim model quality, ONNX
  * parity, or browser support. Those claims require the reference and browser
- * gates in docs/GOAL_PROMPT.md.
+ * gates in docs/archive/GOAL_PROMPT.md.
  *
  * Examples:
  *   node tools/scripts/survey-hf-asr-candidates.mjs --output tools/data/results/model-candidates/hf-asr-candidates.json

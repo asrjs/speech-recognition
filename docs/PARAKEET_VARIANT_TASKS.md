@@ -2,13 +2,13 @@
 
 > [!NOTE]
 > The full historical execution log (4,154 lines across all porting, calibration, and parity waves) has been archived to:
-> [`docs/archive/PARAKEET_VARIANT_TASKS-2026-10-17.md`](file:///N:/github/asrjs/speech-recognition/docs/archive/PARAKEET_VARIANT_TASKS-2026-10-17.md).
+> [`docs/archive/PARAKEET_VARIANT_TASKS-2026-10-17.md`](archive/PARAKEET_VARIANT_TASKS-2026-10-17.md).
 >
 > All active sprint tasks and verification gates are maintained in:
-> [`docs/ACTIVE_SPRINT.md`](file:///N:/github/asrjs/speech-recognition/docs/ACTIVE_SPRINT.md).
+> [`docs/archive/ACTIVE_SPRINT.md`](archive/ACTIVE_SPRINT.md).
 >
 > Strategic architecture analysis and comprehensive findings are in:
-> [`docs/reports/deep-review-2026-10-17.md`](file:///N:/github/asrjs/speech-recognition/docs/reports/deep-review-2026-10-17.md).
+> [`docs/reports/deep-review-2026-10-17.md`](reports/deep-review-2026-10-17.md).
 
 ---
 
@@ -40,4 +40,4 @@
      - Neural VAD soft-splitting and endpointing (Card T6)
      - Demo workspace unification and cross-model selection (Card T7)
 
-For full detail on prior task cards (C1–C94) and diagnostic traces, refer to the [archive log](file:///N:/github/asrjs/speech-recognition/docs/archive/PARAKEET_VARIANT_TASKS-2026-10-17.md).
+For full detail on prior task cards (C1–C94) and diagnostic traces, refer to the [archive log](archive/PARAKEET_VARIANT_TASKS-2026-10-17.md).

@@ -167,4 +167,4 @@ Related documents:
 - [Completion plan](N:/github/asrjs/speech-recognition/docs/plans/whisper-webgpu-completion-plan.md)
 - [Validation handoff](N:/github/asrjs/speech-recognition/docs/handoffs/whisper-webgpu-completion-validation-handoff.md)
 - [Optimization logbook](N:/github/asrjs/speech-recognition/docs/Whisper-Optimizations.md)
-- [Agent task list](N:/github/asrjs/speech-recognition/docs/AGENT_TASKS.md)
+- [Agent task list](../archive/AGENT_TASKS.md)
