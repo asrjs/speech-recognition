@@ -115,18 +115,37 @@ async function streamToBlob(
   contentType: string | undefined,
   onChunk?: (chunk: Uint8Array, loaded: number) => void,
 ): Promise<Blob> {
-  const chunks: BlobPart[] = [];
+  const iterator = iterable[Symbol.asyncIterator]();
   let loaded = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await iterator.next();
+        if (done) {
+          controller.close();
+          return;
+        }
 
-  for await (const chunk of iterable) {
-    chunks.push(chunk.slice().buffer as ArrayBuffer);
-    loaded += chunk.byteLength;
-    onChunk?.(chunk, loaded);
-  }
-
-  return new Blob(chunks, {
-    type: contentType ?? 'application/octet-stream',
+        loaded += value.byteLength;
+        onChunk?.(value, loaded);
+        controller.enqueue(value.slice());
+      } catch (error) {
+        try {
+          await iterator.return?.();
+        } catch {
+          // Preserve the original stream or progress error.
+        }
+        controller.error(error);
+      }
+    },
+    async cancel() {
+      await iterator.return?.();
+    },
   });
+
+  return new Response(stream, {
+    headers: { 'content-type': contentType ?? 'application/octet-stream' },
+  }).blob();
 }
 
 async function readCache(
