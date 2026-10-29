@@ -43,6 +43,7 @@ import {
   buildBuiltInHubLoadOptions,
   getBuiltInModelDescriptor,
   listApprovedSpeechModelManifests,
+  resolveApprovedSpeechExecutionPlan,
 } from '../presets/descriptors.js';
 import {
   createExperimentalArtifactMissingError,
@@ -291,6 +292,7 @@ async function resolveAutomaticManifestLoadOptions(
   backend: string | undefined,
   supplied: unknown,
   useManifestSources: boolean | undefined,
+  onWarning: (warning: { readonly code: string; readonly message: string }) => void = () => {},
 ): Promise<unknown> {
   const descriptor = getBuiltInModelDescriptor(modelId);
   if (!descriptor) return supplied;
@@ -324,36 +326,37 @@ async function resolveAutomaticManifestLoadOptions(
   // An explicit backend narrows the execution plan; it must not drop the
   // pinned artifact revision and identity. Unsupported plans fall through to
   // the caller's options so the runtime reports the backend error itself.
+  const componentRequest = {
+    modelId: descriptor.modelId,
+    backend: backend ?? 'webgpu-hybrid',
+    encoderBackend: suppliedSource?.encoderBackend as 'webgpu' | 'wasm' | undefined,
+    decoderBackend: suppliedSource?.decoderBackend as 'webgpu' | 'wasm' | undefined,
+    encoderQuant: suppliedSource?.encoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+    decoderQuant: suppliedSource?.decoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+  };
+  const planRuntime = {
+    webgpu: webgpu?.available === true,
+    wasm: wasm?.available === true,
+    webgpuPrecisions: webgpu?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
+    wasmPrecisions: wasm?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
+  };
   let built: ReturnType<typeof buildBuiltInHubLoadOptions>;
   try {
-    built = buildBuiltInHubLoadOptions({
-      modelId: descriptor.modelId,
-      backend: backend ?? 'webgpu-hybrid',
-      runtime: {
-        webgpu: webgpu?.available === true,
-        wasm: wasm?.available === true,
-        webgpuPrecisions: webgpu?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
-        wasmPrecisions: wasm?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
-      },
+    built = buildBuiltInHubLoadOptions({ ...componentRequest, runtime: planRuntime, artifactIdentity });
+    const { modelId: _modelId, ...planRequest } = componentRequest;
+    for (const warning of resolveApprovedSpeechExecutionPlan(descriptor.modelId, {
+      ...planRequest,
+      runtime: planRuntime,
       artifactIdentity,
-      encoderBackend: suppliedSource?.encoderBackend as 'webgpu' | 'wasm' | undefined,
-      decoderBackend: suppliedSource?.decoderBackend as 'webgpu' | 'wasm' | undefined,
-      encoderQuant: suppliedSource?.encoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
-      decoderQuant: suppliedSource?.decoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
-    });
+    }).warnings ?? []) {
+      onWarning(warning);
+    }
   } catch {
     // The requested plan is unsupported on this runtime (for example a
     // WebGPU-only request for a WASM-only decoder). Keep the pinned revision
     // and let the catalog picker degrade component backends; the runtime
     // still reports any hard backend error on load.
-    built = buildBuiltInHubLoadOptions({
-      modelId: descriptor.modelId,
-      backend: backend ?? 'webgpu-hybrid',
-      encoderBackend: suppliedSource?.encoderBackend as 'webgpu' | 'wasm' | undefined,
-      decoderBackend: suppliedSource?.decoderBackend as 'webgpu' | 'wasm' | undefined,
-      encoderQuant: suppliedSource?.encoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
-      decoderQuant: suppliedSource?.decoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
-    });
+    built = buildBuiltInHubLoadOptions(componentRequest);
   }
   const generatedOptions = isRecord(built.options) ? built.options : {};
   const generatedSource = isRecord(generatedOptions.source) ? generatedOptions.source : {};
@@ -556,6 +559,13 @@ export async function loadBuiltInSpeechModel<
           options.backend,
           options.options,
           options.useManifestSources,
+          (warning) =>
+            emitProgress(options, {
+              phase: 'model-load:fallback',
+              modelId: resolved.modelId,
+              message: warning.message,
+              warning: { ...warning, recoverable: true },
+            }),
         )
       : options.options;
 

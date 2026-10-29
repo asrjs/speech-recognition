@@ -145,6 +145,11 @@ export interface ApprovedSpeechExecutionPlan {
   readonly vocabularySha256?: string;
   readonly artifacts?: Readonly<Record<string, { readonly path: string; readonly sha256: string; readonly sizeBytes?: number }>>;
   readonly processor?: { readonly kind: 'javascript'; readonly name: string };
+  /**
+   * Automatic departures from the approved profile on this runtime, such as an
+   * FP32 encoder when the WebGPU adapter lacks `shader-f16`.
+   */
+  readonly warnings?: readonly { readonly code: string; readonly message: string }[];
 }
 
 export interface ResolveSpeechExecutionPlanInput {
@@ -281,11 +286,27 @@ export function resolveApprovedSpeechExecutionPlan(
     && input.runtime.webgpuPrecisions?.includes(approved.encoderQuant)
     && requested.encoderQuant === approved.encoderQuant
     && requested.decoderQuant === approved.decoderQuant;
+  const warnings: { code: string; message: string }[] = [];
+  const automaticBackend = !input.backend || normalizeRequestedBackend(input.backend) === 'webgpu-hybrid';
+  if (approved && !input.encoderBackend && automaticBackend && requested.encoderBackend !== approved.encoderBackend) {
+    warnings.push({
+      code: 'plan.encoder-backend-fallback',
+      message: `${approved.encoderBackend.toUpperCase()} is unavailable; running the ${descriptor.modelId} encoder on ${requested.encoderBackend.toUpperCase()}. Expect slower transcription.`,
+    });
+  }
+  if (approved && !input.encoderQuant && requested.encoderBackend === approved.encoderBackend
+      && requested.encoderQuant !== approved.encoderQuant) {
+    warnings.push({
+      code: 'plan.encoder-precision-fallback',
+      message: `The ${approved.encoderBackend.toUpperCase()} adapter does not support ${approved.encoderQuant.toUpperCase()}; using the ${requested.encoderQuant.toUpperCase()} encoder for ${descriptor.modelId}. Expect a larger download and more GPU memory.`,
+    });
+  }
   return {
     manifestVersion: '1',
     status: matchesApproved ? 'approved' : 'unverified',
     ...requested,
     ...(matchesApproved ? approved : {}),
+    ...(warnings.length ? { warnings } : {}),
   };
 }
 

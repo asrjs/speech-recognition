@@ -70,6 +70,44 @@ describe('loadBuiltInSpeechModel', () => {
     });
   });
 
+  it('reports an FP32 encoder fallback through onProgress when WebGPU lacks shader-f16', async () => {
+    const runtime = createSpeechRuntime();
+    const cap = (id: 'webgpu' | 'wasm', supportedPrecisions: ('fp32' | 'fp16' | 'int8')[]) => ({
+      id, displayName: id, available: true, priority: id === 'webgpu' ? 100 : 60,
+      environments: ['browser', 'node'] as const,
+      acceleration: id === 'webgpu' ? ['gpu'] as const : ['cpu'] as const,
+      supportedPrecisions, supportsFp16: supportedPrecisions.includes('fp16'),
+      supportsInt8: true, supportsSharedArrayBuffer: true,
+      requiresSharedArrayBuffer: false, fallbackSuitable: true, notes: [],
+    });
+    runtime.registerBackend(createStaticBackend(cap('webgpu', ['fp32', 'int8'])));
+    runtime.registerBackend(createStaticBackend(cap('wasm', ['fp32', 'int8'])));
+    registerBuiltInModelFamilies(runtime);
+    registerBuiltInPresets(runtime, { useManifestSources: false });
+    const sentinel = new Error('load intercepted');
+    let request: any;
+    vi.spyOn(runtime, 'loadModel').mockImplementation(async (input: any) => {
+      request = input;
+      throw sentinel;
+    });
+    const events: RuntimeProgressEvent[] = [];
+
+    await expect(
+      loadBuiltInSpeechModel({
+        runtime,
+        modelId: 'parakeet-tdt-0.6b-v3',
+        onProgress: (event) => events.push(event),
+      }),
+    ).rejects.toBe(sentinel);
+
+    expect(request.options.source.encoderQuant).toBe('fp32');
+    const fallback = events.find((event) => event.phase === 'model-load:fallback');
+    expect(fallback?.warning).toMatchObject({
+      code: 'plan.encoder-precision-fallback',
+      recoverable: true,
+    });
+  });
+
   it('keeps the pinned manifest revision when an explicit backend is requested', async () => {
     const runtime = createSpeechRuntime();
     const cap = (id: 'webgpu' | 'wasm', available: boolean, supportedPrecisions: ('fp32' | 'fp16' | 'int8')[]) => ({

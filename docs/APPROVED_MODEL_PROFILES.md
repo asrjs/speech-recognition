@@ -30,6 +30,16 @@ It does not certify physical microphone hardware, every language/audio length,
 or numerical parity at every inference stage. New real-model integration
 receipts are recorded separately from manifest selection unit tests.
 
+## When a device cannot run the approved profile
+
+The planner falls back instead of failing and reports why. Without WebGPU
+`shader-f16`, Parakeet v3 uses the FP32 encoder, a larger download that needs
+more GPU memory. Without WebGPU, the encoder runs on WASM. Each departure is
+listed in the plan's `warnings` and emitted as a `model-load:fallback` progress
+event, so `createSpeechController()` exposes it in `loadWarnings`. Explicit
+backend or precision choices are not reported as fallbacks, and the resulting
+plan is `unverified`.
+
 ## Export for a model repository
 
 Build the SDK, then export from its registry instead of maintaining another

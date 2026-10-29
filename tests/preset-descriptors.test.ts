@@ -318,6 +318,26 @@ describe('built-in preset descriptors', () => {
     });
   });
 
+  it('reports automatic departures from the approved profile as warnings', () => {
+    const plan = (runtime: Parameters<typeof resolveApprovedSpeechExecutionPlan>[1]['runtime'], extra = {}) =>
+      resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', { runtime, backend: 'webgpu-hybrid', ...extra });
+
+    expect(plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'fp16', 'int8'] }).warnings).toBeUndefined();
+
+    const noF16 = plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'] });
+    expect(noF16.encoderQuant).toBe('fp32');
+    expect(noF16.warnings?.map((warning) => warning.code)).toEqual(['plan.encoder-precision-fallback']);
+    expect(noF16.warnings?.[0]?.message).toContain('larger download');
+
+    const noGpu = plan({ webgpu: false, wasm: true, wasmPrecisions: ['fp32', 'int8'] });
+    expect(noGpu.encoderBackend).toBe('wasm');
+    expect(noGpu.warnings?.map((warning) => warning.code)).toContain('plan.encoder-backend-fallback');
+
+    // Explicit caller choices are not reported as fallbacks.
+    expect(plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'] }, { encoderQuant: 'fp32' }).warnings).toBeUndefined();
+    expect(plan({ webgpu: true, wasm: true }, { backend: 'wasm' }).warnings).toBeUndefined();
+  });
+
   it('does not confer approval from model name or artifact filenames alone', () => {
     expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
       runtime: { webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'fp16', 'int8'], wasmPrecisions: ['fp32', 'int8'] },
