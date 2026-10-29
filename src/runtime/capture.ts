@@ -1,4 +1,5 @@
 import { mixAudioBufferChannelsToMono } from './media.js';
+import { SincResampler } from '../audio/resample.js';
 import { AudioRingBuffer } from './realtime.js';
 import {
   STREAMING_DEVICE_SAMPLE_RATE_FALLBACK,
@@ -147,82 +148,52 @@ function resolveCreateAudioContext(
 }
 
 function buildCaptureProcessorModule(): string {
+  // The worklet runs in its own global scope, so the shared band-limited
+  // resampler is embedded by source instead of imported.
   return `
+const AsrjsSincResampler = ${SincResampler.toString()};
+
 class AsrjsCaptureProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const opts = options?.processorOptions ?? {};
     this.targetSampleRate = Math.max(1, Number(opts.targetSampleRate) || sampleRate);
     this.targetChunkFrames = Math.max(1, Math.floor(Number(opts.targetChunkFrames) || ${STREAMING_TIMELINE_CHUNK_FRAMES}));
-    this.sourceRate = sampleRate;
-    this.rateRatio = this.sourceRate / this.targetSampleRate;
-    this.sourceBuffer = new Float32Array(Math.max(2048, Math.ceil(this.rateRatio * this.targetChunkFrames * 4) + 2));
-    this.sourceLength = 0;
-    this.sourceReadIndex = 0;
+    this.resampler = new AsrjsSincResampler(sampleRate, this.targetSampleRate);
+    this.pending = new Float32Array(this.targetChunkFrames);
+    this.pendingLength = 0;
   }
 
-  ensureCapacity(required) {
-    if (required <= this.sourceBuffer.length) return;
-    let nextLength = this.sourceBuffer.length;
-    while (nextLength < required) {
-      nextLength *= 2;
-    }
-    const next = new Float32Array(nextLength);
-    next.set(this.sourceBuffer.subarray(0, this.sourceLength), 0);
-    this.sourceBuffer = next;
-  }
-
-  compactSourceBuffer() {
-    const consumed = Math.floor(this.sourceReadIndex);
-    if (consumed <= 0) return;
-    if (consumed < this.sourceLength) {
-      this.sourceBuffer.copyWithin(0, consumed, this.sourceLength);
-    }
-    this.sourceLength -= consumed;
-    this.sourceReadIndex -= consumed;
-  }
-
-  appendInput(inputChannels) {
-    if (!inputChannels?.length || !inputChannels[0]?.length) return;
+  mixToMono(inputChannels) {
     const frameCount = inputChannels[0].length;
     const channelCount = inputChannels.length;
-    this.ensureCapacity(this.sourceLength + frameCount + 2);
-
+    const mono = new Float32Array(frameCount);
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
       let sampleValue = 0;
       for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
         sampleValue += inputChannels[channelIndex][frameIndex] || 0;
       }
-      this.sourceBuffer[this.sourceLength + frameIndex] = sampleValue / channelCount;
+      mono[frameIndex] = sampleValue / channelCount;
     }
-
-    this.sourceLength += frameCount;
+    return mono;
   }
 
-  emitAvailableChunks() {
-    const requiredSourceFrames = () =>
-      this.sourceReadIndex + Math.max(1, (this.targetChunkFrames - 1) * this.rateRatio + 1);
-
-    while (this.sourceLength >= requiredSourceFrames()) {
-      const out = new Float32Array(this.targetChunkFrames);
-      for (let index = 0; index < this.targetChunkFrames; index += 1) {
-        const sourcePosition = this.sourceReadIndex + index * this.rateRatio;
-        const sourceIndex = Math.floor(sourcePosition);
-        const fraction = sourcePosition - sourceIndex;
-        const left = this.sourceBuffer[sourceIndex] || 0;
-        const right = this.sourceBuffer[Math.min(sourceIndex + 1, this.sourceLength - 1)] || left;
-        out[index] = left + (right - left) * fraction;
-      }
-
-      this.sourceReadIndex += this.targetChunkFrames * this.rateRatio;
-      this.port.postMessage({
-        type: 'chunk',
-        pcm: out,
-        sampleRate: this.targetSampleRate,
-      }, [out.buffer]);
-
-      if (this.sourceReadIndex >= 2048) {
-        this.compactSourceBuffer();
+  emitChunks(samples) {
+    let offset = 0;
+    while (offset < samples.length) {
+      const count = Math.min(this.targetChunkFrames - this.pendingLength, samples.length - offset);
+      this.pending.set(samples.subarray(offset, offset + count), this.pendingLength);
+      this.pendingLength += count;
+      offset += count;
+      if (this.pendingLength === this.targetChunkFrames) {
+        const out = this.pending;
+        this.pending = new Float32Array(this.targetChunkFrames);
+        this.pendingLength = 0;
+        this.port.postMessage({
+          type: 'chunk',
+          pcm: out,
+          sampleRate: this.targetSampleRate,
+        }, [out.buffer]);
       }
     }
   }
@@ -233,8 +204,7 @@ class AsrjsCaptureProcessor extends AudioWorkletProcessor {
       return true;
     }
 
-    this.appendInput(inputChannels);
-    this.emitAvailableChunks();
+    this.emitChunks(this.resampler.process(this.mixToMono(inputChannels)));
     return true;
   }
 }
@@ -249,70 +219,31 @@ function createFixedChunkResampler(options: {
   readonly chunkFrames: number;
   readonly onChunk: (pcm: Float32Array) => void;
 }) {
-  const sourceSampleRate = Math.max(1, options.sourceSampleRate);
-  const targetSampleRate = Math.max(1, options.targetSampleRate);
   const chunkFrames = Math.max(1, options.chunkFrames);
-  const rateRatio = sourceSampleRate / targetSampleRate;
-  let sourceBuffer = new Float32Array(Math.max(2048, Math.ceil(rateRatio * chunkFrames * 4) + 2));
-  let sourceLength = 0;
-  let sourceReadIndex = 0;
-
-  const ensureCapacity = (required: number) => {
-    if (required <= sourceBuffer.length) return;
-    let nextLength = sourceBuffer.length;
-    while (nextLength < required) {
-      nextLength *= 2;
-    }
-    const next = new Float32Array(nextLength);
-    next.set(sourceBuffer.subarray(0, sourceLength), 0);
-    sourceBuffer = next;
-  };
-
-  const compactSourceBuffer = () => {
-    const consumed = Math.floor(sourceReadIndex);
-    if (consumed <= 0) return;
-    if (consumed < sourceLength) {
-      sourceBuffer.copyWithin(0, consumed, sourceLength);
-    }
-    sourceLength -= consumed;
-    sourceReadIndex -= consumed;
-  };
-
-  const append = (chunk: Float32Array) => {
-    if (!chunk.length) return;
-    ensureCapacity(sourceLength + chunk.length + 2);
-    sourceBuffer.set(chunk, sourceLength);
-    sourceLength += chunk.length;
-  };
-
-  const emitAvailableChunks = () => {
-    const requiredSourceFrames = () =>
-      sourceReadIndex + Math.max(1, (chunkFrames - 1) * rateRatio + 1);
-
-    while (sourceLength >= requiredSourceFrames()) {
-      const out = new Float32Array(chunkFrames);
-      for (let index = 0; index < chunkFrames; index += 1) {
-        const sourcePosition = sourceReadIndex + index * rateRatio;
-        const sourceIndex = Math.floor(sourcePosition);
-        const fraction = sourcePosition - sourceIndex;
-        const left = sourceBuffer[sourceIndex] ?? 0;
-        const right = sourceBuffer[Math.min(sourceIndex + 1, sourceLength - 1)] ?? left;
-        out[index] = left + (right - left) * fraction;
-      }
-
-      sourceReadIndex += chunkFrames * rateRatio;
-      options.onChunk(out);
-
-      if (sourceReadIndex >= 2048) {
-        compactSourceBuffer();
-      }
-    }
-  };
+  const resampler = new SincResampler(
+    Math.max(1, options.sourceSampleRate),
+    Math.max(1, options.targetSampleRate),
+  );
+  let pending = new Float32Array(chunkFrames);
+  let pendingLength = 0;
 
   return {
     push(chunk: Float32Array) {
-      append(chunk);
-      emitAvailableChunks();
+      if (!chunk.length) return;
+      const samples = resampler.process(chunk);
+      let offset = 0;
+      while (offset < samples.length) {
+        const count = Math.min(chunkFrames - pendingLength, samples.length - offset);
+        pending.set(samples.subarray(offset, offset + count), pendingLength);
+        pendingLength += count;
+        offset += count;
+        if (pendingLength === chunkFrames) {
+          const out = pending;
+          pending = new Float32Array(chunkFrames);
+          pendingLength = 0;
+          options.onChunk(out);
+        }
+      }
     },
   };
 }
