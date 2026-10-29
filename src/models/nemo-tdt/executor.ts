@@ -119,13 +119,6 @@ function createAssetProgressEvent(
   };
 }
 
-function isAssetMissingError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return /\b404\b/.test(error.message) || /\bnot found\b/i.test(error.message);
-  }
-  return false;
-}
-
 function normalizeRepoPath(path: string): string {
   return String(path || '')
     .replace(/^\.\/+/, '')
@@ -245,10 +238,11 @@ export class OrtNemoTdtExecutor implements NemoTdtExecutor {
       try {
         return await resolveFile(filename);
       } catch (error) {
-        if (isAssetMissingError(error)) {
-          return undefined;
-        }
-        throw error;
+        // The sidecar is optional. Only cancellation propagates; a 404, an
+        // offline listing or a transport failure all mean "not available"
+        // so cached graphs keep loading without network access.
+        rethrowIfAssetAborted(error);
+        return undefined;
       }
     };
 
