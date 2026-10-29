@@ -1,0 +1,79 @@
+{
+  "variant": "MoonshineStreamingTiny remapped 4-graph FP32; distinct from offline Moonshine Tiny",
+  "files": [
+    {
+      "file": "decoder_prefill_model.onnx",
+      "sha256": "4d8ec59834ba5e777aed82fa9bcdddfd1f6cf3a3ea1e201e92b08cc6357a8684",
+      "bytes": 138461619
+    },
+    {
+      "file": "decoder_prefill_model.onnx.data",
+      "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "bytes": 138412032
+    },
+    {
+      "file": "decoder_step_model.onnx",
+      "sha256": "8a8bd7177aa2232090f74192266f649e8ac68bfdbfa5c5c37dd2f97ce30dcfeb",
+      "bytes": 138466052
+    },
+    {
+      "file": "decoder_step_model.onnx.data",
+      "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8",
+      "bytes": 138412032
+    },
+    {
+      "file": "encoder_chunked_model.onnx",
+      "sha256": "0d8111a8060f80ce525620cbca2d8470752f9843563e4e0b1a9c506ca939c4a8",
+      "bytes": 38433741
+    },
+    {
+      "file": "encoder_chunked_model.onnx.data",
+      "sha256": "c20519f11bc55af170553fe4ad8ee632ad69e8307b83347ab1c8e387bf4e4813",
+      "bytes": 37912576
+    },
+    {
+      "file": "encoder_model.onnx",
+      "sha256": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d",
+      "bytes": 841937
+    },
+    {
+      "file": "encoder_model.onnx.data",
+      "sha256": "b990c5914f11fe7b5a393afebdc1cc41c2f295e3aee04d3e4f6aef65b1f46dc9",
+      "bytes": 37912576
+    },
+    {
+      "file": "config.json",
+      "sha256": "166861753adaf928ae99b3709bfb1da47cb76319be58f37c6f9b7a539ce371f0",
+      "bytes": 1421
+    },
+    {
+      "file": "generation_config.json",
+      "sha256": "ff376268d9f8176da72ae0a3ca993778eb972a2f13a4ba0a914dbc3d6c832abe",
+      "bytes": 167
+    },
+    {
+      "file": "preprocessor_config.json",
+      "sha256": "859e62520a4e44be5bf9559205898ec7adfd2952bdc4f4e62ea724ac6ba460eb",
+      "bytes": 195
+    },
+    {
+      "file": "processor_config.json",
+      "sha256": "a2325cec2c0f66ba9eadf11b0bc77930b25fa1af57e7c9e4fbbcf0cd3e620bf8",
+      "bytes": 159
+    },
+    {
+      "file": "tokenizer_config.json",
+      "sha256": "93bb19c92de5c3d03e4a424ba033b2a81a32bdca6dc6f6dba176934dd8a9c6be",
+      "bytes": 172
+    },
+    {
+      "file": "tokenizer.json",
+      "sha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+      "bytes": 1676069
+    }
+  ],
+  "sourceRepository": "moonshine-ai/moonshine-streaming-tiny",
+  "sourceRevision": "f8e9dfd8c562c257c151a907b7b7f2fe8ff8511a",
+  "license": "MIT",
+  "status": "Artifact hashes cross-checked against independent parent model-artifacts receipt; this is not an accuracy claim."
+}

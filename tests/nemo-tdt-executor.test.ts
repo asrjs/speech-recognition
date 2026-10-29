@@ -337,6 +337,118 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
   });
 });
 
+describe('nemo-tdt Hugging Face artifact materialization offline', () => {
+  it('treats optional sidecar transport failures as absent when the repo listing is unavailable', async () => {
+    vi.mocked(fetchModelFiles).mockResolvedValue([]);
+
+    const requests: string[] = [];
+    const provider: AssetProvider = {
+      canResolve: () => true,
+      async resolve(request) {
+        const filename = request.filename ?? '';
+        requests.push(filename);
+        if (filename.endsWith('.data')) {
+          throw new TypeError('Failed to fetch');
+        }
+        return createResolvedHandle(filename);
+      },
+    };
+    const config = parseNemoTdtConfig('test-nemo-tdt', {
+      subsamplingFactor: 4,
+      frameShiftSeconds: 0.01,
+      melBins: 2,
+      vocabularySize: 3,
+      predictionLayers: 1,
+      predictionHiddenSize: 4,
+    });
+    const executor = new OrtNemoTdtExecutor(
+      'test-nemo-tdt',
+      DEFAULT_NEMO_TDT_CLASSIFICATION,
+      config,
+      'wasm',
+      undefined,
+      { assetProvider: provider },
+    ) as OrtNemoTdtExecutor & {
+      sourceOptions: NemoTdtArtifactSource;
+      materializeHuggingFaceArtifacts(
+        artifacts: Record<string, string | undefined>,
+      ): Promise<Record<string, string | undefined>>;
+    };
+    executor.sourceOptions = {
+      kind: 'huggingface',
+      repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+      revision: 'main',
+      preprocessorBackend: 'js',
+    };
+
+    const artifacts = await executor.materializeHuggingFaceArtifacts({
+      encoderUrl: 'https://example.test/encoder-model.fp16.onnx',
+      decoderUrl: 'https://example.test/decoder_joint-model.int8.onnx',
+      tokenizerUrl: 'https://example.test/vocab.txt',
+      encoderFilename: 'encoder-model.fp16.onnx',
+      decoderFilename: 'decoder_joint-model.int8.onnx',
+    });
+
+    expect(requests).toContain('encoder-model.fp16.onnx.data');
+    expect(artifacts.encoderUrl).toBeDefined();
+    expect(artifacts.decoderUrl).toBeDefined();
+    expect(artifacts.encoderDataUrl).toBeUndefined();
+    expect(artifacts.decoderDataUrl).toBeUndefined();
+  });
+
+  it('still propagates cancellation from optional sidecar probes', async () => {
+    vi.mocked(fetchModelFiles).mockResolvedValue([]);
+    const { AssetLoadAbortedError } = await import('../src/io/abort.js');
+    const provider: AssetProvider = {
+      canResolve: () => true,
+      async resolve(request) {
+        const filename = request.filename ?? '';
+        if (filename.endsWith('.data')) {
+          throw new AssetLoadAbortedError('download');
+        }
+        return createResolvedHandle(filename);
+      },
+    };
+    const config = parseNemoTdtConfig('test-nemo-tdt', {
+      subsamplingFactor: 4,
+      frameShiftSeconds: 0.01,
+      melBins: 2,
+      vocabularySize: 3,
+      predictionLayers: 1,
+      predictionHiddenSize: 4,
+    });
+    const executor = new OrtNemoTdtExecutor(
+      'test-nemo-tdt',
+      DEFAULT_NEMO_TDT_CLASSIFICATION,
+      config,
+      'wasm',
+      undefined,
+      { assetProvider: provider },
+    ) as OrtNemoTdtExecutor & {
+      sourceOptions: NemoTdtArtifactSource;
+      materializeHuggingFaceArtifacts(
+        artifacts: Record<string, string | undefined>,
+      ): Promise<Record<string, string | undefined>>;
+    };
+    executor.sourceOptions = {
+      kind: 'huggingface',
+      repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+      revision: 'main',
+      preprocessorBackend: 'js',
+    };
+
+    await expect(
+      executor.materializeHuggingFaceArtifacts({
+        encoderUrl: 'https://example.test/encoder-model.fp16.onnx',
+        decoderUrl: 'https://example.test/decoder_joint-model.int8.onnx',
+        tokenizerUrl: 'https://example.test/vocab.txt',
+        encoderFilename: 'encoder-model.fp16.onnx',
+        decoderFilename: 'decoder_joint-model.int8.onnx',
+      }),
+    ).rejects.toMatchObject({ name: 'AssetLoadAbortedError' });
+  });
+});
+
 describe('nemo-tdt executor decode loop', () => {
   it.each([
     ['parakeet-tdt-0.6b-v3', 150, 151],

@@ -85,6 +85,9 @@ export interface Qwen3AsrHuggingFaceSource {
   readonly tokenizerPath?: string;
   readonly encoderDataPath?: string;
   readonly decoderDataPath?: string;
+  /** Requested graph precision; the registered bundle exposes fp32 encoder + fp16 decoder only. */
+  readonly encoderQuant?: 'int8' | 'fp32' | 'fp16';
+  readonly decoderQuant?: 'int8' | 'fp32' | 'fp16';
   readonly encoderBackend?: QwenExecutionBackend;
   readonly decoderBackend?: QwenExecutionBackend;
   readonly cacheOutputLocation?: QwenCacheOutputLocation;
@@ -112,9 +115,7 @@ export interface Qwen3AsrDirectArtifactSource {
   readonly decoderFreeDimensionOverrides?: Record<string, number>;
 }
 
-export type Qwen3AsrArtifactSource =
-  | Qwen3AsrDirectArtifactSource
-  | Qwen3AsrHuggingFaceSource;
+export type Qwen3AsrArtifactSource = Qwen3AsrDirectArtifactSource | Qwen3AsrHuggingFaceSource;
 
 export interface Qwen3AsrModelOptions {
   readonly config?: Partial<Qwen3AsrModelConfig>;

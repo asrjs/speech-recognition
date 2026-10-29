@@ -73,7 +73,7 @@ export const MODELS: Record<string, ParakeetModelConfig> = {
     predLayers: 2,
     topology: 'tdt',
     supportsWordTimestamps: true,
-    defaultRevision: 'main',
+    defaultRevision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
     cacheKeyFallbackRevisions: ['feat/fp16-canonical-v3'],
   },
   'parakeet-realtime-eou-120m-v1': {

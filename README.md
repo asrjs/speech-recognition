@@ -23,7 +23,7 @@ import { transcribeSpeechFromAudioSource } from '@asrjs/speech-recognition';
 
 export function transcribe(file: File) {
   return transcribeSpeechFromAudioSource(file, {
-    modelId: 'parakeet-tdt-0.6b-v2',
+    modelId: 'parakeet-tdt-0.6b-v3',
     backend: 'webgpu-hybrid',
   });
 }

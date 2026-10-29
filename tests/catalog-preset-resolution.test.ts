@@ -85,7 +85,13 @@ describe('Catalog & Preset Resolution', () => {
     expect(streamingMoonshine).toMatchObject({
       modelId: 'moonshine-ai/moonshine-streaming-tiny',
       status: 'experimental',
-      loading: { supportsHubSource: false, supportsLocalSource: true, supportsSplitBackends: false },
+      loading: {
+        repoId: 'ysdede/moonshine-streaming-tiny-onnx',
+        supportsHubSource: true,
+        supportsLocalSource: true,
+        supportsSplitBackends: false,
+        defaultRevision: 'cb347a0760c2d7d6cf9083eb770376ba108e5b31',
+      },
       warmup: { mode: 'expected-text' },
     });
     expect(streamingMoonshine?.loading.availableEncoderBackends).toEqual(['wasm', 'webgpu']);

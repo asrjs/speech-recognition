@@ -664,7 +664,7 @@ function createQwen3AsrDescriptors(): BuiltInModelDescriptor[] {
   return [
     {
       modelId: 'Qwen/Qwen3-ASR-0.6B-hf',
-      aliases: ['qwen3-asr-0.6b'],
+      aliases: ['qwen3-asr-0.6b', 'ysdede/qwen3-asr-0.6b-onnx'],
       preset: 'qwen3-asr',
       displayName: 'Qwen3-ASR 0.6B (multilingual, language-tagged)',
       description:
@@ -698,8 +698,8 @@ function createQwen3AsrDescriptors(): BuiltInModelDescriptor[] {
         supportsConfidence: false,
       },
       loading: {
-        repoId: 'Qwen/Qwen3-ASR-0.6B-hf',
-        supportsHubSource: false,
+        repoId: 'ysdede/qwen3-asr-0.6b-onnx',
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: true,
@@ -710,14 +710,14 @@ function createQwen3AsrDescriptors(): BuiltInModelDescriptor[] {
         availableEncoderQuantizations: ['fp32'],
         availableDecoderQuantizations: ['fp16', 'fp32'],
         defaultEncoderQuantization: 'fp32',
-        defaultDecoderQuantization: 'fp32',
+        defaultDecoderQuantization: 'fp16',
         supportsPreprocessorBackend: false,
         preprocessorBackends: [],
         defaultPreprocessorBackend: null,
         defaultPreprocessorName: null,
         encoderArtifactBaseName: 'audio-encoder-dynamic',
         decoderArtifactBaseName: 'decoder-prefill',
-        defaultRevision: 'main',
+        defaultRevision: 'ac0bedcc0f1614c0b3982940c14bdb169ff2365d',
       },
       controls: [],
       warmup: { mode: 'expected-text' },
@@ -800,10 +800,10 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
     {
       status: 'experimental',
       modelId: 'moonshine-ai/moonshine-streaming-tiny',
-      aliases: ['moonshine-streaming-tiny'],
+      aliases: ['moonshine-streaming-tiny', 'ysdede/moonshine-streaming-tiny-onnx'],
       preset: 'moonshine',
       displayName: 'Moonshine Tiny Streaming',
-      description: 'Local-only Moonshine Tiny export with native streaming graphs.',
+      description: 'Experimental Moonshine Tiny ONNX bundle with native streaming graphs.',
       classification: {
         ecosystem: 'moonshine',
         processor: 'raw-waveform-conv',
@@ -835,7 +835,8 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
         defaultMergeStrategy: 'concat',
       },
       loading: {
-        supportsHubSource: false,
+        repoId: 'ysdede/moonshine-streaming-tiny-onnx',
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -853,7 +854,7 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
         defaultPreprocessorName: null,
         encoderArtifactBaseName: 'encoder_model',
         decoderArtifactBaseName: 'decoder_step_model',
-        defaultRevision: 'local',
+        defaultRevision: 'cb347a0760c2d7d6cf9083eb770376ba108e5b31',
       },
       controls: [],
       warmup: { mode: 'expected-text' },

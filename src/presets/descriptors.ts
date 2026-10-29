@@ -125,6 +125,191 @@ export interface BuiltInDetectedQuantizations {
   readonly decoder: readonly QuantizationMode[];
 }
 
+export interface ApprovedSpeechExecutionPlan {
+  readonly manifestVersion: '1';
+  readonly status: 'approved' | 'unverified';
+  readonly profileId?: string;
+  readonly encoderBackend: BuiltInExecutionBackend;
+  readonly decoderBackend: BuiltInExecutionBackend;
+  readonly encoderQuant: 'int8' | 'fp32' | 'fp16';
+  readonly decoderQuant: 'int8' | 'fp32' | 'fp16';
+  readonly jointBackend?: BuiltInExecutionBackend;
+  readonly jointQuant?: 'int8' | 'fp32' | 'fp16';
+  readonly artifactSetId?: string;
+  readonly evidence?: string;
+  readonly repoId?: string;
+  readonly revision?: string;
+  readonly encoderSha256?: string;
+  readonly decoderSha256?: string;
+  readonly configSha256?: string;
+  readonly vocabularySha256?: string;
+  readonly artifacts?: Readonly<Record<string, { readonly path: string; readonly sha256: string; readonly sizeBytes?: number }>>;
+  readonly processor?: { readonly kind: 'javascript'; readonly name: string };
+  /**
+   * Automatic departures from the approved profile on this runtime, such as an
+   * FP32 encoder when the WebGPU adapter lacks `shader-f16`.
+   */
+  readonly warnings?: readonly { readonly code: string; readonly message: string }[];
+}
+
+export interface ResolveSpeechExecutionPlanInput {
+  readonly runtime: {
+    readonly webgpu: boolean;
+    readonly wasm: boolean;
+    readonly webgpuPrecisions?: readonly ('int8' | 'fp32' | 'fp16')[];
+    readonly wasmPrecisions?: readonly ('int8' | 'fp32' | 'fp16')[];
+  };
+  readonly artifactIdentity?: {
+    readonly repoId: string;
+    readonly revision: string;
+    readonly encoderSha256: string;
+    readonly decoderSha256: string;
+    readonly configSha256: string;
+    readonly vocabularySha256: string;
+  };
+  readonly backend?: string;
+  readonly encoderBackend?: BuiltInExecutionBackend;
+  readonly decoderBackend?: BuiltInExecutionBackend;
+  readonly encoderQuant?: 'int8' | 'fp32' | 'fp16';
+  readonly decoderQuant?: 'int8' | 'fp32' | 'fp16';
+}
+
+const APPROVED_SPEECH_EXECUTION_PROFILES = Object.freeze({
+  'parakeet-tdt-0.6b-v3': Object.freeze({
+    profileId: 'webgpu-fp16-wasm-int8-v1',
+    encoderBackend: 'webgpu' as const,
+    decoderBackend: 'wasm' as const,
+    encoderQuant: 'fp16' as const,
+    decoderQuant: 'int8' as const,
+    jointBackend: 'wasm' as const,
+    jointQuant: 'int8' as const,
+    repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+    revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
+    encoderSha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717',
+    decoderSha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+    configSha256: '562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a',
+    vocabularySha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742',
+    artifacts: Object.freeze({
+      encoder: Object.freeze({ path: 'encoder-model.fp16.onnx', sha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717', sizeBytes: 1238960452 }),
+      decoderJoint: Object.freeze({ path: 'decoder_joint-model.int8.onnx', sha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70', sizeBytes: 18202004 }),
+      config: Object.freeze({ path: 'config.json', sha256: '562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a', sizeBytes: 101 }),
+      vocabulary: Object.freeze({ path: 'vocab.txt', sha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742', sizeBytes: 102132 }),
+    }),
+    processor: Object.freeze({ kind: 'javascript', name: 'nemo128' }),
+    artifactSetId: 'sha256:a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717+eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+    evidence: 'docs/reports/evidence/microphone-composition-2026-10-25/real-run-final/receipt.json',
+  }),
+} satisfies Record<string, Omit<ApprovedSpeechExecutionPlan, 'manifestVersion' | 'status'>>);
+
+export function listApprovedSpeechModelManifests(): readonly (ApprovedSpeechExecutionPlan & { readonly modelId: string })[] {
+  return Object.freeze(Object.entries(APPROVED_SPEECH_EXECUTION_PROFILES).map(([modelId, profile]) =>
+    Object.freeze({ modelId, manifestVersion: '1' as const, status: 'approved' as const, ...profile }),
+  ));
+}
+
+export function resolveApprovedSpeechExecutionPlan(
+  modelId: string,
+  input: ResolveSpeechExecutionPlanInput,
+): ApprovedSpeechExecutionPlan {
+  const descriptor = getBuiltInModelDescriptor(modelId);
+  if (!descriptor) throw new Error(`Unknown built-in model "${modelId}".`);
+  const approved = APPROVED_SPEECH_EXECUTION_PROFILES[descriptor.modelId as keyof typeof APPROVED_SPEECH_EXECUTION_PROFILES];
+  const availableBackend = (backend: BuiltInExecutionBackend) => input.runtime[backend];
+  const defaults = {
+    encoderBackend: descriptor.loading.defaultEncoderBackend,
+    decoderBackend: descriptor.loading.defaultDecoderBackend,
+    encoderQuant: descriptor.loading.defaultEncoderQuantization,
+    decoderQuant: descriptor.loading.defaultDecoderQuantization,
+  };
+  const selectBackend = (
+    explicit: BuiltInExecutionBackend | undefined,
+    overall: string | undefined,
+    preferred: BuiltInExecutionBackend,
+    available: readonly BuiltInExecutionBackend[],
+  ): BuiltInExecutionBackend => {
+    if (explicit) return explicit;
+    const normalized = normalizeRequestedBackend(overall);
+    if (normalized === 'wasm' || normalized === 'webgpu' || normalized === 'webgpu-strict') {
+      return normalized === 'wasm' ? 'wasm' : 'webgpu';
+    }
+    if (availableBackend(preferred) && available.includes(preferred)) return preferred;
+    const selected = available.find((backend) => availableBackend(backend));
+    if (!selected) throw new Error(`No supported backend is available for "${descriptor.modelId}".`);
+    return selected;
+  };
+  const encoderBackend = selectBackend(input.encoderBackend, input.backend, approved?.encoderBackend ?? defaults.encoderBackend, descriptor.loading.availableEncoderBackends);
+  const decoderBackend = selectBackend(input.decoderBackend, input.backend, approved?.decoderBackend ?? defaults.decoderBackend, descriptor.loading.availableDecoderBackends);
+  const runtimePrecisions = (backend: BuiltInExecutionBackend) =>
+    backend === 'webgpu' ? input.runtime.webgpuPrecisions : input.runtime.wasmPrecisions;
+  const chooseQuant = (
+    explicit: 'int8' | 'fp32' | 'fp16' | undefined,
+    preferred: 'int8' | 'fp32' | 'fp16',
+    declared: readonly ('int8' | 'fp32' | 'fp16')[],
+    backend: BuiltInExecutionBackend,
+  ) => {
+    const runtimeModes = runtimePrecisions(backend);
+    if (explicit) return explicit;
+    // WASM's generic capability list describes runtime support, not the
+    // precision of a model's published ONNX weights. Only an approved profile
+    // can safely use that list to select a different graph variant.
+    if (backend === 'wasm' && !approved) return preferred;
+    if (!runtimeModes) return preferred;
+    if (runtimeModes.includes(preferred)) return preferred;
+    return (['fp32', 'int8', 'fp16'] as const).find((quant) =>
+      declared.includes(quant) && runtimeModes.includes(quant),
+    ) ?? preferred;
+  };
+  const requested = {
+    encoderBackend,
+    decoderBackend,
+    encoderQuant: chooseQuant(input.encoderQuant, approved?.encoderQuant ?? defaults.encoderQuant, descriptor.loading.availableEncoderQuantizations, encoderBackend),
+    decoderQuant: chooseQuant(input.decoderQuant, approved?.decoderQuant ?? defaults.decoderQuant, descriptor.loading.availableDecoderQuantizations, decoderBackend),
+  };
+  const supported = availableBackend(requested.encoderBackend) && availableBackend(requested.decoderBackend)
+    && descriptor.loading.availableEncoderBackends.includes(requested.encoderBackend)
+    && descriptor.loading.availableDecoderBackends.includes(requested.decoderBackend)
+    && descriptor.loading.availableEncoderQuantizations.includes(requested.encoderQuant)
+    && descriptor.loading.availableDecoderQuantizations.includes(requested.decoderQuant)
+    && (requested.encoderBackend !== 'webgpu' || !runtimePrecisions(requested.encoderBackend) || runtimePrecisions(requested.encoderBackend)!.includes(requested.encoderQuant))
+    && (requested.decoderBackend !== 'webgpu' || !runtimePrecisions(requested.decoderBackend) || runtimePrecisions(requested.decoderBackend)!.includes(requested.decoderQuant));
+  if (!supported) throw new Error(`Requested execution plan is unavailable for "${descriptor.modelId}" on this runtime.`);
+  const matchesArtifact = approved && input.artifactIdentity
+    && input.artifactIdentity.repoId === approved.repoId
+    && input.artifactIdentity.revision === approved.revision
+    && input.artifactIdentity.encoderSha256.toLowerCase() === approved.encoderSha256
+    && input.artifactIdentity.decoderSha256.toLowerCase() === approved.decoderSha256
+    && input.artifactIdentity.configSha256.toLowerCase() === approved.configSha256
+    && input.artifactIdentity.vocabularySha256.toLowerCase() === approved.vocabularySha256;
+  const matchesApproved = matchesArtifact
+    && requested.encoderBackend === approved.encoderBackend
+    && requested.decoderBackend === approved.decoderBackend
+    && input.runtime.webgpuPrecisions?.includes(approved.encoderQuant)
+    && requested.encoderQuant === approved.encoderQuant
+    && requested.decoderQuant === approved.decoderQuant;
+  const warnings: { code: string; message: string }[] = [];
+  const automaticBackend = !input.backend || normalizeRequestedBackend(input.backend) === 'webgpu-hybrid';
+  if (approved && !input.encoderBackend && automaticBackend && requested.encoderBackend !== approved.encoderBackend) {
+    warnings.push({
+      code: 'plan.encoder-backend-fallback',
+      message: `${approved.encoderBackend.toUpperCase()} is unavailable; running the ${descriptor.modelId} encoder on ${requested.encoderBackend.toUpperCase()}. Expect slower transcription.`,
+    });
+  }
+  if (approved && !input.encoderQuant && requested.encoderBackend === approved.encoderBackend
+      && requested.encoderQuant !== approved.encoderQuant) {
+    warnings.push({
+      code: 'plan.encoder-precision-fallback',
+      message: `The ${approved.encoderBackend.toUpperCase()} adapter does not support ${approved.encoderQuant.toUpperCase()}; using the ${requested.encoderQuant.toUpperCase()} encoder for ${descriptor.modelId}. Expect a larger download and more GPU memory.`,
+    });
+  }
+  return {
+    manifestVersion: '1',
+    status: matchesApproved ? 'approved' : 'unverified',
+    ...requested,
+    ...(matchesApproved ? approved : {}),
+    ...(warnings.length ? { warnings } : {}),
+  };
+}
+
 export interface BuildBuiltInHubLoadOptionsInput {
   readonly modelId: string;
   readonly revision?: string;
@@ -137,6 +322,8 @@ export interface BuildBuiltInHubLoadOptionsInput {
   readonly preprocessorBackend?: 'js' | 'onnx';
   readonly cpuThreads?: number;
   readonly enableProfiling?: boolean;
+  readonly runtime?: ResolveSpeechExecutionPlanInput['runtime'];
+  readonly artifactIdentity?: ResolveSpeechExecutionPlanInput['artifactIdentity'];
 }
 
 export interface BuildBuiltInTranscriptionOptionsInput {
@@ -329,7 +516,16 @@ export function buildBuiltInHubLoadOptions(
     throw new Error(`Unknown built-in model "${input.modelId}".`);
   }
 
-  const componentBackends = resolveBuiltInModelComponentBackends(input.modelId, {
+  const executionPlan = input.runtime ? resolveApprovedSpeechExecutionPlan(input.modelId, {
+    runtime: input.runtime,
+    artifactIdentity: input.artifactIdentity,
+    backend: input.backend,
+    encoderBackend: input.encoderBackend,
+    decoderBackend: input.decoderBackend,
+    encoderQuant: input.encoderQuant,
+    decoderQuant: input.decoderQuant,
+  }) : undefined;
+  const componentBackends = executionPlan ?? resolveBuiltInModelComponentBackends(input.modelId, {
     backend: input.backend,
     encoderBackend: input.encoderBackend,
     decoderBackend: input.decoderBackend,
@@ -355,8 +551,8 @@ export function buildBuiltInHubLoadOptions(
             revision: input.revision || source.revision || descriptor.loading.defaultRevision,
             encoderBackend: componentBackends.encoderBackend,
             decoderBackend: componentBackends.decoderBackend,
-            encoderQuant: input.encoderQuant,
-            decoderQuant: input.decoderQuant,
+            encoderQuant: executionPlan?.encoderQuant ?? input.encoderQuant,
+            decoderQuant: executionPlan?.decoderQuant ?? input.decoderQuant,
             preprocessorName:
               input.preprocessorName ?? descriptor.loading.defaultPreprocessorName ?? undefined,
             preprocessorBackend:
@@ -438,6 +634,35 @@ export function buildBuiltInHubLoadOptions(
         },
       };
     }
+    case 'qwen3-asr': {
+      const repoId = descriptor.loading.repoId;
+      if (!repoId) throw new Error(`Could not resolve Qwen artifact source for "${descriptor.modelId}".`);
+      return {
+        ...base,
+        options: {
+          source: {
+            kind: 'huggingface',
+            repoId,
+            revision: input.revision || descriptor.loading.defaultRevision,
+            encoderBackend: componentBackends.encoderBackend,
+            decoderBackend: componentBackends.decoderBackend,
+            encoderQuant: executionPlan?.encoderQuant ?? input.encoderQuant ?? descriptor.loading.defaultEncoderQuantization,
+            decoderQuant: executionPlan?.decoderQuant ?? input.decoderQuant ?? descriptor.loading.defaultDecoderQuantization,
+            cpuThreads: input.cpuThreads,
+            enableProfiling: input.enableProfiling,
+          },
+        },
+      };
+    }
+    case 'moonshine':
+      return {
+        ...base,
+        options: {
+          encoderBackend: componentBackends.encoderBackend,
+          cpuThreads: input.cpuThreads,
+          enableProfiling: input.enableProfiling,
+        },
+      };
     case 'whisper':
       return base;
     default:

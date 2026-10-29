@@ -69,6 +69,7 @@ describe('high-level model-agnostic APIs', () => {
       runtime,
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
       transcribeOptions: {
         detail: 'segments',
         responseFlavor: 'canonical+native',
@@ -88,6 +89,7 @@ describe('high-level model-agnostic APIs', () => {
       runtime,
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
       transcribeOptions: {
         responseFlavor: 'canonical',
       },
@@ -104,6 +106,7 @@ describe('high-level model-agnostic APIs', () => {
       runtime,
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
     });
 
     const result = await loaded.transcribeMonoPcm(new Float32Array(16000), 16000, {
@@ -577,14 +580,17 @@ describe('high-level model-agnostic APIs', () => {
     const handleA = await pipeline.loadModel({
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
     });
     const handleB = await pipeline.loadModel({
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
     });
     const transcript = await pipeline.transcribe(new Float32Array(16000), {
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
       transcribeOptions: {
         responseFlavor: 'canonical',
       },
@@ -608,6 +614,7 @@ describe('high-level model-agnostic APIs', () => {
     const transcript = await pipeline.transcribeMonoPcm(new Float32Array(16000), 16000, {
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
       transcribeOptions: {
         responseFlavor: 'canonical',
       },
@@ -630,10 +637,12 @@ describe('high-level model-agnostic APIs', () => {
     const handleA = await pipeline.loadModel({
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
     });
     const handleB = await pipeline.loadModel({
       modelId: 'parakeet-tdt-0.6b-v3',
       backend: 'wasm',
+      useManifestSources: false,
       forceReload: true,
     });
 

@@ -7,6 +7,7 @@
 - [Streaming and deployment](INTEGRATION_GUIDE.md): native streaming, windowed inference, microphone/VAD, offline assets and Node/Bun.
 - [Framework bindings](FRAMEWORKS.md): React hooks, Svelte stores, Vue composables and shared controller ownership.
 - [Browser model cache](BROWSER_CACHE.md): shared storage, artifact identity and the limits of sharing across sites.
+- [Approved model profiles](APPROVED_MODEL_PROFILES.md): artifact manifests, automatic backend/precision selection and verification scope.
 - [Examples index](../examples/README.md): file transcription, microphone/VAD, native streaming, windowed inference and local Node.js recipes.
 - [Companion applications](https://github.com/asrjs/demos): Showcase, Playground, Realtime and Benchmark.
 

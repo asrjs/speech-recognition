@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "app": "realtime",
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "source": "huggingface",
+  "descriptorSources": [],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu-hybrid",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": null,
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "PASS_FILE_FLOW",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "EXACT",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[Hub] Starting model load from HuggingFace"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:53:12.755434 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:53:12.757414 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    },
+    {
+      "type": "log",
+      "text": "[Hub] Model sessions created from HuggingFace artifacts"
+    },
+    {
+      "type": "log",
+      "text": "[LoadModel] Running warm-up verification transcription"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Fetching audio from: /realtime/assets/Harvard-L2-1-B6X4PDwP.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[Cache] Cached audio: Harvard-L2-1.ogg"
+    },
+    {
+      "type": "log",
+      "text": "[App] Model verification successful."
+    },
+    {
+      "type": "timeEnd",
+      "text": "LoadModel: 7024.158935546875 ms"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "timeEnd",
+      "text": "Transcribe-jfk2.en.wav: 350.869873046875 ms"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 1281,
+    "file": 1276,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-25T22:53:03+0300",
+  "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+  "hubWeightDownloadTransport": "UNVERIFIED",
+  "testBrowserProfile": "N:\\github\\asrjs\\speech-recognition\\tmp\\approved-model-profiles\\chrome-profile-v3",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "actualEncoderQuant": "fp16",
+  "actualDecoderQuant": "int8",
+  "actualBackend": "webgpu-hybrid",
+  "profilingSelection": {
+    "controlCount": 1,
+    "enabled": false
+  },
+  "activeStage": "file-flow-running",
+  "loadPageText": "A\nASRJS\nLive transcription\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nRealtime VAD Lab\nTranscript & Subtitles\ntune\nModel ready · webgpu-hybrid · Microphone idle\nLoad\nready\nParakeet TDT 0.6B v3 (Multilingual)\nRevision f88260fa0777fe0868dda6df85d1a98f012a4a7a\nModel Loaded\nValidation\nInput language\nEnglish\nFrench\nGerman\nSpanish\nItalian\nPortuguese\nDutch\nPolish\nexpand_more\nLoad Sample\nupload_file\nDrop or click to transcribe\nModel Settings\nArtifact source\nHugging Face\nLocal folder\nexpand_more\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nGigaAM Multilingual CTC\nGigaAM v3 E2E RNN-T (Russian)\nSenseVoice Small\nX-ASR zh-en 160 ms Streaming\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nMoonshine Tiny Streaming\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nexpand_more\nParakeet TDT 0.6B v3 (Multilingual)\nRuntime Settings\nRuntime backend\nWebGPU\nWASM\nexpand_more\nEncoder\nwebgpu\nwasm\nexpand_more\nDecoder\nwasm\nexpand_more\nThreads\nStride\nEncoder quant\nfp16\nint8\nfp32\nexpand_more\nDecoder quant\nfp16\nint8\nfp32\nexpand_more\nPrompt Settings\nFrontend\nJS frontend\nONNX frontend\nexpand_more\nJS default\nVerbose logging\nLog results\nEnable profiling\nCapture\n0.00\nSIG\n-100.0\nAVG\n-100.0\nGATE\n-21.9\nNOISE\n-46.0\nSEGS\n0/0\nAUDIO\n16000Hz\nBUF\n12.0s\nSNR\n0.00\nTHR\n3.00\nWAVEFORM\nidle · main\nRATE target 16000 Hz\n·\nCHUNK 16 ms/256f\n·\nWIN 12.00 s\n·\nSEG inactive\n·\nBUF 0/750 pad 750\n·\nPUB/PAINT 0/s 0/s\nMODE rough-only\n·\nRELEASE 400 ms\n·\nNOISE -46.0 dBFS\n·\nGATE -21.9 dBFS\n·\nFINAL GATE --\n·\nGATE LINES on\n·\nFIRERED on\n·\nSCALE physical\nWaveform display\nSurface\ncompact stats + waveform + footer metrics\nFull\nStats Only\nWaveform Only\nView\nraw amplitude\nPhysical\nFocus\nBalanced\nGate lines\nwaveform legend\nshow\nhide\nFireRed line\ndiagnostic only\nshow\nhide\nRMS\ndiagnostic\nhide\nshow\nFinal Acceptance\nDuration and normalized 16 kHz energy thresholds used after live segmentation.\nFinal segment gate\nrough-only\nenabled\ndisabled\nAcceptance preset\nUpdates the final segment acceptance thresholds together.\nOpen\nBalanced\nStrict\nCustom\nMin final duration\n240 ms\nMin power\n5.00\nMin integral\n22.00\nAdaptive noise-scaled acceptance controls.\nShow advanced\nDetector tuning\nPreset\nMedium\nMedium\nFast\nSlow\nCustom\nDefault mode\nmanual\nVAD backend\n10 ms hop / 20 ms visual\nFireRed VAD\nTEN-VAD\nGate mode\nrough-only\nRough only\nHybrid\nVAD only\nLive Segmenter\nPeak-energy speech trigger, smoothing, and silence release.\nEnergy threshold\n0.08\nAnalysis window\n80 ms\nEnergy smoothing\n480 ms\nSilence release\n400 ms\nMax segment\n4800 ms\nExtraction Timing\nLookback, overlap, and tail padding applied when a segment is extracted.\nLookback\n128 ms\nOverlap\n80 ms\nTail padding\n160 ms\nNoise Adaptation\nHow the baseline noise floor and onset backtracking adapt over time.\nInitial noise\n0.00500\nFast adapt\n0.15\nSlow adapt\n0.05\nBlend duration\n1.0 s\nSNR display gate\n3.00\nOnset SNR floor\n1.00\nRise threshold\n0.08\nMicrophone\n\nStart capture, switch mode, and send buffered speech.\n\nMode\nManual\nSpeech Detect\nStart Mic\nAdvanced\nMicrophone idle\nDetector readout\n\nLive rough-gate state, adaptive noise floor, and final segment energy metrics.\n\nLEVEL\n-100.0 dBFS\nwindow -100.0 dBFS\nNOISE FLOOR\n-46.0 dBFS\nconfirmed -46.0 dBFS · rejected -46.0 dBFS\nFINAL POWER\n--\nmin --\nFINAL INTEGRAL\n--\nmin --\nDETECTOR MODE\nrough-only\nreq rough-only\nFIRERED-VAD\n0.00\ndiagnostic only\nFILTER\narmed\nwaiting\nVAD BUFFER\nempty\nmax 0.00\nWarnings\nSpeech segmentation is running on the rough gate. FireRed VAD is diagnostics-only.\nDecisions\nNo decisions yet.\nSegments\nNo segments yet.\nTranscript & Word Alignment\nNo text yet.\nTOTAL\n--\nAwaiting result\nDECODE\n--\nAwaiting result\nCONFIDENCE\n--\nNo finished utterance\nQUEUE\nclear\nReady\nReference\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "parakeet-tdt-0.6b-v3",
+  "artifactReplay": [],
+  "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "verificationErrors": [],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-25T22:53:15+0300"
+}

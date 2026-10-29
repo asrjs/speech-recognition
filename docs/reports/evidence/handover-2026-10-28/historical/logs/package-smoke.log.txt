@@ -1,0 +1,51 @@
+npm error code EPERM
+npm error syscall open
+npm error path C:\Users\steam\AppData\Local\npm-cache\_cacache\tmp\***
+npm error errno -4048
+npm error [Error: EPERM: operation not permitted, open 'C:\Users\steam\AppData\Local\npm-cache\_cacache\tmp\***'] {
+npm error   errno: -4048,
+npm error   code: 'EPERM',
+npm error   syscall: 'open',
+npm error   path: 'C:\\Users\\steam\\AppData\\Local\\npm-cache\\_cacache\\tmp\\***'
+npm error }
+npm error
+npm error The operation was rejected by your operating system.
+npm error It's possible that the file was already in use (by a text editor or antivirus), or that you lack permissions to access it.
+npm error
+npm error If you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator.
+npm error Log files were not written due to an error writing to the directory: C:\Users\steam\AppData\Local\npm-cache\_logs
+npm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal
+[package-tarball-smoke] failed: Error: Command failed: C:\WINDOWS\system32\cmd.exe /d /s /c npm pack --json --dry-run
+    at genericNodeError (node:internal/errors:998:15)
+    at wrappedFn (node:internal/errors:543:14)
+    at checkExecSyncError (node:child_process:926:11)
+    at execFileSync (node:child_process:962:15)
+    at runPackDryRun (file:///N:/github/asrjs/speech-recognition/tests/smoke/package-tarball-smoke.mjs:82:18)
+    at main (file:///N:/github/asrjs/speech-recognition/tests/smoke/package-tarball-smoke.mjs:118:18)
+    at file:///N:/github/asrjs/speech-recognition/tests/smoke/package-tarball-smoke.mjs:204:3
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:666:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  status: 4294963248,
+  signal: null,
+  output: [
+    null,
+    '{\n' +
+      '  "error": {\n' +
+      '    "code": "EPERM",\n' +
+      `    "summary": "Error: EPERM: operation not permitted, open 'C:\\\\Users\\\\steam\\\\AppData\\\\Local\\\\npm-cache\\\\_cacache\\\\tmp\\\\***'",\n` +
+      `    "detail": "The operation was rejected by your operating system.\\nIt's possible that the file was already in use (by a text editor or antivirus), or that you lack permissions to access it.\\n\\nIf you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator."\n` +
+      '  }\n' +
+      '}\n',
+    null
+  ],
+  pid: 23204,
+  stdout: '{\n' +
+    '  "error": {\n' +
+    '    "code": "EPERM",\n' +
+    `    "summary": "Error: EPERM: operation not permitted, open 'C:\\\\Users\\\\steam\\\\AppData\\\\Local\\\\npm-cache\\\\_cacache\\\\tmp\\\\***'",\n` +
+    `    "detail": "The operation was rejected by your operating system.\\nIt's possible that the file was already in use (by a text editor or antivirus), or that you lack permissions to access it.\\n\\nIf you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator."\n` +
+    '  }\n' +
+    '}\n',
+  stderr: null
+}

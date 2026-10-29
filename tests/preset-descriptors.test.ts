@@ -6,6 +6,8 @@ import {
   getBuiltInModelLanguageName,
   listBuiltInModelDescriptors,
   listBuiltInModelOptions,
+  listApprovedSpeechModelManifests,
+  resolveApprovedSpeechExecutionPlan,
   resolveBuiltInModelComponentBackends,
   type BuiltInModelDescriptor,
 } from '@asrjs/speech-recognition/presets';
@@ -158,6 +160,14 @@ describe('built-in preset descriptors', () => {
         },
       },
     });
+    const qwen = buildBuiltInHubLoadOptions({ modelId: 'qwen3-asr-0.6b', backend: 'wasm', cpuThreads: 4 });
+    expect(qwen.options).toMatchObject({ source: {
+      kind: 'huggingface', repoId: 'ysdede/qwen3-asr-0.6b-onnx',
+      revision: 'ac0bedcc0f1614c0b3982940c14bdb169ff2365d', encoderBackend: 'wasm',
+      decoderBackend: 'wasm', encoderQuant: 'fp32', decoderQuant: 'fp16', cpuThreads: 4,
+    } });
+    const moonshine = buildBuiltInHubLoadOptions({ modelId: 'moonshine-streaming-tiny', backend: 'wasm', cpuThreads: 2 });
+    expect(moonshine.options).toMatchObject({ encoderBackend: 'wasm', cpuThreads: 2 });
   });
 
   it('builds preset-aware transcription options with Canary prompt semantics', () => {
@@ -285,6 +295,114 @@ describe('built-in preset descriptors', () => {
     expect(() => resolveBuiltInModelComponentBackends('unknown-model-id')).toThrow(
       'Unknown built-in model "unknown-model-id".',
     );
+  });
+
+  it('selects the receipt-backed TDT v3 profile only for its exact immutable artifact identity', () => {
+    const manifest = listApprovedSpeechModelManifests().find((item) => item.modelId === 'parakeet-tdt-0.6b-v3');
+    expect(manifest?.artifacts?.encoder.sha256).toBe('a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717');
+    const plan = resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'fp16', 'int8'], wasmPrecisions: ['fp32', 'int8'] },
+      artifactIdentity: {
+        repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+        revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
+        encoderSha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717',
+        decoderSha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+        configSha256: '562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a',
+        vocabularySha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742',
+      },
+    });
+    expect(plan).toMatchObject({
+      status: 'approved', profileId: 'webgpu-fp16-wasm-int8-v1',
+      encoderBackend: 'webgpu', decoderBackend: 'wasm', encoderQuant: 'fp16', decoderQuant: 'int8',
+      jointBackend: 'wasm', jointQuant: 'int8',
+    });
+  });
+
+  it('reports automatic departures from the approved profile as warnings', () => {
+    const plan = (runtime: Parameters<typeof resolveApprovedSpeechExecutionPlan>[1]['runtime'], extra = {}) =>
+      resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', { runtime, backend: 'webgpu-hybrid', ...extra });
+
+    expect(plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'fp16', 'int8'] }).warnings).toBeUndefined();
+
+    const noF16 = plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'] });
+    expect(noF16.encoderQuant).toBe('fp32');
+    expect(noF16.warnings?.map((warning) => warning.code)).toEqual(['plan.encoder-precision-fallback']);
+    expect(noF16.warnings?.[0]?.message).toContain('larger download');
+
+    const noGpu = plan({ webgpu: false, wasm: true, wasmPrecisions: ['fp32', 'int8'] });
+    expect(noGpu.encoderBackend).toBe('wasm');
+    expect(noGpu.warnings?.map((warning) => warning.code)).toContain('plan.encoder-backend-fallback');
+
+    // Explicit caller choices are not reported as fallbacks.
+    expect(plan({ webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'] }, { encoderQuant: 'fp32' }).warnings).toBeUndefined();
+    expect(plan({ webgpu: true, wasm: true }, { backend: 'wasm' }).warnings).toBeUndefined();
+  });
+
+  it('does not confer approval from model name or artifact filenames alone', () => {
+    expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'fp16', 'int8'], wasmPrecisions: ['fp32', 'int8'] },
+    }).status).toBe('unverified');
+    expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true },
+      artifactIdentity: {
+        repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+        revision: 'main',
+        encoderSha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717',
+        decoderSha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+        configSha256: '562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a',
+        vocabularySha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742',
+      },
+    }).status).toBe('unverified');
+    expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true },
+      artifactIdentity: {
+        repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+        revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
+        encoderSha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717',
+        decoderSha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+        configSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+        vocabularySha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742',
+      },
+    }).status).toBe('unverified');
+  });
+
+  it('chooses a runtime-supported fallback and marks the unreceipted profile unverified', () => {
+    expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: false, wasm: true, wasmPrecisions: ['fp32', 'int8'] },
+    })).toMatchObject({ status: 'unverified', encoderBackend: 'wasm', decoderBackend: 'wasm' });
+    expect(() => resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: false, wasm: true, wasmPrecisions: ['fp32', 'int8'] }, encoderBackend: 'webgpu',
+    })).toThrow('Requested execution plan is unavailable');
+    expect(resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'], wasmPrecisions: ['fp32', 'int8'] },
+      artifactIdentity: {
+        repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
+        revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
+        encoderSha256: 'a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717',
+        decoderSha256: 'eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70',
+        configSha256: '562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a',
+        vocabularySha256: 'ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742',
+      },
+    })).toMatchObject({ status: 'unverified', encoderQuant: 'fp32' });
+    expect(() => resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: true, wasm: true, webgpuPrecisions: ['fp32', 'int8'], wasmPrecisions: ['fp32', 'int8'] },
+      encoderQuant: 'fp16',
+    })).toThrow('Requested execution plan is unavailable');
+  });
+
+  it('does not treat generic WASM runtime precision flags as ONNX weight-quantization support', () => {
+    const plan = resolveApprovedSpeechExecutionPlan('parakeet-tdt-0.6b-v3', {
+      runtime: { webgpu: false, wasm: true },
+      decoderBackend: 'wasm',
+      decoderQuant: 'fp16',
+    });
+    expect(plan).toMatchObject({ status: 'unverified', decoderBackend: 'wasm', decoderQuant: 'fp16' });
+  });
+
+  it('preserves the published Qwen FP16 WASM decoder default with generic WASM hints', () => {
+    expect(resolveApprovedSpeechExecutionPlan('qwen3-asr-0.6b', {
+      runtime: { webgpu: false, wasm: true, wasmPrecisions: ['fp32', 'int8'] },
+    })).toMatchObject({ encoderBackend: 'wasm', decoderBackend: 'wasm', encoderQuant: 'fp32', decoderQuant: 'fp16' });
   });
 
   it('detects quantization variants from repo filenames using built-in artifact names', () => {

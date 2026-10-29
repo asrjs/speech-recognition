@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "app": "playground",
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "source": "huggingface",
+  "descriptorSources": [],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu-hybrid",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": null,
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "PASS_FILE_FLOW",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "EXACT",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:52:45.822434 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:52:45.824429 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 1281,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-25T22:52:34+0300",
+  "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+  "hubWeightDownloadTransport": "UNVERIFIED",
+  "testBrowserProfile": "N:\\github\\asrjs\\speech-recognition\\tmp\\approved-model-profiles\\chrome-profile-v3",
+  "actualComponentBackends": [],
+  "actualBackend": "webgpu-hybrid",
+  "profilingSelection": {
+    "controlCount": 1,
+    "enabled": false
+  },
+  "activeStage": "file-flow-running",
+  "loadPageText": "ivity yet.\n\n4 threads\n·\nReady\n·\nparakeet-tdt-0.6b-v3\n·\nwebgpu-hybrid\nTEST & TRANSCRIBE AUDIO\n\nUpload an audio file, record from microphone, or use the bundled Harvard sentences sample.\n\nRecord Mic\n▶ Sample\n☁\nDrag & drop audio file here, or click to select\nSupports .wav, .mp3, .ogg, .flac, .webm\nBundled sample\nBenchmark repeats\nTranscribe\nStream Chunks\nBenchmark\n\nCURRENT OUTPUT\n\nCanonical + native envelope\n\n{ canonical, native }\n\nCatalog model output uses the shared transcript interface.\n\nSELECTED OPTIONS\n\n{\n  \"strategy\": \"universal-catalog\",\n  \"modelId\": \"parakeet-tdt-0.6b-v3\",\n  \"source\": \"huggingface\",\n  \"backend\": \"webgpu-hybrid\",\n  \"language\": \"en\",\n  \"detail\": \"detailed\",\n  \"responseFlavor\": \"canonical+native\",\n  \"audioPrepMode\": \"native-linear\",\n  \"audioResamplerQuality\": \"linear\",\n  \"encoderBackend\": \"webgpu\",\n  \"decoderBackend\": \"wasm\",\n  \"encoderQuant\": \"fp16\",\n  \"decoderQuant\": \"int8\"\n}\nTRANSCRIPT & WORD ALIGNMENT\n\nCanonical or native text output with interactive click-to-seek word timestamps.\n\nNo transcript yet. Load a model and click Transcribe or Stream Chunks.\n\nAUDIO PREPARATION\n\nBrowser-side decode, downmix, and sample-rate preparation before inference.\n\nNo audio prepared yet.\n\nLATEST INFERENCE METRICS\n\nNormalized metrics from canonical or native output.\n\nNo metrics yet.\n\nBENCHMARK LAB\n\nRepeat the same audio through the loaded model to inspect throughput, stability, and latency.\n\nRun repeated inference to inspect stability, wall time, and model timings.\n\nOUTPUT JSON\n{\n  \"status\": \"run a transcription\"\n}\nCOPYABLE CODE SNIPPET\n\nReady-to-run TypeScript/JavaScript code for your selected model, backend, and options.\n\n@asrjs/speech-recognition/builtins\nCopy Code\nimport { PcmAudioBuffer } from '@asrjs/speech-recognition';\nimport { loadBuiltInSpeechModel } from '@asrjs/speech-recognition/builtins';\n\nconst model = await loadBuiltInSpeechModel({\n  modelId: 'parakeet-tdt-0.6b-v3',\n  backend: 'webgpu-hybrid',\n});\n\n// Offline / Batch Transcription\nconst result = await model.transcribe(\n  PcmAudioBuffer.fromMono(pcmFloat32, 16000),\n  { detail: 'detailed', responseFlavor: 'canonical+native', language: 'en' }\n);\n\n// Stateful Streaming (available only when the loaded model supports it)\n// model.supportsStreaming is false; the batch transcription above is the supported path.\nAPI CONTRACT\n\nLoads models through their registered catalog source and artifact requirements.\n\nCURRENT MODE\n\nuniversal-catalog\n\nRESPONSE: CANONICAL + NATIVE ENVELOPE\n\nDETAIL: DETAILED\n\nSELECTED OPTIONS\n\n{\n  \"strategy\": \"universal-catalog\",\n  \"modelId\": \"parakeet-tdt-0.6b-v3\",\n  \"source\": \"huggingface\",\n  \"backend\": \"webgpu-hybrid\",\n  \"language\": \"en\",\n  \"detail\": \"detailed\",\n  \"responseFlavor\": \"canonical+native\",\n  \"audioPrepMode\": \"native-linear\",\n  \"audioResamplerQuality\": \"linear\",\n  \"encoderBackend\": \"webgpu\",\n  \"decoderBackend\": \"wasm\",\n  \"encoderQuant\": \"fp16\",\n  \"decoderQuant\": \"int8\"\n}\nLOAD REQUEST\n{\n  \"modelId\": \"parakeet-tdt-0.6b-v3\",\n  \"source\": \"huggingface\",\n  \"backend\": \"webgpu-hybrid\",\n  \"options\": {\n    \"cpuThreads\": 4,\n    \"enableProfiling\": false,\n    \"language\": \"en\"\n  }\n}\nLOAD RESOLUTION\n{\n  \"strategy\": \"universal-catalog\",\n  \"modelId\": \"parakeet-tdt-0.6b-v3\",\n  \"displayName\": \"Parakeet TDT 0.6B v3 (Multilingual)\",\n  \"family\": \"parakeet\",\n  \"backend\": \"webgpu-hybrid\",\n  \"source\": \"huggingface\",\n  \"languages\": [\n    \"en\",\n    \"fr\",\n    \"de\",\n    \"es\",\n    \"it\",\n    \"pt\",\n    \"nl\",\n    \"pl\",\n    \"ru\",\n    \"uk\",\n    \"ja\",\n    \"ko\",\n    \"zh\"\n  ],\n  \"supportsStreaming\": false\n}\nTRANSCRIPTION REQUEST\n{\n  \"status\": \"run a transcription to inspect the request\"\n}\nCANONICAL OUTPUT\n{\n  \"status\": \"canonical output unavailable for this response\"\n}\nNATIVE OUTPUT\n{\n  \"status\": \"native output unavailable for this response\"\n}\nLOAD EVENTS\n\nready\n\n22:52:46\n\nparakeet-tdt-0.6b-v3 is ready for transcription.\n\nprogress 100%\n\nsession-create:complete\n\n22:52:46\n\nReady session created for parakeet-tdt-0.6b-v3.\n\nprogress 92%\n\nasset:download\n\n22:52:40\n\nPrepared vocab.txt.\n\nprogress 100%\n0.1 MiB / 0.1 MiB\nvocab.txt\n\nasset:download\n\n22:52:40\n\nPrepared decoder_joint-model.int8.onnx.\n\nprogress 100%\n17.4 MiB / 17.4 MiB\ndecoder_joint-model.int8.onnx\n\nasset:download\n\n22:52:40\n\nPrepared encoder-model.fp16.onnx.\n\nprogress 100%\n1182 MiB / 1182 MiB\nencoder-model.fp16.onnx\n\nsession-create:start\n\n22:52:40\n\nCreating a ready session for parakeet-tdt-0.6b-v3.\n\nprogress 80%\n\nmodel-load:complete\n\n22:52:40\n\nLoaded parakeet-tdt-0.6b-v3 with webgpu.\n\nprogress 70%\n\nmodel-load:complete\n\n22:52:40\n\nLoaded parakeet-tdt-0.6b-v3 with webgpu.\n\nprogress 70%\n\nmodel-load:start\n\n22:52:40\n\nLoading parakeet-tdt-0.6b-v3 with webgpu.\n\nprogress 25%\n\nmodel-load:start\n\n22:52:40\n\nLoading parakeet-tdt-0.6b-v3.\n\nprogress 25%\n\nresolve:complete\n\n22:52:40\n\nResolved preset \"parakeet\".\n\nprogress 15%\n\nresolve:start\n\n22:52:40\n\nResolving model request.\n\nprogress 5%\nTRANSCRIPTION EVENTS\n\nRun transcription to inspect per-stage progress, remaining time, and metrics.\n\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "parakeet-tdt-0.6b-v3",
+  "artifactReplay": [],
+  "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "verificationErrors": [],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-25T22:52:47+0300"
+}

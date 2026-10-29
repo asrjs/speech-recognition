@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "app": "showcase",
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "source": "huggingface",
+  "descriptorSources": [],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu-hybrid",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": null,
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "FAIL",
+  "loadStatus": "FAIL",
+  "runtimeStatus": "UNVERIFIED",
+  "transcriptStatus": "UNVERIFIED",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "log",
+      "text": "[Hub] Starting model load from HuggingFace"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_BLOB_OUT_OF_MEMORY"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: Failed to fetch\n    at globalThis.fetch (<anonymous>:20:11)\n    at Ha (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:6:30489)\n    at Cf.fetchModelAndCopyToWasmMemory (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:33783)\n    at Cf.loadModel (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:33854)\n    at Na.createInferenceSessionHandler (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:35708)\n    at up.create (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:1:19867)\n    at async Zo (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:8:156801)\n    at async so.initialize (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:109330)\n    at async so.ready (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:114084)\n    at async uF.initialize (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:128133)"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_BLOB_OUT_OF_MEMORY"
+    },
+    {
+      "type": "error",
+      "text": "TypeError: Failed to fetch\n    at globalThis.fetch (<anonymous>:20:11)\n    at Ha (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:6:30489)\n    at Cf.fetchModelAndCopyToWasmMemory (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:33783)\n    at Cf.loadModel (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:33854)\n    at Na.createInferenceSessionHandler (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:2900:35708)\n    at up.create (http://127.0.0.1:4343/showcase/assets/ort.bundle.min-ZOZtWiYj.js:1:19867)\n    at async Zo (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:8:156801)\n    at async so.initialize (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:109330)\n    at async so.ready (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:114084)\n    at async uF.initialize (http://127.0.0.1:4343/showcase/assets/index-BJVP5up1.js:13:128133)"
+    }
+  ],
+  "artifactRequests": [
+    {
+      "url": "http://127.0.0.1:4343/model/encoder-model.fp16.onnx",
+      "state": "finished",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:4343/model/decoder_joint-model.int8.onnx",
+      "state": "finished",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:4343/model/vocab.txt",
+      "state": "finished",
+      "status": 200
+    }
+  ],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 0,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-25T22:42:44+0300",
+  "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+  "hubWeightDownloadTransport": "UNVERIFIED",
+  "testBrowserProfile": "N:\\github\\asrjs\\speech-recognition\\tmp\\approved-model-profiles\\chrome-profile",
+  "actualComponentBackends": [
+    "webgpu",
+    "wasm"
+  ],
+  "actualEncoderBackend": "webgpu",
+  "actualDecoderBackend": "wasm",
+  "actualEncoderQuant": "fp16",
+  "actualDecoderQuant": "int8",
+  "actualBackend": "webgpu-hybrid",
+  "profilingSelection": {
+    "controlCount": 0,
+    "enabled": null
+  },
+  "activeStage": "model-load-running",
+  "loadPageText": "A\nASRJS\nTranscribe\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nMODEL CONFIGURATION\nModel Source\nHugging Face\nLocal folder\nexpand_more\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nGigaAM Multilingual CTC\nGigaAM v3 E2E RNN-T (Russian)\nSenseVoice Small\nX-ASR zh-en 160 ms Streaming\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nMoonshine Tiny Streaming\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nexpand_more\nRuntime Backend\nWebGPU\nWASM\nexpand_more\nEncoder Backend\nwebgpu\nwasm\nexpand_more\nDecoder Backend\nwasm\nexpand_more\nThreads\nStride\nEncoder\nfp16\nint8\nfp32\nexpand_more\nDecoder\nfp16\nint8\nfp32\nexpand_more\nFrontend\nJS frontend\nONNX frontend\nexpand_more\n\nShared pure-JS NeMo frontend. This is the expected path for hosted RNNT models and for local folders without nemo*.onnx frontend assets.\n\nThis hosted model is configured for the shared JS frontend by default. Separate nemo80/nemo128 ONNX preprocessors are optional, not required.\n\nVerbose\nLog results\nEnable profiling\nbolt\nLoad Model\n\nvocab.txt: 100%\n\nStatus:\nFailed: Failed to fetch\ncheck_circle\nMulti-threaded (12 cores)\nTEST & TRANSCRIBE\nLanguage\nEnglish\nFrench\nGerman\nSpanish\nItalian\nPortuguese\nDutch\nPolish\nexpand_more\nLoad English Sample\ncloud_upload\n\nDrag & drop audio file here, or click to select\n\nSupports .wav, .mp3, .ogg\n\nTRANSCRIPTION COMPARISON\nTranscription\n\nTranscription will appear here...\n\nReference Text\nASRJS\nLibrary 0.2.0 · npm-package",
+  "error": "Model did not reach ready state",
+  "pageText": "A\nASRJS\nTranscribe\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nMODEL CONFIGURATION\nModel Source\nHugging Face\nLocal folder\nexpand_more\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nGigaAM Multilingual CTC\nGigaAM v3 E2E RNN-T (Russian)\nSenseVoice Small\nX-ASR zh-en 160 ms Streaming\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nMoonshine Tiny Streaming\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nexpand_more\nRuntime Backend\nWebGPU\nWASM\nexpand_more\nEncoder Backend\nwebgpu\nwasm\nexpand_more\nDecoder Backend\nwasm\nexpand_more\nThreads\nStride\nEncoder\nfp16\nint8\nfp32\nexpand_more\nDecoder\nfp16\nint8\nfp32\nexpand_more\nFrontend\nJS frontend\nONNX frontend\nexpand_more\n\nShared pure-JS NeMo frontend. This is the expected path for hosted RNNT models and for local folders without nemo*.onnx frontend assets.\n\nThis hosted model is configured for the shared JS frontend by default. Separate nemo80/nemo128 ONNX preprocessors are optional, not required.\n\nVerbose\nLog results\nEnable profiling\nbolt\nLoad Model\n\nvocab.txt: 100%\n\nStatus:\nFailed: Failed to fetch\ncheck_circle\nMulti-threaded (12 cores)\nTEST & TRANSCRIBE\nLanguage\nEnglish\nFrench\nGerman\nSpanish\nItalian\nPortuguese\nDutch\nPolish\nexpand_more\nLoad English Sample\ncloud_upload\n\nDrag & drop audio file here, or click to select\n\nSupports .wav, .mp3, .ogg\n\nTRANSCRIPTION COMPARISON\nTranscription\n\nTranscription will appear here...\n\nReference Text\nASRJS\nLibrary 0.2.0 · npm-package",
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-25T22:42:58+0300"
+}
