@@ -32,7 +32,7 @@ import { AudioRingBuffer, createCaptureTranscript } from './realtime.js';
 import { PcmAudioBuffer } from '../audio/audio.js';
 import { SpeechContextBuffer, type SpeechContextRevision } from './speech-context.js';
 import type { LoadedSpeechModel } from './load.js';
-import { resampleLinear } from './media.js';
+import { resampleSinc } from '../audio/resample.js';
 import { subscribeToAbortSignal } from '../io/abort.js';
 
 export type BrowserRealtimeMicrophoneMode = 'manual' | 'speech-detect';
@@ -230,7 +230,7 @@ export function createBrowserRealtimeMicrophoneController(
         const targetSampleRate = options.model!.model.info.inference?.sampleRate ?? request.sampleRate;
         const pcm = request.sampleRate === targetSampleRate
           ? request.pcm
-          : resampleLinear(request.pcm, request.sampleRate, targetSampleRate);
+          : resampleSinc(request.pcm, request.sampleRate, targetSampleRate);
         const combined = combineAbortSignals([request.signal, options.transcribeOptions?.signal]);
         try {
           const response = await options.model!.transcribeMonoPcm(pcm, targetSampleRate, {
