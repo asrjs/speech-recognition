@@ -68,10 +68,13 @@ describe('neural VAD onset history across finalized segments', () => {
           useAdaptiveEnergyThresholds: false,
         },
         tenVadFactory: (config) =>
-          new TenVadAdapter(config, {
-            workerFactory: () => new ProbabilityWorker(),
-            now: () => 0, // Both utterances must remain in the retained history.
-          }),
+          new TenVadAdapter(
+            { ...config, assetBaseUrl: 'https://example.com/ten-vad/' },
+            {
+              workerFactory: () => new ProbabilityWorker(),
+              now: () => 0, // Both utterances must remain in the retained history.
+            },
+          ),
       });
       const onsets: number[] = [];
       detector.subscribe((event) => {

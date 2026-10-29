@@ -528,7 +528,7 @@ def main():
                         page.on('pageerror', lambda error: receipt['page_errors'].append(str(error)))
                         page.goto(origin + '/__capture_built__.html', wait_until='networkidle')
                         page.locator('#model').set_input_files(str(args.model_root.resolve()), timeout=60000)
-                    page.evaluate("""({libraryUrl, librarySource, wasmPaths, backend, precision, savePcm, micMode, workerUrl, defaultWorkerUrl}) => {
+                    page.evaluate("""({libraryUrl, librarySource, wasmPaths, backend, precision, savePcm, micMode, workerUrl, defaultWorkerUrl, tenVadAssetBaseUrl}) => {
                         window.captureResult = null; window.captureError = null;
                         window.capturePcm = [];
                         void (async () => {
@@ -542,7 +542,7 @@ def main():
                                 entries: createSpeechModelLocalEntries([...document.getElementById('model').files]),
                                 backend, encoderQuant: precision, preprocessorBackend: 'js', wasmPaths });
                             if (defaultWorkerUrl) observer = observeCaptureWorkers(defaultWorkerUrl);
-                            await runCapturedController({ receipt, micMode, workerUrl, library, workerObserver: observer,
+                            await runCapturedController({ receipt, micMode, workerUrl, library, workerObserver: observer, tenVadAssetBaseUrl,
                               onCapturedPcm: savePcm ? (pcm) => {
                                 const bytes = new ArrayBuffer(pcm.length * 4), view = new DataView(bytes);
                                 pcm.forEach((sample, index) => view.setFloat32(index * 4, sample, true));
@@ -572,7 +572,9 @@ def main():
                                backend=args.backend, precision=args.precision, savePcm=args.save_capture_pcm,
                                micMode=args.capture_mode,
                                workerUrl=None if args.capture_library == 'dist' else '/@fs/' + ROOT.as_posix() + '/src/runtime/ten-vad-worker.ts',
-                               defaultWorkerUrl='/@fs/' + ROOT.as_posix() + '/dist/runtime/ten-vad-worker.js' if args.capture_library == 'dist' else None))
+                               defaultWorkerUrl='/@fs/' + ROOT.as_posix() + '/dist/runtime/ten-vad-worker.js' if args.capture_library == 'dist' else None,
+                               # TEN-VAD is not bundled; the harness serves the repository copy explicitly.
+                               tenVadAssetBaseUrl='/@fs/' + ROOT.as_posix() + ('/dist' if args.capture_library == 'dist' else '/src') + '/runtime/assets/ten-vad/'))
                     page.wait_for_function('window.captureResult !== null || window.captureError !== null', timeout=args.timeout_ms)
                     if page.evaluate('window.captureError'):
                         raise ValueError(page.evaluate('window.captureError'))

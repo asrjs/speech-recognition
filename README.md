@@ -56,7 +56,13 @@ maps file, microphone, native streaming and Node.js integrations.
 
 ## React, Svelte and Vue
 
-[Framework bindings](https://github.com/asrjs/speech-recognition/blob/main/docs/FRAMEWORKS.md) connect one controller to React hooks, Svelte stores and Vue composables. The core owns loading, progress, transcription and streaming state. The companion packages and examples are currently local development builds.
+Thin packages connect one controller to React hooks, Svelte stores and Vue composables. The core owns loading, progress, transcription and streaming state.
+
+```sh
+npm install @asrjs/speech-recognition @asrjs/speech-recognition-react   # or -svelte, -vue
+```
+
+See [framework bindings](https://github.com/asrjs/speech-recognition/blob/main/docs/FRAMEWORKS.md).
 
 ## Offline and streaming
 
@@ -111,4 +117,4 @@ npm run docs:build
 
 `docs:build` generates API documentation from JSDoc into `.typedoc-site/`. Start with the [project charter](https://github.com/asrjs/speech-recognition/blob/main/docs/PROJECT_CHARTER.md) for product decisions and the [contributor entrypoint](https://github.com/asrjs/speech-recognition/blob/main/docs/AGENT_ENTRYPOINT.md) for scoped engineering work.
 
-Runnable examples: [React](https://github.com/asrjs/demos/tree/framework-examples/examples/react), [Svelte](https://github.com/asrjs/demos/tree/framework-examples/examples/svelte), [Vue](https://github.com/asrjs/demos/tree/framework-examples/examples/vue). The [framework workspace](https://github.com/asrjs/demos/tree/framework-examples) includes the thin adapters, build commands and local setup.
+Runnable framework examples: [React](https://github.com/asrjs/demos/tree/framework-examples/examples/react), [Svelte](https://github.com/asrjs/demos/tree/framework-examples/examples/svelte), [Vue](https://github.com/asrjs/demos/tree/framework-examples/examples/vue). The [framework workspace](https://github.com/asrjs/demos/tree/framework-examples) includes the thin adapters, build commands and local setup.

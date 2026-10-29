@@ -1,7 +1,9 @@
 {
   "name": "@asrjs/speech-recognition",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Speech-first TypeScript runtime for browser and local Node.js inference",
+  "license": "MIT",
+  "author": "Yunus Seyhan Dede",
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -297,7 +299,10 @@
   "files": [
     "dist",
     "README.md",
-    "!**/*.tsbuildinfo"
+    "CHANGELOG.md",
+    "LICENSE",
+    "!**/*.tsbuildinfo",
+    "!dist/runtime/assets/ten-vad"
   ],
   "publishConfig": {
     "access": "public"

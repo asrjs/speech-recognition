@@ -36,9 +36,14 @@ export interface TenVadAdapterConfig {
   readonly minSpeechHops?: number;
   readonly minSpeechRatio?: number;
   readonly minSilenceHops?: number;
+  /**
+   * Folder URL that serves `ten_vad.js` and `ten_vad.wasm`. TEN-VAD is not
+   * bundled with this package; host the files from the TEN-VAD Web build.
+   */
   readonly assetBaseUrl?: string;
   readonly scriptUrl?: string;
   readonly wasmUrl?: string;
+  /** @deprecated No bundled TEN-VAD copy exists; this option is ignored. */
   readonly fallbackToBundledAssets?: boolean;
 }
 
@@ -87,8 +92,26 @@ const DEFAULT_TEN_VAD_CONFIG: Required<
   minSpeechHops: 0,
   minSpeechRatio: 0.5,
   minSilenceHops: 0,
-  fallbackToBundledAssets: true,
+  fallbackToBundledAssets: false,
 };
+
+/** Upstream location of the TEN-VAD Web build that applications host themselves. */
+export const TEN_VAD_WEB_BUILD_URL = 'https://github.com/TEN-framework/ten-vad/tree/main/lib/Web';
+
+/** Raised when TEN-VAD is used without `assetBaseUrl` or `scriptUrl` and `wasmUrl`. */
+export class TenVadAssetsNotConfiguredError extends Error {
+  readonly code = 'ten-vad-assets-not-configured';
+
+  constructor() {
+    super(
+      'TEN-VAD is not bundled with @asrjs/speech-recognition because its license restricts ' +
+        'redistribution in developer libraries. Review the TEN-VAD license, host ten_vad.js and ' +
+        `ten_vad.wasm from ${TEN_VAD_WEB_BUILD_URL}, and pass assetBaseUrl (or scriptUrl and ` +
+        'wasmUrl) in the TEN-VAD config. FireRed VAD needs no extra files.',
+    );
+    this.name = 'TenVadAssetsNotConfiguredError';
+  }
+}
 
 export interface TenVadAssetUrls {
   readonly scriptUrl: string;
@@ -129,6 +152,10 @@ export function resolveSupportedTenVadHopSize(
   }, supportedHopSizes[0]!);
 }
 
+/**
+ * @deprecated TEN-VAD is no longer bundled, so these package-relative URLs do
+ * not resolve to files. Pass `assetBaseUrl` or `scriptUrl` and `wasmUrl`.
+ */
 export function resolveDefaultTenVadAssetUrls(): TenVadAssetUrls {
   const scriptUrl = new URL('./assets/ten-vad/ten_vad.js', import.meta.url).href;
   const wasmUrl = new URL('./assets/ten-vad/ten_vad.wasm', import.meta.url).href;
@@ -138,29 +165,30 @@ export function resolveDefaultTenVadAssetUrls(): TenVadAssetUrls {
   };
 }
 
+function resolveAgainstPage(url: string): URL {
+  const page = (globalThis as { location?: { href?: string } }).location?.href;
+  return page ? new URL(url, page) : new URL(url);
+}
+
+/** Resolves the application-hosted TEN-VAD files or throws a configuration error. */
 export function resolveTenVadAssetUrls(
   config: Pick<
     TenVadAdapterConfig,
     'assetBaseUrl' | 'scriptUrl' | 'wasmUrl' | 'fallbackToBundledAssets'
   > = {},
 ): ResolvedTenVadAssetUrls {
-  const defaults = resolveDefaultTenVadAssetUrls();
-  const assetBaseUrl = config.assetBaseUrl ?? null;
-  const scriptUrl =
-    config.scriptUrl ??
-    (assetBaseUrl ? new URL('ten_vad.js', assetBaseUrl).href : defaults.scriptUrl);
-  const wasmUrl =
-    config.wasmUrl ??
-    (assetBaseUrl ? new URL('ten_vad.wasm', assetBaseUrl).href : defaults.wasmUrl);
-  const shouldFallback =
-    (config.fallbackToBundledAssets ?? DEFAULT_TEN_VAD_CONFIG.fallbackToBundledAssets) &&
-    (scriptUrl !== defaults.scriptUrl || wasmUrl !== defaults.wasmUrl);
-
+  const assetBaseUrl = config.assetBaseUrl || null;
+  const base = assetBaseUrl ? resolveAgainstPage(assetBaseUrl) : null;
+  const scriptUrl = config.scriptUrl || (base ? new URL('ten_vad.js', base).href : null);
+  const wasmUrl = config.wasmUrl || (base ? new URL('ten_vad.wasm', base).href : null);
+  if (!scriptUrl || !wasmUrl) {
+    throw new TenVadAssetsNotConfiguredError();
+  }
   return {
     scriptUrl,
     wasmUrl,
-    fallbackScriptUrl: shouldFallback ? defaults.scriptUrl : null,
-    fallbackWasmUrl: shouldFallback ? defaults.wasmUrl : null,
+    fallbackScriptUrl: null,
+    fallbackWasmUrl: null,
   };
 }
 
@@ -198,9 +226,6 @@ export class TenVadAdapter implements StreamingTenVadLike {
   private smoothedSpeechActive = false;
 
   constructor(config: TenVadAdapterConfig = {}, options: TenVadAdapterOptions = {}) {
-    const defaults = resolveDefaultTenVadAssetUrls();
-    const assetBaseUrl = config.assetBaseUrl ?? null;
-    const resolvedAssets = resolveTenVadAssetUrls(config);
     const sampleRate =
       typeof config.sampleRate === 'number' &&
       Number.isFinite(config.sampleRate) &&
@@ -212,9 +237,11 @@ export class TenVadAdapter implements StreamingTenVadLike {
       ...config,
       sampleRate,
       hopSize: resolveSupportedTenVadHopSize(sampleRate, config.hopSize),
-      assetBaseUrl: assetBaseUrl ?? defaults.scriptUrl.replace(/ten_vad\.js$/, ''),
-      scriptUrl: resolvedAssets.scriptUrl,
-      wasmUrl: resolvedAssets.wasmUrl,
+      // Resolved in init() so a missing location surfaces as a degraded VAD
+      // with a clear error instead of throwing from the constructor.
+      assetBaseUrl: config.assetBaseUrl ?? '',
+      scriptUrl: config.scriptUrl ?? '',
+      wasmUrl: config.wasmUrl ?? '',
     };
     this.workerFactory = options.workerFactory ?? defaultWorkerFactory;
     this.now = options.now ?? (() => Date.now());

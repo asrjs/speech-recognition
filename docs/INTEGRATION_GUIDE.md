@@ -26,6 +26,8 @@ For an explicit offline-window adapter, see [examples/streaming.ts](../examples/
 
 The `/browser` entry exposes browser capture and realtime helpers; `/realtime` exposes orchestration. Keep browser-only dependencies out of server imports. The shared capture layer owns PCM preparation, resampling and buffering. TEN-VAD and FireRed VAD provide neural speech detection; rough-gate and neural modes are separate choices.
 
+TEN-VAD is not bundled: its license restricts redistribution in developer libraries. To use it, review the [TEN-VAD license](https://github.com/TEN-framework/ten-vad), host `ten_vad.js` and `ten_vad.wasm` from its [Web build](https://github.com/TEN-framework/ten-vad/tree/main/lib/Web) with your application, and pass their folder as `tenVadConfig: { assetBaseUrl: '/vendor/ten-vad/' }`. Without it, TEN-VAD initialization fails with `TenVadAssetsNotConfiguredError`. FireRed VAD and the rough gate need no extra files.
+
 The Realtime companion app combines these primitives with waveform, VAD probability and event timelines. It is the maintained integration surface, not a separate inference engine. Framework UI state belongs in the app; reusable capture and inference behavior belongs in the library.
 
 The shared application controller can reuse its loaded model for microphone

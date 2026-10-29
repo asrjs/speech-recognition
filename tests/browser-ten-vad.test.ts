@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   FireRedVadAdapter,
+  TEN_VAD_WEB_BUILD_URL,
   TenVadAdapter,
+  TenVadAssetsNotConfiguredError,
   resolveDefaultFireRedVadModelUrls,
-  resolveDefaultTenVadAssetUrls,
   resolveFireRedVadModelUrls,
   resolveSupportedFireRedVadHopSize,
   resolveSupportedTenVadHopSize,
@@ -13,6 +14,9 @@ import { isTenVadWorkerRequest, isTenVadWorkerResponse } from '../src/runtime/te
 import type { TenVadRequestMessage } from '../src/runtime/ten-vad-protocol.js';
 
 type FakeWorkerMode = 'ok' | 'fail-init' | 'hold-init';
+
+/** TEN-VAD is application-hosted; every adapter in these tests points at a fake host. */
+const TEN_VAD_ASSETS = { assetBaseUrl: 'https://example.com/ten-vad/' } as const;
 
 class FakeWorker {
   onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
@@ -116,26 +120,42 @@ describe('TEN-VAD worker protocol', () => {
 });
 
 describe('TenVadAdapter', () => {
-  it('resolves default TEN-VAD asset URLs without adding a fallback loop', () => {
-    const defaults = resolveDefaultTenVadAssetUrls();
-    const resolved = resolveTenVadAssetUrls();
-
-    expect(resolved.scriptUrl).toBe(defaults.scriptUrl);
-    expect(resolved.wasmUrl).toBe(defaults.wasmUrl);
-    expect(resolved.fallbackScriptUrl).toBeNull();
-    expect(resolved.fallbackWasmUrl).toBeNull();
+  it('requires application-hosted TEN-VAD files instead of a bundled copy', () => {
+    expect(() => resolveTenVadAssetUrls()).toThrow(TenVadAssetsNotConfiguredError);
+    expect(() => resolveTenVadAssetUrls({ fallbackToBundledAssets: true })).toThrow(
+      TEN_VAD_WEB_BUILD_URL,
+    );
+    expect(() => resolveTenVadAssetUrls({ scriptUrl: 'https://example.com/ten_vad.js' })).toThrow(
+      TenVadAssetsNotConfiguredError,
+    );
   });
 
-  it('resolves TEN-VAD asset URLs from assetBaseUrl overrides', () => {
-    const defaults = resolveDefaultTenVadAssetUrls();
-    const resolved = resolveTenVadAssetUrls({
-      assetBaseUrl: 'https://example.com/vendor/ten-vad/',
+  it('resolves TEN-VAD asset URLs from assetBaseUrl or explicit file URLs', () => {
+    expect(resolveTenVadAssetUrls({ assetBaseUrl: 'https://example.com/vendor/ten-vad/' })).toEqual(
+      {
+        scriptUrl: 'https://example.com/vendor/ten-vad/ten_vad.js',
+        wasmUrl: 'https://example.com/vendor/ten-vad/ten_vad.wasm',
+        fallbackScriptUrl: null,
+        fallbackWasmUrl: null,
+      },
+    );
+    expect(
+      resolveTenVadAssetUrls({
+        scriptUrl: 'https://cdn.example.com/a.js',
+        wasmUrl: 'https://cdn.example.com/b.wasm',
+      }),
+    ).toMatchObject({
+      scriptUrl: 'https://cdn.example.com/a.js',
+      wasmUrl: 'https://cdn.example.com/b.wasm',
     });
+  });
 
-    expect(resolved.scriptUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.js');
-    expect(resolved.wasmUrl).toBe('https://example.com/vendor/ten-vad/ten_vad.wasm');
-    expect(resolved.fallbackScriptUrl).toBe(defaults.scriptUrl);
-    expect(resolved.fallbackWasmUrl).toBe(defaults.wasmUrl);
+  it('degrades with a configuration error when initialized without TEN-VAD files', async () => {
+    const adapter = new TenVadAdapter({}, { workerFactory: () => new FakeWorker() });
+
+    await expect(adapter.init()).rejects.toMatchObject({ code: 'ten-vad-assets-not-configured' });
+    expect(adapter.getStatus().state).toBe('degraded');
+    await adapter.dispose();
   });
 
   it('normalizes preferred hop sizes to TEN-VAD supported hops', () => {
@@ -147,6 +167,7 @@ describe('TenVadAdapter', () => {
   it('handles init, process, reset, and dispose with aligned frame offsets', async () => {
     const adapter = new TenVadAdapter(
       {
+        ...TEN_VAD_ASSETS,
         hopSize: 256,
         minSpeechDurationMs: 40,
       },
@@ -175,6 +196,7 @@ describe('TenVadAdapter', () => {
   it('uses duration-derived smoothing defaults for safe speech acceptance', async () => {
     const adapter = new TenVadAdapter(
       {
+        ...TEN_VAD_ASSETS,
         hopSize: 256,
       },
       {
@@ -193,7 +215,10 @@ describe('TenVadAdapter', () => {
   });
 
   it('degrades gracefully when init fails', async () => {
-    const adapter = new TenVadAdapter({}, { workerFactory: () => new FakeWorker('fail-init') });
+    const adapter = new TenVadAdapter(
+      { ...TEN_VAD_ASSETS },
+      { workerFactory: () => new FakeWorker('fail-init') },
+    );
     await expect(adapter.init()).rejects.toThrow('init failed');
     expect(adapter.getStatus().state).toBe('degraded');
   });
@@ -201,7 +226,7 @@ describe('TenVadAdapter', () => {
   it('ignores unknown or malformed worker responses without degrading', async () => {
     const worker = new FakeWorker();
     const adapter = new TenVadAdapter(
-      { hopSize: 256, minSpeechDurationMs: 16 },
+      { ...TEN_VAD_ASSETS, hopSize: 256, minSpeechDurationMs: 16 },
       { workerFactory: () => worker },
     );
 
@@ -222,7 +247,7 @@ describe('TenVadAdapter', () => {
     worker.postMessage = (message) => {
       worker.messages.push(message);
     };
-    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+    const adapter = new TenVadAdapter({ ...TEN_VAD_ASSETS }, { workerFactory: () => worker });
 
     const initializing = adapter.init();
     await Promise.resolve();
@@ -262,7 +287,7 @@ describe('TenVadAdapter', () => {
       worker.messages.push(message);
     };
     const controller = new AbortController();
-    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+    const adapter = new TenVadAdapter({ ...TEN_VAD_ASSETS }, { workerFactory: () => worker });
 
     const initializing = adapter.init(controller.signal);
     await Promise.resolve();
@@ -280,7 +305,7 @@ describe('TenVadAdapter', () => {
   it('observes asynchronous changes on a minimal abort-like signal during init', async () => {
     const worker = new FakeWorker('hold-init');
     const signal = { aborted: false };
-    const adapter = new TenVadAdapter({}, { workerFactory: () => worker });
+    const adapter = new TenVadAdapter({ ...TEN_VAD_ASSETS }, { workerFactory: () => worker });
 
     const initializing = adapter.init(signal);
     await Promise.resolve();
@@ -298,6 +323,7 @@ describe('TenVadAdapter', () => {
     const worker = new FakeWorker();
     const adapter = new TenVadAdapter(
       {
+        ...TEN_VAD_ASSETS,
         hopSize: 256,
         threshold: 0.5,
       },
@@ -323,6 +349,7 @@ describe('TenVadAdapter', () => {
   it('resets cached temporal state when worker-facing config changes', async () => {
     const adapter = new TenVadAdapter(
       {
+        ...TEN_VAD_ASSETS,
         hopSize: 256,
         threshold: 0.5,
         minSpeechDurationMs: 16,
