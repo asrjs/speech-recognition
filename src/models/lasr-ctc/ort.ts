@@ -1,3 +1,4 @@
+import { reportSpeechWarning } from '../../io/diagnostics.js';
 import type { LasrCtcArtifactSource, LasrCtcDirectArtifacts } from './types.js';
 import {
   honorAbortAfterCreate,
@@ -311,7 +312,7 @@ export async function createOrtSession(
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void {
   void releaseUnifiedOrtSession(session).catch((error: unknown) => {
-    console.warn('LASR best-effort session release failed:', error);
+    reportSpeechWarning('LASR best-effort session release failed.', { error });
   });
 }
 

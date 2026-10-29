@@ -2,6 +2,7 @@ import { normalizePath, type QuantizationMode } from './artifact-quantization.js
 export { QUANTIZATION_ORDER, getAvailableQuantModes, type QuantizationMode } from './artifact-quantization.js';
 import { createHuggingFaceAssetProvider, getDefaultIndexedDbAssetCache } from '../io/index.js';
 import { isAssetLoadAbortedError, isDomAbortError, throwAssetLoadAborted } from '../io/abort.js';
+import { reportSpeechWarning } from '../io/diagnostics.js';
 import type { AbortSignalLike, AssetRequest, ResolvedAssetHandle } from '../types/index.js';
 
 export const DEFAULT_MODEL_REVISIONS = ['main'] as const;
@@ -206,7 +207,9 @@ export async function fetchModelRevisions(repoId: string): Promise<readonly stri
     MODEL_REVISIONS_CACHE.set(repoId, revisions);
     return revisions;
   } catch (error) {
-    console.warn(`[huggingface] Failed to fetch revisions for ${repoId}; using defaults.`, error);
+    reportSpeechWarning(`[huggingface] Failed to fetch revisions for ${repoId}; using defaults.`, {
+      error,
+    });
     return DEFAULT_MODEL_REVISIONS;
   }
 }
@@ -242,9 +245,9 @@ export async function fetchModelFiles(
     if (isDomAbortError(treeError) || isAssetLoadAbortedError(treeError)) {
       throwAssetLoadAborted(treeError, 'download');
     }
-    console.warn(
+    reportSpeechWarning(
       `[huggingface] Tree listing failed for ${repoId}@${revision}; trying metadata.`,
-      treeError,
+      { error: treeError },
     );
   }
 
@@ -260,7 +263,9 @@ export async function fetchModelFiles(
     if (isDomAbortError(metadataError) || isAssetLoadAbortedError(metadataError)) {
       throwAssetLoadAborted(metadataError, 'download');
     }
-    console.warn(`[huggingface] Metadata listing failed for ${repoId}@${revision}.`, metadataError);
+    reportSpeechWarning(`[huggingface] Metadata listing failed for ${repoId}@${revision}.`, {
+      error: metadataError,
+    });
     return [];
   }
 }

@@ -6,6 +6,7 @@ import {
   throwAssetLoadAborted,
 } from './abort.js';
 import { getAssetCacheIdentity, type AssetCacheIdentity } from './cache-identity.js';
+import { reportSpeechWarning } from './diagnostics.js';
 import type {
   AssetCache,
   AssetCacheValue,
@@ -156,10 +157,9 @@ async function readCache(
         return { key: candidateKey, value, automaticAlias: candidate.automaticAlias };
       }
     } catch (error) {
-      console.warn(
-        `[assets] Cache read failed for "${candidateKey}". Falling back to network.`,
+      reportSpeechWarning(`[assets] Cache read failed for "${candidateKey}". Falling back to network.`, {
         error,
-      );
+      });
       try {
         await cache.delete?.(candidateKey);
       } catch {
@@ -183,7 +183,9 @@ async function writeCache(
   try {
     await cache.set(key, value);
   } catch (error) {
-    console.warn(`[assets] Cache write failed for "${key}". Continuing without cache.`, error);
+    reportSpeechWarning(`[assets] Cache write failed for "${key}". Continuing without cache.`, {
+      error,
+    });
   }
 }
 
@@ -214,9 +216,9 @@ async function readBlobCache(
         return { key: candidateKey, blob, automaticAlias: candidate.automaticAlias };
       }
     } catch (error) {
-      console.warn(
+      reportSpeechWarning(
         `[assets] Blob cache read failed for "${candidateKey}". Falling back to network.`,
-        error,
+        { error },
       );
       try {
         await cache.delete?.(candidateKey);
@@ -241,7 +243,9 @@ async function writeBlobCache(
   try {
     await cache.setBlob(key, blob);
   } catch (error) {
-    console.warn(`[assets] Blob cache write failed for "${key}". Continuing without cache.`, error);
+    reportSpeechWarning(`[assets] Blob cache write failed for "${key}". Continuing without cache.`, {
+      error,
+    });
   }
 }
 

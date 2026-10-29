@@ -1,3 +1,4 @@
+import { reportSpeechWarning } from '../../io/diagnostics.js';
 import type {
   WhisperArtifactSource,
   WhisperDirectArtifactSource,
@@ -516,6 +517,6 @@ export async function createWhisperOrtSession(
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void {
   void releaseUnifiedOrtSession(session).catch((error: unknown) => {
-    console.warn('Whisper best-effort session release failed:', error);
+    reportSpeechWarning('Whisper best-effort session release failed.', { error });
   });
 }
