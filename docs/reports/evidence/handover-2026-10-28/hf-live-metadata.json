@@ -1,0 +1,284 @@
+[
+  {
+    "repoId": "ysdede/parakeet-tdt-0.6b-v3-onnx",
+    "pinnedRevision": "e5356bf6e24bdb7a269536b0e9e7869bc034b893",
+    "currentRevision": "e5356bf6e24bdb7a269536b0e9e7869bc034b893",
+    "pinnedFiles": [
+      {
+        "path": ".gitattributes",
+        "bytes": 1615,
+        "sha256": null
+      },
+      {
+        "path": "ASRJS.md",
+        "bytes": 1504,
+        "sha256": null
+      },
+      {
+        "path": "ATTRIBUTION.md",
+        "bytes": 861,
+        "sha256": null
+      },
+      {
+        "path": "README.md",
+        "bytes": 563,
+        "sha256": null
+      },
+      {
+        "path": "asrjs-manifest.json",
+        "bytes": 1790,
+        "sha256": null
+      },
+      {
+        "path": "config.json",
+        "bytes": 101,
+        "sha256": null
+      },
+      {
+        "path": "decoder_joint-model.fp16.onnx",
+        "bytes": 36266140,
+        "sha256": "b33a73b7c1d71b9d5a0911f5cb478be3dcbf79f53355c531ab1cd1dcd68ad8ef"
+      },
+      {
+        "path": "decoder_joint-model.int8.onnx",
+        "bytes": 18202004,
+        "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70"
+      },
+      {
+        "path": "decoder_joint-model.onnx",
+        "bytes": 72520893,
+        "sha256": "e978ddf6688527182c10fde2eb4b83068421648985ef23f7a86be732be8706c1"
+      },
+      {
+        "path": "encoder-model.fp16.onnx",
+        "bytes": 1238960452,
+        "sha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717"
+      },
+      {
+        "path": "encoder-model.int8.onnx",
+        "bytes": 652183999,
+        "sha256": "6139d2fa7e1b086097b277c7149725edbab89cc7c7ae64b23c741be4055aff09"
+      },
+      {
+        "path": "encoder-model.onnx",
+        "bytes": 41770866,
+        "sha256": "98a74b21b4cc0017c1e7030319a4a96f4a9506e50f0708f3a516d02a77c96bb1"
+      },
+      {
+        "path": "encoder-model.onnx.data",
+        "bytes": 2435420160,
+        "sha256": "9a22d372c51455c34f13405da2520baefb7125bd16981397561423ed32d24f36"
+      },
+      {
+        "path": "nemo128.onnx",
+        "bytes": 137641,
+        "sha256": "bff2bc1bef1d1185da8bb69419b51c68fc50e88c923654ced2dfe4e055e4e938"
+      },
+      {
+        "path": "provenance/README.upstream.md",
+        "bytes": 1207,
+        "sha256": null
+      },
+      {
+        "path": "provenance/manifest.json",
+        "bytes": 9900,
+        "sha256": null
+      },
+      {
+        "path": "provenance/source_files.json",
+        "bytes": 1601,
+        "sha256": null
+      },
+      {
+        "path": "provenance/verification.json",
+        "bytes": 1071,
+        "sha256": null
+      },
+      {
+        "path": "vocab.txt",
+        "bytes": 102132,
+        "sha256": null
+      }
+    ],
+    "status": "PINNED_REVISION_EXISTS",
+    "scope": "Remote metadata only; no weights downloaded or inference"
+  },
+  {
+    "repoId": "ysdede/qwen3-asr-0.6b-onnx",
+    "pinnedRevision": "ac0bedcc0f1614c0b3982940c14bdb169ff2365d",
+    "currentRevision": "ac0bedcc0f1614c0b3982940c14bdb169ff2365d",
+    "pinnedFiles": [
+      {
+        "path": ".gitattributes",
+        "bytes": 1639,
+        "sha256": null
+      },
+      {
+        "path": "LICENSE",
+        "bytes": 11324,
+        "sha256": null
+      },
+      {
+        "path": "README.md",
+        "bytes": 1501,
+        "sha256": null
+      },
+      {
+        "path": "asrjs-manifest.json",
+        "bytes": 1795,
+        "sha256": null
+      },
+      {
+        "path": "audio-encoder-dynamic.onnx",
+        "bytes": 751103768,
+        "sha256": "7a7f72361b1809a03e2f60b058a49018cf5e788ff07d979f9d554c0706ba42e6"
+      },
+      {
+        "path": "decoder-fp16.onnx.data",
+        "bytes": 1503250432,
+        "sha256": "a37bc27a1abe435dcd22b1637b4244650c333a591391c342d86aaac1fd0fd675"
+      },
+      {
+        "path": "decoder-prefill-fp16.onnx",
+        "bytes": 732464,
+        "sha256": "b92c4f74b5ddd7a6a0bff2f931bf60805d03bba6a112ccbd3a0ebcb0a4b71029"
+      },
+      {
+        "path": "decoder-step-fp16.onnx",
+        "bytes": 741089,
+        "sha256": "ac8bf15321d8166043d0a05a88a6f7da56b42c271e4b05c2c74f12a36992119e"
+      },
+      {
+        "path": "provenance/source/config.json",
+        "bytes": 6193,
+        "sha256": null
+      },
+      {
+        "path": "provenance/source/generation_config.json",
+        "bytes": 142,
+        "sha256": null
+      },
+      {
+        "path": "provenance/source/preprocessor_config.json",
+        "bytes": 330,
+        "sha256": null
+      },
+      {
+        "path": "provenance/source/source-manifest.json",
+        "bytes": 707,
+        "sha256": null
+      },
+      {
+        "path": "tokenizer/tokenizer.json",
+        "bytes": 11429666,
+        "sha256": "765730b866a766806c9e61183cf3844357bec96a3b559eb466046316ed0029a4"
+      }
+    ],
+    "status": "PINNED_REVISION_EXISTS",
+    "scope": "Remote metadata only; no weights downloaded or inference"
+  },
+  {
+    "repoId": "ysdede/moonshine-streaming-tiny-onnx",
+    "pinnedRevision": "cb347a0760c2d7d6cf9083eb770376ba108e5b31",
+    "currentRevision": "cb347a0760c2d7d6cf9083eb770376ba108e5b31",
+    "pinnedFiles": [
+      {
+        "path": ".gitattributes",
+        "bytes": 1780,
+        "sha256": null
+      },
+      {
+        "path": "LICENSE",
+        "bytes": 1097,
+        "sha256": null
+      },
+      {
+        "path": "README.md",
+        "bytes": 1509,
+        "sha256": null
+      },
+      {
+        "path": "asrjs-manifest.json",
+        "bytes": 4399,
+        "sha256": null
+      },
+      {
+        "path": "asrjs-provenance.json",
+        "bytes": 2715,
+        "sha256": null
+      },
+      {
+        "path": "config.json",
+        "bytes": 1421,
+        "sha256": null
+      },
+      {
+        "path": "decoder_prefill_model.onnx",
+        "bytes": 138461619,
+        "sha256": "4d8ec59834ba5e777aed82fa9bcdddfd1f6cf3a3ea1e201e92b08cc6357a8684"
+      },
+      {
+        "path": "decoder_prefill_model.onnx.data",
+        "bytes": 138412032,
+        "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8"
+      },
+      {
+        "path": "decoder_step_model.onnx",
+        "bytes": 138466052,
+        "sha256": "8a8bd7177aa2232090f74192266f649e8ac68bfdbfa5c5c37dd2f97ce30dcfeb"
+      },
+      {
+        "path": "decoder_step_model.onnx.data",
+        "bytes": 138412032,
+        "sha256": "706c2c14ea7b82968111bfa7d8aa2d80a4f37c2bb35eaa1e0bfc7cd9873207e8"
+      },
+      {
+        "path": "encoder_chunked_model.onnx",
+        "bytes": 38433741,
+        "sha256": "0d8111a8060f80ce525620cbca2d8470752f9843563e4e0b1a9c506ca939c4a8"
+      },
+      {
+        "path": "encoder_chunked_model.onnx.data",
+        "bytes": 37912576,
+        "sha256": "c20519f11bc55af170553fe4ad8ee632ad69e8307b83347ab1c8e387bf4e4813"
+      },
+      {
+        "path": "encoder_model.onnx",
+        "bytes": 841937,
+        "sha256": "df3bcd863a959f5713a04747f17fc0abd76f30804cd0077471119f93cab8b12d"
+      },
+      {
+        "path": "encoder_model.onnx.data",
+        "bytes": 37912576,
+        "sha256": "b990c5914f11fe7b5a393afebdc1cc41c2f295e3aee04d3e4f6aef65b1f46dc9"
+      },
+      {
+        "path": "generation_config.json",
+        "bytes": 167,
+        "sha256": null
+      },
+      {
+        "path": "preprocessor_config.json",
+        "bytes": 195,
+        "sha256": null
+      },
+      {
+        "path": "processor_config.json",
+        "bytes": 159,
+        "sha256": null
+      },
+      {
+        "path": "tokenizer.json",
+        "bytes": 1676069,
+        "sha256": null
+      },
+      {
+        "path": "tokenizer_config.json",
+        "bytes": 172,
+        "sha256": null
+      }
+    ],
+    "status": "PINNED_REVISION_EXISTS",
+    "scope": "Remote metadata only; no weights downloaded or inference"
+  }
+]

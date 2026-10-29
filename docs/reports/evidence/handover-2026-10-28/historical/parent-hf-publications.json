@@ -1,0 +1,35 @@
+[
+  {
+    "repoId": "ysdede/qwen3-asr-0.6b-onnx",
+    "revision": "ac0bedcc0f1614c0b3982940c14bdb169ff2365d",
+    "checkedArtifacts": [
+      "audio-encoder-dynamic.onnx",
+      "decoder-prefill-fp16.onnx",
+      "decoder-step-fp16.onnx",
+      "decoder-fp16.onnx.data",
+      "tokenizer/tokenizer.json"
+    ],
+    "scope": "Remote inventory and graph LFS SHA256; not ASR accuracy"
+  },
+  {
+    "repoId": "ysdede/moonshine-streaming-tiny-onnx",
+    "revision": "cb347a0760c2d7d6cf9083eb770376ba108e5b31",
+    "checkedArtifacts": [
+      "encoder_model.onnx",
+      "encoder_model.onnx.data",
+      "encoder_chunked_model.onnx",
+      "encoder_chunked_model.onnx.data",
+      "decoder_prefill_model.onnx",
+      "decoder_prefill_model.onnx.data",
+      "decoder_step_model.onnx",
+      "decoder_step_model.onnx.data",
+      "tokenizer.json",
+      "config.json",
+      "generation_config.json",
+      "preprocessor_config.json",
+      "processor_config.json",
+      "tokenizer_config.json"
+    ],
+    "scope": "Remote inventory and graph LFS SHA256; not ASR accuracy"
+  }
+]

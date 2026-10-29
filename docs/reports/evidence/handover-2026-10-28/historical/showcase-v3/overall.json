@@ -1,0 +1,20 @@
+{
+  "status": "PASS_ALL_REQUESTED_FLOWS",
+  "requiredFlows": [
+    "file"
+  ],
+  "flowStatus": {
+    "file": {
+      "status": "PASS_FILE_FLOW",
+      "errors": [],
+      "activeStage": "file-flow-running"
+    }
+  },
+  "missingFlows": [],
+  "failedFlows": [],
+  "app": "showcase",
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "source": "huggingface",
+  "requestedBackend": "webgpu-hybrid",
+  "finishedAt": "2026-10-25T22:51:46+0300"
+}

@@ -1,0 +1,53 @@
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ❯ tests/parakeet-catalog.test.ts (6 tests | 2 failed) 12ms
+     ✓ resolves model keys from repository ids 1ms
+     × returns the v2 TDT configuration by model key and repository id 7ms
+     × returns the v3 multilingual TDT configuration 1ms
+     ✓ returns the realtime EOU RNNT configuration 0ms
+     ✓ treats unknown and prototype-like keys as missing 0ms
+     ✓ returns catalog object references for known model keys 0ms
+ ✓ tests/root-api-compatibility.test.ts (2 tests) 4ms
+ ✓ tests/browser-local-models.test.ts (16 tests) 22ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/parakeet-catalog.test.ts > Parakeet catalog > returns the v2 TDT configuration by model key and repository id
+AssertionError: expected 'main' to be 'f88260fa0777fe0868dda6df85d1a98f012a4…' // Object.is equality
+
+Expected: "f88260fa0777fe0868dda6df85d1a98f012a4a7a"
+Received: "main"
+
+ ❯ tests/parakeet-catalog.test.ts:33:37
+     31|     expect(config?.topology).toBe('tdt');
+     32|     expect(config?.supportsWordTimestamps).toBe(true);
+     33|     expect(config?.defaultRevision).toBe('f88260fa0777fe0868dda6df85d1…
+       |                                     ^
+     34|     expect(config?.cacheKeyFallbackRevisions).toEqual(['feat/fp16-cano…
+     35|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/parakeet-catalog.test.ts > Parakeet catalog > returns the v3 multilingual TDT configuration
+AssertionError: expected 'f88260fa0777fe0868dda6df85d1a98f012a4…' to be 'main' // Object.is equality
+
+Expected: "main"
+Received: "f88260fa0777fe0868dda6df85d1a98f012a4a7a"
+
+ ❯ tests/parakeet-catalog.test.ts:45:37
+     43|     expect(config?.topology).toBe('tdt');
+     44|     expect(config?.supportsWordTimestamps).toBe(true);
+     45|     expect(config?.defaultRevision).toBe('main');
+       |                                     ^
+     46|     expect(config?.cacheKeyFallbackRevisions).toEqual(['feat/fp16-cano…
+     47|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 22 passed (24)
+   Start at  22:38:09
+   Duration  1.84s (transform 1.80s, setup 0ms, import 2.23s, tests 38ms, environment 0ms)
+

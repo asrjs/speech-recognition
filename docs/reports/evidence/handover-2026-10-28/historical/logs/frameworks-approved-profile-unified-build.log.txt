@@ -1,0 +1,134 @@
+npm notice run @asrjs/frameworks@0.1.0 build:suite
+npm notice run npm run build:core && npm run build:packages && node scripts/build-suite.mjs --build-frameworks
+npm notice run @asrjs/frameworks@0.1.0 build:core
+npm notice run npm --prefix ../speech-recognition run build
+npm notice run @asrjs/speech-recognition@0.2.0 build
+npm notice run node -e "require('fs').rmSync('dist', { recursive: true, force: true })" && tsc -p tsconfig.json && node ./scripts/generate-catalog-data.mjs && node ./scripts/copy-runtime-assets.mjs
+npm notice run @asrjs/frameworks@0.1.0 build:packages
+npm notice run npm run build --workspace=@asrjs/speech-recognition-react && npm run build --workspace=@asrjs/speech-recognition-svelte && npm run build --workspace=@asrjs/speech-recognition-vue
+npm notice run @asrjs/speech-recognition-react@0.1.0 build
+npm notice run tsc -p tsconfig.json
+npm notice run @asrjs/speech-recognition-svelte@0.1.0 build
+npm notice run tsc -p tsconfig.json
+npm notice run @asrjs/speech-recognition-vue@0.1.0 build
+npm notice run tsc -p tsconfig.json
+npm notice run @asrjs/frameworks@0.1.0 build:examples
+npm notice run vite build --config vite.react.config.ts && vite build --config vite.svelte.config.ts && vite build --config vite.vue.config.ts
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 329 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) N:/github/asrjs/speech-recognition/dist/runtime/media.js is dynamically imported by N:/github/asrjs/speech-recognition/dist/runtime/load.js, N:/github/asrjs/speech-recognition/dist/runtime/speech-controller.js but also statically imported by N:/github/asrjs/speech-recognition/dist/browser-media.js, N:/github/asrjs/speech-recognition/dist/runtime/browser-controller.js, N:/github/asrjs/speech-recognition/dist/runtime/capture.js, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/ort.js is dynamically imported by N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/probe.js, N:/github/asrjs/speech-recognition/dist/inference/ort/env.js but also statically imported by N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/ort.js, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist-suite/index.html                                                         0.44 kB │ gzip:     0.29 kB
+dist-suite/assets/ten-vad-worker-BuXpfewi.js                                  4.37 kB
+dist-suite/assets/ten_vad-BWj8dcPJ.js                                         5.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-400-normal-D127hM_v.woff2      10.59 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-600-normal-DQgPU_Cg.woff2      10.90 kB
+dist-suite/assets/plus-jakarta-sans-latin-400-normal-Dhut76fR.woff2          11.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-600-normal-DLTa1BUW.woff2          12.19 kB
+dist-suite/assets/ten_vad-DpmpZqYN.wasm                                     283.35 kB │ gzip:   201.27 kB
+dist-suite/assets/firered-vad-worker-BtZk-IUo.js                            432.14 kB
+dist-suite/assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm          25,749.87 kB │ gzip: 6,368.50 kB
+dist-suite/assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm              27,797.17 kB │ gzip: 6,576.65 kB
+dist-suite/assets/index-DOhjgV5B.css                                          2.58 kB │ gzip:     0.94 kB
+dist-suite/assets/execution-context-C-ZzUyLK.js                               0.70 kB │ gzip:     0.36 kB
+dist-suite/assets/probe-B2Oc-wKF.js                                           0.81 kB │ gzip:     0.47 kB
+dist-suite/assets/owned-session-DSzT3NfW.js                                   0.81 kB │ gzip:     0.48 kB
+dist-suite/assets/probe-DKGCKPcu.js                                           1.49 kB │ gzip:     0.76 kB
+dist-suite/assets/handles-BkmaMiQf.js                                        10.08 kB │ gzip:     2.74 kB
+dist-suite/assets/load-BQx5x06V.js                                           46.05 kB │ gzip:    13.01 kB
+dist-suite/assets/ort.webgpu.bundle.min-BpHmlznG.js                         115.38 kB │ gzip:    38.40 kB
+dist-suite/assets/browser-controller-BoLD51OX.js                            127.58 kB │ gzip:    32.96 kB
+dist-suite/assets/index-DbF2HJpO.js                                         305.82 kB │ gzip:    85.84 kB
+dist-suite/assets/ort.bundle.min-ecrgL_Xq.js                                410.30 kB │ gzip:   112.61 kB
+dist-suite/assets/builtins-fozBtMu2.js                                      531.79 kB │ gzip:   142.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.16s
+22:52:04 [vite-plugin-svelte] no Svelte config found at N:/github/asrjs/frameworks/examples/svelte - using default configuration.
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 409 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/ort.js is dynamically imported by N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/probe.js, N:/github/asrjs/speech-recognition/dist/inference/ort/env.js but also statically imported by N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/ort.js, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist-suite/index.html                                                         0.44 kB │ gzip:     0.29 kB
+dist-suite/assets/ten-vad-worker-BuXpfewi.js                                  4.37 kB
+dist-suite/assets/ten_vad-BWj8dcPJ.js                                         5.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-400-normal-D127hM_v.woff2      10.59 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-600-normal-DQgPU_Cg.woff2      10.90 kB
+dist-suite/assets/plus-jakarta-sans-latin-400-normal-Dhut76fR.woff2          11.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-600-normal-DLTa1BUW.woff2          12.19 kB
+dist-suite/assets/ten_vad-DpmpZqYN.wasm                                     283.35 kB │ gzip:   201.27 kB
+dist-suite/assets/firered-vad-worker-BPKHUCyO.js                            432.14 kB
+dist-suite/assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm          25,749.87 kB │ gzip: 6,368.50 kB
+dist-suite/assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm              27,797.17 kB │ gzip: 6,576.65 kB
+dist-suite/assets/index-hYq8CV0e.css                                          2.58 kB │ gzip:     0.94 kB
+dist-suite/assets/execution-context-BEUY1aZO.js                               0.70 kB │ gzip:     0.36 kB
+dist-suite/assets/probe-B2Oc-wKF.js                                           0.81 kB │ gzip:     0.47 kB
+dist-suite/assets/owned-session-BXLgwly1.js                                   0.81 kB │ gzip:     0.47 kB
+dist-suite/assets/probe-DKGCKPcu.js                                           1.49 kB │ gzip:     0.76 kB
+dist-suite/assets/media-eIKs9JJu.js                                           6.64 kB │ gzip:     2.59 kB
+dist-suite/assets/handles-poF_4oVI.js                                        10.08 kB │ gzip:     2.74 kB
+dist-suite/assets/load-DoF2_ylg.js                                           46.06 kB │ gzip:    13.02 kB
+dist-suite/assets/index-CUvHkNpF.js                                         114.14 kB │ gzip:    28.76 kB
+dist-suite/assets/ort.webgpu.bundle.min-D9RR7doI.js                         115.39 kB │ gzip:    38.40 kB
+dist-suite/assets/browser-controller-CzfLhbAe.js                            127.65 kB │ gzip:    33.00 kB
+dist-suite/assets/ort.bundle.min-RlZneYDI.js                                410.31 kB │ gzip:   112.61 kB
+dist-suite/assets/builtins-odtKKzzE.js                                      531.79 kB │ gzip:   142.36 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.98s
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 310 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/ort.js is dynamically imported by N:/github/asrjs/speech-recognition/dist/inference/backends/native-cpu/probe.js, N:/github/asrjs/speech-recognition/dist/inference/ort/env.js but also statically imported by N:/github/asrjs/speech-recognition/dist/models/nemo-tdt/ort.js, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist-suite/index.html                                                         0.44 kB │ gzip:     0.28 kB
+dist-suite/assets/ten-vad-worker-BuXpfewi.js                                  4.37 kB
+dist-suite/assets/ten_vad-BWj8dcPJ.js                                         5.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-400-normal-D127hM_v.woff2      10.59 kB
+dist-suite/assets/plus-jakarta-sans-latin-ext-600-normal-DQgPU_Cg.woff2      10.90 kB
+dist-suite/assets/plus-jakarta-sans-latin-400-normal-Dhut76fR.woff2          11.82 kB
+dist-suite/assets/plus-jakarta-sans-latin-600-normal-DLTa1BUW.woff2          12.19 kB
+dist-suite/assets/ten_vad-DpmpZqYN.wasm                                     283.35 kB │ gzip:   201.27 kB
+dist-suite/assets/firered-vad-worker-BSognVFo.js                            432.14 kB
+dist-suite/assets/ort-wasm-simd-threaded.asyncify-CsxMlmQ8.wasm          25,749.87 kB │ gzip: 6,368.50 kB
+dist-suite/assets/ort-wasm-simd-threaded.jsep-D-icqfN-.wasm              27,797.17 kB │ gzip: 6,576.65 kB
+dist-suite/assets/index-CacCoo6O.css                                          2.57 kB │ gzip:     0.94 kB
+dist-suite/assets/execution-context-D508hTz4.js                               0.70 kB │ gzip:     0.36 kB
+dist-suite/assets/probe-B2Oc-wKF.js                                           0.81 kB │ gzip:     0.47 kB
+dist-suite/assets/owned-session-D0QsqrZa.js                                   0.81 kB │ gzip:     0.47 kB
+dist-suite/assets/probe-DKGCKPcu.js                                           1.49 kB │ gzip:     0.76 kB
+dist-suite/assets/media-CwswvuIu.js                                           6.64 kB │ gzip:     2.59 kB
+dist-suite/assets/handles-BTy09FDO.js                                        10.08 kB │ gzip:     2.74 kB
+dist-suite/assets/load-pUbmosQ2.js                                           46.06 kB │ gzip:    13.02 kB
+dist-suite/assets/ort.webgpu.bundle.min-C9Njti1P.js                         115.38 kB │ gzip:    38.40 kB
+dist-suite/assets/browser-controller-BPcLXMtB.js                            127.64 kB │ gzip:    33.00 kB
+dist-suite/assets/index-lssuMFMD.js                                         142.64 kB │ gzip:    40.31 kB
+dist-suite/assets/ort.bundle.min-wdbOvoGs.js                                410.30 kB │ gzip:   112.61 kB
+dist-suite/assets/builtins-DaRY5XV2.js                                      531.79 kB │ gzip:   142.35 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.83s
+ASRJS suite assembled at N:\github\asrjs\frameworks\dist

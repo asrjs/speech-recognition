@@ -1,0 +1,46 @@
+{
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "manifestVersion": "1",
+  "status": "approved",
+  "profileId": "webgpu-fp16-wasm-int8-v1",
+  "encoderBackend": "webgpu",
+  "decoderBackend": "wasm",
+  "encoderQuant": "fp16",
+  "decoderQuant": "int8",
+  "jointBackend": "wasm",
+  "jointQuant": "int8",
+  "repoId": "ysdede/parakeet-tdt-0.6b-v3-onnx",
+  "revision": "f88260fa0777fe0868dda6df85d1a98f012a4a7a",
+  "encoderSha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+  "decoderSha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+  "configSha256": "562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a",
+  "vocabularySha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+  "artifacts": {
+    "encoder": {
+      "path": "encoder-model.fp16.onnx",
+      "sha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+      "sizeBytes": 1238960452
+    },
+    "decoderJoint": {
+      "path": "decoder_joint-model.int8.onnx",
+      "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+      "sizeBytes": 18202004
+    },
+    "config": {
+      "path": "config.json",
+      "sha256": "562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a",
+      "sizeBytes": 101
+    },
+    "vocabulary": {
+      "path": "vocab.txt",
+      "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+      "sizeBytes": 102132
+    }
+  },
+  "processor": {
+    "kind": "javascript",
+    "name": "nemo128"
+  },
+  "artifactSetId": "sha256:a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717+eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+  "evidence": "docs/reports/evidence/microphone-composition-2026-10-25/real-run-final/receipt.json"
+}

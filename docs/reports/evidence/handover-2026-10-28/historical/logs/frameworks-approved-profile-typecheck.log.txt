@@ -1,0 +1,6 @@
+npm notice run @asrjs/frameworks@0.1.0 typecheck
+npm notice run tsc -p tsconfig.tests.json --noEmit && tsc -p tsconfig.react-example.json --noEmit && svelte-check --workspace examples/svelte --tsconfig ./tsconfig.json && vue-tsc -p examples/vue/tsconfig.json --noEmit
+Loading svelte-check in workspace: n:\github\asrjs\frameworks\examples\svelte
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings

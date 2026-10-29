@@ -1,0 +1,210 @@
+{
+  "auditDate": "2026-10-28",
+  "scope": "Current Git/hash/receipt inspection; no fresh inference or regression suite run",
+  "repositories": [
+    {
+      "name": "speech-recognition",
+      "path": "N:\\github\\asrjs\\speech-recognition",
+      "branch": "feat/approved-model-profiles",
+      "head": "15f7583efb268a75d45f4499d6c421f803a24a2e",
+      "status": [
+        "M docs/PUBLIC_API_GUIDE.md",
+        " M docs/README.md",
+        " M src/io/handles.ts",
+        " M src/models/moonshine/types.ts",
+        " M src/models/qwen-asr/types.ts",
+        " M src/presets/catalog-data.generated.ts",
+        " M src/presets/descriptors-catalog.ts",
+        " M src/presets/descriptors.ts",
+        " M src/presets/moonshine-factory.ts",
+        " M src/presets/parakeet/catalog.ts",
+        " M src/presets/qwen3-asr-factory.ts",
+        " M src/runtime/builtins.ts",
+        " M src/runtime/catalog.ts",
+        " M tests/builtins-loader.test.ts",
+        " M tests/catalog-preset-resolution.test.ts",
+        " M tests/io-handles.test.ts",
+        " M tests/parakeet-catalog.test.ts",
+        " M tests/preset-descriptors.test.ts",
+        " M tests/root-api-compatibility.test.ts",
+        "?? docs/APPROVED_MODEL_PROFILES.md",
+        "?? docs/reports/hf-publication-inventory-2026-10-25.md",
+        "?? src/presets/published-bundles.ts",
+        "?? tests/published-bundle-factories.test.ts",
+        "?? tools/data/results/hf-publication-20261025/",
+        "?? tools/scripts/export-approved-model-manifest.mjs"
+      ],
+      "recent": [
+        "15f7583e 2026-10-25T21:58:31+03:00 docs(handoff): close week with verified merge and CI receipts",
+        "12dd390a 2026-10-25T21:53:32+03:00 Merge pull request #239 from asrjs/checkpoint/2026-w43-library",
+        "abf5d6dd 2026-10-25T21:46:37+03:00 docs: document library integrations and week close evidence",
+        "33d6af0e 2026-10-25T21:46:35+03:00 fix(tooling): validate graph exports and preserve diagnostic failures",
+        "06e6f1d6 2026-10-25T21:46:33+03:00 feat(runtime): unify model loading file and contextual microphone flows",
+        "e534fb51 2026-10-23T00:26:35+03:00 Merge pull request #236 from asrjs/fix/pr-cleanup-ready"
+      ]
+    },
+    {
+      "name": "demos",
+      "path": "N:\\github\\asrjs\\demos",
+      "branch": "feat/approved-model-profiles",
+      "head": "5cbdcb4543b86faa734db4b1d48c101f5957ce39",
+      "status": [
+        "M .gitignore",
+        " M apps/benchmark/package.json",
+        " M apps/playground/package.json",
+        " M apps/realtime/package.json",
+        " M apps/realtime/src/App.jsx",
+        " M apps/realtime/src/app/transcriptionFlows.test.js",
+        " M apps/showcase/package.json",
+        " M package-lock.json",
+        " M packages/demo-runtime/src/model-loader.js",
+        " M packages/demo-runtime/src/model-loading.js",
+        " M packages/demo-runtime/src/model-loading.test.js",
+        " M vendor/README.md",
+        "?? vendor/asrjs-speech-recognition-0.2.0-approved-profiles-v3-20261025.provenance.json",
+        "?? vendor/asrjs-speech-recognition-0.2.0-approved-profiles-v3-20261025.tgz"
+      ],
+      "recent": [
+        "5cbdcb4 2026-10-25T21:55:29+03:00 Merge pull request #2 from asrjs/checkpoint/2026-w43-demos",
+        "3d0a211 2026-10-25T21:55:30+03:00 ci: test and build the four demo apps on pull requests",
+        "97eab11 2026-10-25T21:48:58+03:00 docs(vendor): match SDK integrity to provenance receipt",
+        "e53edf7 2026-10-25T21:47:56+03:00 feat(demos): standardize shared loading capture and theme across apps",
+        "ce0cf1c 2026-10-19T00:37:28+03:00 docs(logbook): record merged checkpoints and remaining CI failure",
+        "59516bc 2026-10-19T00:33:24+03:00 Merge pull request #1 from asrjs/feat/standard-suite-checkpoint-2026-10-19"
+      ]
+    },
+    {
+      "name": "frameworks",
+      "path": "N:\\github\\asrjs\\frameworks",
+      "branch": "framework-examples",
+      "head": "008d11a98658d8c7e057f1a3c642669f5236923b",
+      "status": [],
+      "recent": [
+        "008d11a 2026-10-25T21:49:09+03:00 docs: identify compatible sibling checkpoint branches",
+        "e242be6 2026-10-25T21:46:22+03:00 feat(frameworks): add React Svelte and Vue controller bindings and examples"
+      ]
+    }
+  ],
+  "currentTreeVsHistoricalSdkPackage": {
+    "sourceFilesSha256": {
+      "checked": 431,
+      "mismatches": []
+    },
+    "distFilesSha256": {
+      "checked": 1715,
+      "mismatches": []
+    },
+    "installedDist": {
+      "checked": 1715,
+      "mismatches": []
+    },
+    "archive": {
+      "path": "N:\\github\\asrjs\\demos\\vendor\\asrjs-speech-recognition-0.2.0-approved-profiles-v3-20261025.tgz",
+      "actualSha256": "43d188aba6088c2146c1bc34b76389615195e33799b2bd0370431b6b169a61bb",
+      "expectedSha256": "43d188aba6088c2146c1bc34b76389615195e33799b2bd0370431b6b169a61bb"
+    }
+  },
+  "historicalRealWeightFileFlows": [
+    {
+      "app": "showcase",
+      "status": "PASS_FILE_FLOW",
+      "transcriptStatus": "EXACT",
+      "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "requestedEncoderQuant": null,
+      "requestedDecoderQuant": null,
+      "actualEncoderQuant": "fp16",
+      "actualDecoderQuant": "int8",
+      "actualGpuDispatches": {
+        "load": 1281,
+        "file": 1276,
+        "mic": 0,
+        "stream": 0
+      },
+      "artifactReplay": [
+        {
+          "requestedUrl": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/f88260fa0777fe0868dda6df85d1a98f012a4a7a/encoder-model.fp16.onnx",
+          "localPath": "/model/encoder-model.fp16.onnx"
+        },
+        {
+          "requestedUrl": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/f88260fa0777fe0868dda6df85d1a98f012a4a7a/decoder_joint-model.int8.onnx",
+          "localPath": "/model/decoder_joint-model.int8.onnx"
+        },
+        {
+          "requestedUrl": "https://huggingface.co/ysdede/parakeet-tdt-0.6b-v3-onnx/resolve/f88260fa0777fe0868dda6df85d1a98f012a4a7a/vocab.txt",
+          "localPath": "/model/vocab.txt"
+        }
+      ],
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+      "hubWeightDownloadTransport": "UNVERIFIED",
+      "physicalMicrophone": "UNVERIFIED",
+      "finishedAt": "2026-10-25T22:51:46+0300"
+    },
+    {
+      "app": "playground",
+      "status": "PASS_FILE_FLOW",
+      "transcriptStatus": "EXACT",
+      "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "requestedEncoderQuant": null,
+      "requestedDecoderQuant": null,
+      "actualEncoderQuant": null,
+      "actualDecoderQuant": null,
+      "actualGpuDispatches": {
+        "load": 0,
+        "file": 1281,
+        "mic": 0,
+        "stream": 0
+      },
+      "artifactReplay": [],
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+      "hubWeightDownloadTransport": "UNVERIFIED",
+      "physicalMicrophone": "UNVERIFIED",
+      "finishedAt": "2026-10-25T22:52:47+0300"
+    },
+    {
+      "app": "benchmark",
+      "status": "PASS_FILE_FLOW",
+      "transcriptStatus": "EXACT",
+      "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "requestedEncoderQuant": null,
+      "requestedDecoderQuant": null,
+      "actualEncoderQuant": "fp16",
+      "actualDecoderQuant": "int8",
+      "actualGpuDispatches": {
+        "load": 0,
+        "file": 1281,
+        "mic": 0,
+        "stream": 0
+      },
+      "artifactReplay": [],
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+      "hubWeightDownloadTransport": "UNVERIFIED",
+      "physicalMicrophone": "UNVERIFIED",
+      "finishedAt": "2026-10-25T22:53:02+0300"
+    },
+    {
+      "app": "realtime",
+      "status": "PASS_FILE_FLOW",
+      "transcriptStatus": "EXACT",
+      "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "requestedEncoderQuant": null,
+      "requestedDecoderQuant": null,
+      "actualEncoderQuant": "fp16",
+      "actualDecoderQuant": "int8",
+      "actualGpuDispatches": {
+        "load": 1281,
+        "file": 1276,
+        "mic": 0,
+        "stream": 0
+      },
+      "artifactReplay": [],
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+      "hubWeightDownloadTransport": "UNVERIFIED",
+      "physicalMicrophone": "UNVERIFIED",
+      "finishedAt": "2026-10-25T22:53:15+0300"
+    }
+  ]
+}

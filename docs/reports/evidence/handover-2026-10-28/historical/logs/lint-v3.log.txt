@@ -1,0 +1,52 @@
+npm notice run @asrjs/speech-recognition@0.2.0 lint
+npm notice run node ./node_modules/eslint/bin/eslint.js "src/**/*.ts" "tests/**/*.ts"
+
+N:\github\asrjs\speech-recognition\src\models\lasr-ctc\executor.ts
+  892:1  warning  File has too many lines (815). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\models\nemo-rnnt\executor.ts
+  891:1  warning  File has too many lines (1014). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\models\nemo-tdt\executor.ts
+  877:1  warning  File has too many lines (1258). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\models\nemotron-rnnt\executor.ts
+  860:1  warning  File has too many lines (1186). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\models\qwen-asr\executor.ts
+  863:1  warning  File has too many lines (1302). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\models\whisper-seq2seq\executor.ts
+   93:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  942:1  warning  File has too many lines (4161). Maximum allowed is 800                                                 max-lines
+
+N:\github\asrjs\speech-recognition\src\presets\descriptors-catalog.ts
+  818:1  warning  File has too many lines (1061). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\presets\parakeet\compat.ts
+  914:1  warning  File has too many lines (907). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\runtime\browser-controller.ts
+  862:1  warning  File has too many lines (920). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\runtime\browser-waveform.ts
+  864:1  warning  File has too many lines (954). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\runtime\load.ts
+  925:1  warning  File has too many lines (1103). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\src\runtime\streaming-detector.ts
+  865:1  warning  File has too many lines (1176). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\tests\browser-controller.test.ts
+  854:1  warning  File has too many lines (811). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\tests\high-level-pipeline-lifecycle.test.ts
+  837:1  warning  File has too many lines (1256). Maximum allowed is 800  max-lines
+
+N:\github\asrjs\speech-recognition\tests\nemo-tdt-executor.test.ts
+  886:1  warning  File has too many lines (802). Maximum allowed is 800  max-lines
+
+✖ 16 problems (0 errors, 16 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

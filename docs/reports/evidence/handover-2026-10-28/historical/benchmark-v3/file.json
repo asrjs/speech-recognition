@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "app": "benchmark",
+  "modelId": "parakeet-tdt-0.6b-v3",
+  "source": "huggingface",
+  "descriptorSources": [],
+  "sourceSelectionStatus": "UI",
+  "flow": "file",
+  "requestedBackend": "webgpu-hybrid",
+  "requestedEncoderBackend": null,
+  "requestedDecoderBackend": null,
+  "requestedEncoderQuant": null,
+  "requestedDecoderQuant": null,
+  "requestedComponentBackends": [],
+  "modelDir": null,
+  "fixture": "N:\\github\\asrjs\\speech-recognition\\tests\\fixtures\\jfk2.en.wav",
+  "fixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "expectedFixtureSha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "fixtureBytes": 352078,
+  "oracle": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "status": "PASS_FILE_FLOW",
+  "loadStatus": "EXECUTED",
+  "runtimeStatus": "EXECUTED",
+  "transcriptStatus": "EXACT",
+  "streamingStatus": "NOT_REQUESTED",
+  "pageErrors": [],
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:52:59.071454 [W:onnxruntime:, session_state.cc:1398 VerifyEachNodeIsAssignedToAnEp] Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.\u001b[m"
+    },
+    {
+      "type": "error",
+      "text": "\u001b[0;93m2026-10-25 22:52:59.073499 [W:onnxruntime:, session_state.cc:1400 VerifyEachNodeIsAssignedToAnEp] Rerunning with verbose output on a non-minimal build will show node assignments.\u001b[m"
+    }
+  ],
+  "consoleErrors": [],
+  "artifactRequests": [],
+  "actualGpuDispatches": {
+    "load": 0,
+    "file": 1281,
+    "mic": 0,
+    "stream": 0
+  },
+  "physicalMicrophone": "UNVERIFIED",
+  "startedAt": "2026-10-25T22:52:48+0300",
+  "weightTransport": "LOCAL_REPLAY_OF_HASH_VERIFIED_HF_ARTIFACTS",
+  "hubWeightDownloadTransport": "UNVERIFIED",
+  "testBrowserProfile": "N:\\github\\asrjs\\speech-recognition\\tmp\\approved-model-profiles\\chrome-profile-v3",
+  "actualComponentBackends": [],
+  "actualEncoderQuant": "fp16",
+  "actualDecoderQuant": "int8",
+  "actualBackend": "webgpu-hybrid",
+  "profilingSelection": {
+    "controlCount": 0,
+    "enabled": null
+  },
+  "activeStage": "file-flow-running",
+  "loadPageText": "A\nASRJS\nBenchmark\n◐\nAppearance\nTranscribe\nPlayground\nLive\nBenchmark\nnvidia / blackwell\nModel ready\n0 valid runs\n⚙ Benchmark Setup\n📊 Overview & Sweet-Spot\n📈 Interactive Charts\n⚖ Compare & Pivot\n🗂 Run Data & Export\n1. MODEL & RUNTIME\nParakeet Preset\nHuggingFace Hub\nLocal Folder\nModel\nParakeet TDT 0.6B v2 (English)\nParakeet TDT 0.6B v3 (Multilingual)\nParakeet Realtime EOU 120M v1 (English)\nOrukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)\nCanary 180M Flash (Multilingual AED)\nCanary 1B (Multilingual AED)\nCanary 1B v2 (Multilingual AED)\nGoogle MedASR (Medical English)\nNemotron 3.5 ASR Streaming 0.6B\nWav2Vec2 Base 960h\nParakeet HF CTC 110M (English)\nOmnilingual ASR CTC 300M (1,600+ languages)\nGigaAM Multilingual CTC\nGigaAM v3 E2E RNN-T (Russian)\nSenseVoice Small\nX-ASR zh-en 160 ms Streaming\nWav2Vec2 XLS-R 300M (Turkish Common Voice v7)\nMoonshine Tiny (English streaming-capable AED)\nMoonshine Tiny Streaming\nQwen3-ASR 0.6B (multilingual, language-tagged)\nWhisper Base\nWhisper Large v3\nWhisper Large v3 Turbo (4-graph ONNX)\nExecution Backend\nWebGPU Hybrid (WebGPU enc + WASM dec)\nWebGPU Pure\nWASM Pure (CPU)\nEncoder Quant\nfp16\nint8\nfp32\nDecoder Quant\nfp16\nint8\nfp32\nPreprocessor\nJS (Pure WebMel)\nONNX (nemo128.onnx)\nWASM Threads\nLoading Model...\n\nparakeet-tdt-0.6b-v3 is ready for transcription.\n\nparakeet-tdt-0.6b-v3 · webgpu-hybrid · e:fp16 d:int8\n\n2. AUDIO SOURCE & SAMPLING PLAN\nHuggingFace Dataset\nLocal Duration Catalog\nHuggingFace Dataset ID\nConfig\ndefault\nSplit\ntest\ntrain\nvalidation\nOffset\nSamples\nRefresh Splits\nPreview Samples (0)\n\nReady: ysdede/parrot-radiology-asr-en (default/test)\n\n3. BENCHMARK EXECUTION & SNAPSHOTS\nRepeats\nWarmups\nRandom Seed\nSeeded Random Sampling\nBoost Repeats for Long Audio (≥30s → 2x)\n▶ Start Benchmark\nStop\nSave Snapshot\nExport JSON\nExport CSV\nClear Runs\n\nReady\n\nHardware & Lifecycle Telemetry\nWEBGPU ADAPTER\nnvidia / blackwell\nCPU CONCURRENCY\n12 logical cores\nDEVICE MEMORY\n32 GiB\nLAST MODEL LOAD TIME\n-\nLAST LOAD HEAP DELTA\n-\nASRJS\nLibrary 0.2.0 · npm-package",
+  "actualModelId": "parakeet-tdt-0.6b-v3",
+  "artifactReplay": [],
+  "benchmarkRun": {
+    "id": "batch-1792957981862-0-0",
+    "batchId": "batch-1792957981862",
+    "startedAt": "2026-10-25T19:53:01.901Z",
+    "finishedAt": "2026-10-25T19:53:02.409Z",
+    "sampleKey": "jfk2.en.wav (11.0s)",
+    "sampleOrder": 1,
+    "rowIndex": 0,
+    "repeatIndex": 1,
+    "audioDurationSec": 11,
+    "transcription": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+    "referenceText": "",
+    "exactMatchToFirst": true,
+    "similarityToFirst": 1,
+    "wer": null,
+    "cer": null,
+    "referenceSimilarity": null,
+    "metrics": {
+      "preprocess_ms": 25.48,
+      "encode_ms": 339.455,
+      "decode_ms": 134.41,
+      "tokenize_ms": 1.045,
+      "total_ms": 501.485,
+      "rtf": 0.04558954545454545,
+      "rtfx": 21.934853485149105
+    },
+    "rtfx": 21.934853485149105,
+    "modelKey": "parakeet-tdt-0.6b-v3",
+    "backend": "webgpu-hybrid",
+    "encoderQuant": "fp16",
+    "decoderQuant": "int8",
+    "preprocessorBackend": "js",
+    "error": ""
+  },
+  "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+  "verificationErrors": [],
+  "browserVersion": "Chrome/155.0.8059.86",
+  "finishedAt": "2026-10-25T22:53:02+0300"
+}

@@ -1,0 +1,12 @@
+
+ RUN  v4.0.18 N:/github/asrjs/speech-recognition
+
+ ✓ tests/parakeet-catalog.test.ts (6 tests) 5ms
+ ✓ tests/root-api-compatibility.test.ts (2 tests) 5ms
+ ✓ tests/browser-local-models.test.ts (16 tests) 22ms
+
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+   Start at  22:38:43
+   Duration  1.83s (transform 1.74s, setup 0ms, import 2.21s, tests 32ms, environment 0ms)
+
