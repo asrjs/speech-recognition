@@ -323,6 +323,11 @@ import {
 } from '@asrjs/speech-recognition/io';
 ```
 
+Recoverable library warnings, such as cache fallbacks, Hugging Face listing
+failures and best-effort session release, go to `console.warn` by default.
+Route them to your logger with `setSpeechDiagnosticsLogger(logger)`, or pass
+`null` to silence them.
+
 ### `@asrjs/speech-recognition/inference`
 
 Use the inference entry for shared descriptors, generic math, and shared streaming primitives:

@@ -1,3 +1,4 @@
+import { reportSpeechWarning } from '../../io/diagnostics.js';
 import type { Wav2Vec2ArtifactSource, Wav2Vec2DirectArtifacts } from './types.js';
 import {
   honorAbortAfterCreate,
@@ -271,7 +272,7 @@ export async function createOrtSession(
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseOrtSession(session: OrtSessionLike | undefined): void {
   void releaseUnifiedOrtSession(session).catch((error: unknown) => {
-    console.warn('Wav2Vec2 best-effort session release failed:', error);
+    reportSpeechWarning('Wav2Vec2 best-effort session release failed.', { error });
   });
 }
 

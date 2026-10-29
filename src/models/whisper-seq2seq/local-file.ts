@@ -1,3 +1,4 @@
+import { reportSpeechWarning } from '../../io/diagnostics.js';
 /**
  * Self-exported 4-graph Whisper local-file loader.
  *
@@ -128,18 +129,18 @@ export function loadSplitGraphLocalModel(
     const isNotRecommended = (key: string) => (validation[key] ?? runtime[key]) === 'not_recommended';
 
     if (isNotRecommended('browserWebGpu') || isNotRecommended('browserWasm')) {
-      console.warn(
+      reportSpeechWarning(
         `[whisper-seq2seq] Variant "${variant}" is not recommended for browser/WebGPU. ${notes}`,
       );
     } else if (isPending('browserWebGpu') || isPending('webGpuSmokeDecode')) {
-      console.warn(
+      reportSpeechWarning(
         `[whisper-seq2seq] Variant "${variant}" is native-validated but browser/WebGPU validation is pending. ${notes}`,
       );
     } else {
       // Legacy status check
       const status = String(compat[variant]?.status ?? '');
       if (status === 'requires_validation' || status === 'requires_export_time_fp16') {
-        console.warn(
+        reportSpeechWarning(
           `[whisper-seq2seq] Variant "${variant}": ${status}. ${notes}`,
         );
       }

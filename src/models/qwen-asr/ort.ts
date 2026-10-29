@@ -1,3 +1,4 @@
+import { reportSpeechWarning } from '../../io/diagnostics.js';
 import {
   honorAbortAfterCreate,
   withNativeAbortSignalOption,
@@ -235,7 +236,7 @@ export async function initQwenOrt(
 /** Fire-and-forget ORT session teardown. onnxruntime-web `release()` frees GPU/WASM heaps. */
 export function releaseQwenOrtSession(session: QwenOrtSessionLike | undefined): void {
   void releaseUnifiedOrtSession(session as any).catch((error: unknown) => {
-    console.warn('Qwen best-effort session release failed:', error);
+    reportSpeechWarning('Qwen best-effort session release failed.', { error });
   });
 }
 
