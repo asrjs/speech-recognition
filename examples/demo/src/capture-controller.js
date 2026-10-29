@@ -47,7 +47,7 @@ export function observeCaptureWorkers(expectedUrl) {
 }
 
 export async function runCapturedController({ receipt, transcribe, onCapturedPcm, micMode = 'manual',
-  workerUrl, library, workerObserver }) {
+  workerUrl, library, workerObserver, tenVadAssetBaseUrl }) {
   require(micMode === 'manual' || micMode === 'speech-detect', 'Unsupported capture mode');
   const { createBrowserRealtimeMicrophoneController, startMicrophoneCapture } =
     library ?? await import('../../../src/browser.ts');
@@ -67,7 +67,8 @@ export async function runCapturedController({ receipt, transcribe, onCapturedPcm
     micMode,
     ...(speechDetect ? {
       config: { vadBackend: 'ten-vad', tenVadEnabled: true, gateMode: 'rough-only' },
-      tenVadConfig: { fallbackToBundledAssets: false },
+      // TEN-VAD is not bundled with the package; the caller supplies its files.
+      tenVadConfig: { assetBaseUrl: tenVadAssetBaseUrl },
       ...(workerUrl ? { tenVadOptions: { workerFactory() {
         // Supported injection: a real Vite-transformed TS worker, not a mock.
         const worker = new Worker(workerUrl, { type: 'module' });

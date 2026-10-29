@@ -128,6 +128,8 @@ async function main() {
     assert.ok(!isTypeScriptSource, `source leaked into npm pack: ${path}`);
     assert.ok(!path.startsWith('tests/'), `tests leaked into npm pack: ${path}`);
     assert.ok(!path.startsWith('docs/'), `docs leaked into npm pack: ${path}`);
+    // TEN-VAD's license restricts redistribution in developer libraries.
+    assert.ok(!/(^|\/)ten_vad\.(js|wasm)$/.test(path), `TEN-VAD binary leaked into npm pack: ${path}`);
   }
 
   const exportTargets = collectExportTargets(packageJson.exports);
