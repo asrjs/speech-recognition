@@ -1,10 +1,5 @@
 import { AudioRingBuffer } from './realtime.js';
-import {
-  AssetLoadAbortedError,
-  isAssetLoadAbortedError,
-  isDomAbortError,
-  subscribeToAbortSignal,
-} from '../io/abort.js';
+import { subscribeToAbortSignal } from '../io/abort.js';
 
 import {
   durationMsToAlignedFrameCount,
@@ -16,8 +11,6 @@ import {
 } from './rough-gate-config.js';
 import {
   RoughSpeechGate,
-  type RoughSpeechChunkSummary,
-  type RoughSpeechTimelinePoint,
   type RoughSpeechGateWindowResult,
 } from './rough-speech-gate.js';
 import {
@@ -44,7 +37,39 @@ import {
   type StreamingVadBackend,
   type StreamingProfileId,
 } from './streaming-config.js';
-import { amplitudeToDbfs } from './noise-floor.js';
+import type {
+  StreamingTenVadStatus,
+  StreamingTenVadLike,
+  StreamingDetectorSegment,
+  StreamingSpeechDetectorSnapshot,
+  StreamingSpeechDetectorEvent,
+  StreamingSpeechDetectorOptions,
+} from './streaming-detector-types.js';
+import {
+  buildAcceptanceInfo,
+  buildDetectorWarnings,
+  buildForegroundSnapshot,
+  buildRoughSnapshot,
+  cloneEntries,
+  createDisabledTenVadStatus,
+  getStreamingVadBackendName,
+} from './streaming-detector-snapshot.js';
+import {
+  buildForegroundFilterConfig,
+  buildRoughGateConfig,
+  buildTenVadConfig,
+  getConfigOverrides,
+  createStreamingVadInitAbortedError,
+  isStreamingVadInitAborted,
+  mergeConfigOverrides,
+  resolveEffectiveGateMode,
+} from './streaming-detector-gate-config.js';
+import {
+  computeFinalizedSegmentBounds,
+  isQuietChunk,
+  type ActiveSegmentState,
+  type FinalizedSegmentBounds,
+} from './streaming-segment-bounds.js';
 
 export {
   STREAMING_GATE_MODES,
@@ -70,194 +95,7 @@ export type {
   StreamingVadBackend,
   StreamingProfileId,
 };
-
-export interface StreamingTenVadStatus {
-  readonly state: 'idle' | 'initializing' | 'ready' | 'degraded' | 'disabled';
-  readonly error: string | null;
-  readonly probability: number;
-  readonly speaking: boolean;
-  readonly threshold: number;
-}
-
-export interface StreamingTenVadRecentHop {
-  readonly startFrame: number;
-  readonly endFrame: number;
-  readonly probability: number;
-  readonly rawSpeaking?: boolean;
-  readonly speaking: boolean;
-  readonly createdAt?: number;
-}
-
-export interface StreamingTenVadWindowSummary {
-  readonly totalHops: number;
-  readonly speechHopCount: number;
-  readonly nonSpeechHopCount: number;
-  readonly maxConsecutiveSpeech: number;
-  readonly maxProbability: number;
-  readonly recent: readonly StreamingTenVadRecentHop[];
-}
-
-export interface StreamingTenVadResultEvent {
-  readonly type: 'result';
-  readonly payload: unknown;
-}
-
-export interface StreamingTenVadLike {
-  subscribe(listener: (event: StreamingTenVadResultEvent) => void): () => void;
-  init(signal?: { readonly aborted: boolean } | null): Promise<void>;
-  reset(): Promise<void>;
-  dispose(): Promise<void>;
-  updateConfig(config?: Record<string, unknown>): void;
-  process(samples: Float32Array, globalSampleOffset: number): boolean;
-  getStatus(): StreamingTenVadStatus;
-  findFirstSpeechFrame(startFrame: number, endFrame: number): number | null;
-  hasRecentSpeech(endFrame: number, windowMs: number, sampleRate: number): boolean;
-  hasRecentSilence(endFrame: number, windowMs: number, sampleRate: number): boolean;
-  getWindowSummary(
-    endFrame: number,
-    windowMs: number,
-    sampleRate: number,
-  ): StreamingTenVadWindowSummary;
-}
-
-export interface StreamingDetectorSegment {
-  readonly startFrame: number;
-  readonly endFrame: number;
-  readonly sampleRate: number;
-  readonly reason: string;
-  readonly metadata: {
-    readonly profileId: string;
-    readonly rough: RoughSpeechGateWindowResult | null;
-    readonly tenVad: StreamingTenVadStatus;
-    readonly filter: SegmentForegroundFilterResult | null;
-    readonly logicalStartFrame: number;
-    readonly logicalEndFrame: number;
-    readonly source: 'ten-vad' | 'rough-fallback';
-  };
-  readPcm(): Float32Array;
-}
-
-export interface StreamingSpeechDetectorSnapshot {
-  readonly state: 'idle' | 'listening' | 'candidate' | 'speaking';
-  readonly sampleRate: number;
-  readonly profileId: string;
-  readonly config: StreamingDetectorConfig;
-  readonly waveform: ReturnType<AudioRingBuffer['getMinMaxPairs']>;
-  readonly activeSegment: { readonly startFrame: number; readonly endFrame: number } | null;
-  readonly pendingSegmentStartFrame: number | null;
-  readonly recentSegments: readonly StreamingDetectorSegment[];
-  readonly recentDecisions: ReadonlyArray<{
-    readonly id: string;
-    readonly at: string;
-    readonly message: string;
-    readonly meta: Record<string, unknown>;
-  }>;
-  readonly acceptance: Record<string, unknown> | null;
-  readonly gate: {
-    readonly requestedMode: StreamingGateMode;
-    readonly effectiveMode: StreamingGateMode;
-    readonly vadBackend: StreamingVadBackend;
-    readonly tenVadReady: boolean;
-  };
-  readonly rough: Record<string, unknown> & {
-    readonly recent?: readonly RoughSpeechChunkSummary[];
-    readonly timeline?: readonly RoughSpeechTimelinePoint[];
-  };
-  readonly foreground: {
-    readonly enabled: boolean;
-    readonly noiseFloor: number;
-    readonly noiseFloorDbfs: number;
-    readonly energyThreshold: number;
-    readonly energyThresholdDbfs: number;
-    readonly minSpeechDurationMs: number;
-    readonly minEnergyPerSecond: number;
-    readonly minEnergyIntegral: number;
-    readonly adaptiveEnergyThresholdsEnabled: boolean;
-    readonly activeResult: Record<string, unknown> | null;
-    readonly lastResult: Record<string, unknown> | null;
-  };
-  readonly tenVad: StreamingTenVadStatus;
-  readonly warnings: readonly string[];
-  readonly error: string | null;
-}
-
-export type StreamingSpeechDetectorEvent =
-  | { readonly type: 'metrics'; readonly payload: StreamingSpeechDetectorSnapshot }
-  | {
-      readonly type: 'speech-start';
-      readonly payload: { readonly startFrame: number; readonly sampleRate: number };
-    }
-  | {
-      readonly type: 'speech-update';
-      readonly payload: {
-        readonly startFrame: number;
-        readonly endFrame: number;
-        readonly sampleRate: number;
-      };
-    }
-  | {
-      readonly type: 'speech-end';
-      readonly payload: {
-        readonly startFrame: number;
-        readonly endFrame: number;
-        readonly sampleRate: number;
-      };
-    }
-  | { readonly type: 'segment-ready'; readonly payload: StreamingDetectorSegment }
-  | { readonly type: 'error'; readonly payload: Error };
-
-interface ActiveSegmentState {
-  readonly startFrame: number;
-  readonly lastFrame: number;
-  readonly source: 'ten-vad' | 'rough-fallback';
-}
-
-interface FinalizedSegmentBounds {
-  readonly logicalStartFrame: number;
-  readonly logicalEndFrame: number;
-  readonly extractedStartFrame: number;
-  readonly extractedEndFrame: number;
-}
-
-export interface StreamingSpeechDetectorOptions {
-  readonly profileId?: string;
-  readonly config?: StreamingDetectorConfigOverrides;
-  readonly isRealtimeEouModel?: boolean;
-  readonly tenVadFactory?: (
-    config: Record<string, unknown>,
-    options?: unknown,
-  ) => StreamingTenVadLike;
-  readonly tenVadOptions?: unknown;
-  readonly signal?: { readonly aborted: boolean } | null;
-}
-
-function createStreamingVadInitAbortedError(): AssetLoadAbortedError {
-  return new AssetLoadAbortedError('streaming-vad-init');
-}
-
-function isStreamingVadInitAborted(
-  error: unknown,
-  signal?: { readonly aborted: boolean } | null,
-): boolean {
-  return isAssetLoadAbortedError(error) || isDomAbortError(error) || Boolean(signal?.aborted);
-}
-
-function cloneEntries<T extends Record<string, unknown>>(entries: readonly T[]): T[] {
-  return entries.map((entry) => ({ ...entry }));
-}
-
-function createDisabledTenVadStatus(
-  config: StreamingDetectorConfig,
-  error: Error | null,
-): StreamingTenVadStatus {
-  return {
-    state: config.tenVadEnabled ? 'idle' : 'disabled',
-    error: error?.message ?? null,
-    probability: 0,
-    speaking: false,
-    threshold: config.tenVadThreshold,
-  };
-}
+export type * from './streaming-detector-types.js';
 
 export class StreamingSpeechDetector {
   private readonly createTenVad;
@@ -294,9 +132,7 @@ export class StreamingSpeechDetector {
   private startCancelled = false;
 
   private getVadBackendName(): string {
-    return this.config.vadBackend === STREAMING_VAD_BACKENDS.TEN_VAD
-      ? 'TEN-VAD'
-      : 'FireRed VAD';
+    return getStreamingVadBackendName(this.config);
   }
 
   constructor(options: StreamingSpeechDetectorOptions = {}) {
@@ -326,68 +162,15 @@ export class StreamingSpeechDetector {
   }
 
   private buildRoughGateConfig(): RoughSpeechGateConfig {
-    return {
-      sampleRate: this.sampleRate,
-      analysisWindowMs: this.config.analysisWindowMs,
-      energySmoothingWindows: this.config.energySmoothingWindows,
-      energyThreshold: this.config.energyThreshold,
-      minSpeechLevelDbfs: this.config.minSpeechLevelDbfs,
-      useSnrGate: this.config.useSnrGate,
-      snrThreshold: this.config.snrThreshold,
-      minSnrThreshold: this.config.minSnrThreshold,
-      energyRiseThreshold: this.config.energyRiseThreshold,
-      maxOnsetLookbackChunks: this.config.maxOnsetLookbackChunks,
-      defaultOnsetLookbackChunks: this.config.defaultOnsetLookbackChunks,
-      maxHistoryChunks: Math.max(
-        this.config.maxHistoryChunks,
-        Math.ceil(this.config.ringBufferDurationMs / Math.max(1, this.config.analysisWindowMs)) + 2,
-      ),
-      minSpeechDurationMs: this.config.minSpeechDurationMs,
-      minSilenceDurationMs: this.config.minSilenceDurationMs,
-      initialNoiseFloor: this.config.initialNoiseFloor,
-      fastAdaptationRate: this.config.fastAdaptationRate,
-      slowAdaptationRate: this.config.slowAdaptationRate,
-      minBackgroundDurationSec: this.config.minBackgroundDurationSec,
-      levelWindowMs: this.config.levelWindowMs,
-    };
+    return buildRoughGateConfig(this.config, this.sampleRate);
   }
 
   private buildTenVadConfig(): Record<string, unknown> {
-    return {
-      vadBackend: this.config.vadBackend,
-      sampleRate: this.sampleRate,
-      hopSize: resolveStreamingTimelineChunkFrames(
-        this.sampleRate,
-        this.config.vadHopDurationMs,
-      ),
-      threshold: this.config.tenVadThreshold,
-      confirmationWindowMs: this.config.tenVadConfirmationWindowMs,
-      hangoverMs: this.config.tenVadHangoverMs,
-      minSpeechDurationMs: this.config.tenVadMinSpeechDurationMs,
-      minSilenceDurationMs: this.config.tenVadMinSilenceDurationMs,
-      speechPaddingMs: this.config.tenVadSpeechPaddingMs,
-    };
+    return buildTenVadConfig(this.config, this.sampleRate);
   }
 
   private buildForegroundFilterConfig(): SegmentForegroundFilterConfig {
-    const minSpeechDurationMs = this.continuationAfterMaxDuration
-      ? Math.min(64, this.config.minSpeechDurationMs)
-      : this.config.minSpeechDurationMs;
-    const factor = this.continuationAfterMaxDuration
-      ? minSpeechDurationMs / Math.max(1, this.config.minSpeechDurationMs)
-      : 1;
-
-    return {
-      foregroundFilterEnabled: this.config.foregroundFilterEnabled,
-      minSpeechDurationMs,
-      minEnergyPerSecond: this.config.minEnergyPerSecond,
-      minEnergyIntegral: this.config.minEnergyIntegral * factor,
-      useAdaptiveEnergyThresholds: this.config.useAdaptiveEnergyThresholds,
-      adaptiveEnergyIntegralFactor: this.config.adaptiveEnergyIntegralFactor * factor,
-      adaptiveEnergyPerSecondFactor: this.config.adaptiveEnergyPerSecondFactor,
-      minAdaptiveEnergyIntegral: this.config.minAdaptiveEnergyIntegral * factor,
-      minAdaptiveEnergyPerSecond: this.config.minAdaptiveEnergyPerSecond,
-    };
+    return buildForegroundFilterConfig(this.config, this.continuationAfterMaxDuration);
   }
 
   private subscribeTenVad(tenVad: StreamingTenVadLike | null): (() => void) | null {
@@ -422,39 +205,11 @@ export class StreamingSpeechDetector {
   }
 
   private resolveEffectiveGateMode(): StreamingGateMode {
-    const isVadReady = this.tenVadState === 'ready';
-    const isVadEnabled =
-      this.tenVad !== null &&
-      this.config.tenVadEnabled &&
-      (this.config as { readonly vadMode?: string }).vadMode !== 'disabled';
-
-    if (isVadReady && isVadEnabled) {
-      if (this.config.gateMode === STREAMING_GATE_MODES.TEN_VAD_ONLY) return STREAMING_GATE_MODES.VAD_ONLY;
-      if (this.config.gateMode === STREAMING_GATE_MODES.ROUGH_AND_TEN_VAD) return STREAMING_GATE_MODES.HYBRID;
-      if (
-        this.config.gateMode === STREAMING_GATE_MODES.HYBRID ||
-        this.config.gateMode === STREAMING_GATE_MODES.VAD_ONLY ||
-        this.config.gateMode === STREAMING_GATE_MODES.ROUGH_ONLY
-      ) {
-        return this.config.gateMode;
-      }
-    }
-
-    return STREAMING_GATE_MODES.ROUGH_ONLY;
+    return resolveEffectiveGateMode(this.config, this.tenVad !== null, this.tenVadState);
   }
 
   private getCurrentConfigOverrides(): Partial<StreamingDetectorConfig> {
-    const preset = getStreamingPreset(this.profileId).config;
-    const overrides: Partial<StreamingDetectorConfig> = {};
-    const mutableOverrides = overrides as Record<string, unknown>;
-    for (const [key, value] of Object.entries(this.config) as Array<
-      [keyof StreamingDetectorConfig, StreamingDetectorConfig[keyof StreamingDetectorConfig]]
-    >) {
-      if (preset[key] !== value) {
-        mutableOverrides[key] = value;
-      }
-    }
-    return overrides;
+    return getConfigOverrides(this.profileId, this.config);
   }
 
   subscribe(listener: (event: StreamingSpeechDetectorEvent) => void): () => void {
@@ -693,10 +448,10 @@ export class StreamingSpeechDetector {
       let quietNearLimit = false;
       if (segmentDurationMs >= this.config.maxSegmentDurationMs - softWindowMs &&
           segmentDurationMs >= this.config.minSpeechDurationMs) {
-        let squareSum = 0;
-        for (const sample of chunk) squareSum += sample * sample;
-        const rms = Math.sqrt(squareSum / chunk.length);
-        quietNearLimit = rms <= Math.max(rough.noiseFloor * 2, this.config.energyThreshold * 0.5);
+        quietNearLimit = isQuietChunk(
+          chunk,
+          Math.max(rough.noiseFloor * 2, this.config.energyThreshold * 0.5),
+        );
       }
       if (segmentDurationMs >= this.config.maxSegmentDurationMs || quietNearLimit) {
         if (quietNearLimit && segmentDurationMs < this.config.maxSegmentDurationMs) {
@@ -847,58 +602,18 @@ export class StreamingSpeechDetector {
     logicalStartFrame: number,
     logicalEndFrame: number,
   ): FinalizedSegmentBounds {
-    const baseFrame = this.ringBuffer.getBaseFrameOffset();
-    const currentFrame = this.ringBuffer.getCurrentFrame();
-    const prerollFrames = durationMsToAlignedFrameCount(
-      this.config.prerollMs,
-      this.sampleRate,
-      'ceil',
-      this.config.chunkDurationMs,
+    return computeFinalizedSegmentBounds(
+      {
+        baseFrame: this.ringBuffer.getBaseFrameOffset(),
+        currentFrame: this.ringBuffer.getCurrentFrame(),
+        config: this.config,
+        sampleRate: this.sampleRate,
+        continuationAfterMaxDuration: this.continuationAfterMaxDuration,
+        lastAcceptedLogicalEndFrame: this.lastAcceptedLogicalEndFrame,
+      },
+      logicalStartFrame,
+      logicalEndFrame,
     );
-    const overlapFrames = durationMsToAlignedFrameCount(
-      this.config.overlapDurationMs,
-      this.sampleRate,
-      'ceil',
-      this.config.chunkDurationMs,
-    );
-    const continuationOverlapMs = Math.min(160, Math.max(this.config.overlapDurationMs, 80));
-    const effectiveOverlapFrames = this.continuationAfterMaxDuration
-      ? durationMsToAlignedFrameCount(
-          continuationOverlapMs,
-          this.sampleRate,
-          'ceil',
-          this.config.chunkDurationMs,
-        )
-      : overlapFrames;
-    const hangoverFrames = durationMsToAlignedFrameCount(
-      this.config.speechHangoverMs,
-      this.sampleRate,
-      'ceil',
-      this.config.chunkDurationMs,
-    );
-
-    let extractedStartFrame = Math.max(baseFrame, logicalStartFrame - prerollFrames);
-    if (this.lastAcceptedLogicalEndFrame !== null) {
-      const overlappedStartFrame = this.lastAcceptedLogicalEndFrame - effectiveOverlapFrames;
-      extractedStartFrame = Math.max(baseFrame, Math.min(extractedStartFrame, overlappedStartFrame));
-    }
-
-    const clampedLogicalStartFrame = Math.max(baseFrame, logicalStartFrame);
-    const clampedLogicalEndFrame = Math.max(
-      clampedLogicalStartFrame + 1,
-      Math.min(currentFrame, logicalEndFrame),
-    );
-    const extractedEndFrame = Math.max(
-      extractedStartFrame + 1,
-      Math.min(currentFrame, clampedLogicalEndFrame + hangoverFrames),
-    );
-
-    return {
-      logicalStartFrame: clampedLogicalStartFrame,
-      logicalEndFrame: clampedLogicalEndFrame,
-      extractedStartFrame,
-      extractedEndFrame,
-    };
   }
 
   finalizeSegment(
@@ -923,26 +638,14 @@ export class StreamingSpeechDetector {
       },
     );
     this.lastForegroundResult = filterResult;
-    this.lastAcceptanceInfo = {
-      accepted: filterResult.accepted,
-      reason: filterResult.reason,
-      segmentReason: reason,
-      source: activeSegment.source,
-      logicalStartFrame: bounds.logicalStartFrame,
-      logicalEndFrame: bounds.logicalEndFrame,
-      extractedStartFrame: bounds.extractedStartFrame,
-      extractedEndFrame: bounds.extractedEndFrame,
-      extractedDurationMs: Number(filterResult.durationMs.toFixed(1)),
-      noiseFloor: filterResult.noiseFloor,
-      noiseFloorDbfs: filterResult.noiseFloorDbfs,
-      normalizedPowerAt16k: filterResult.normalizedPowerAt16k,
-      normalizedEnergyIntegralAt16k: filterResult.normalizedEnergyIntegralAt16k,
-      minEnergyPerSecondThreshold: filterResult.minEnergyPerSecondThreshold,
-      minEnergyIntegralThreshold: filterResult.minEnergyIntegralThreshold,
-      adaptiveThresholds: filterResult.usedAdaptiveThresholds,
-      gateMode: this.resolveEffectiveGateMode(),
-      tenVadState: tenVadStatus.state,
-    };
+    this.lastAcceptanceInfo = buildAcceptanceInfo(
+      filterResult,
+      reason,
+      activeSegment.source,
+      bounds,
+      this.resolveEffectiveGateMode(),
+      tenVadStatus.state,
+    );
 
     this.emit({
       type: 'speech-end',
@@ -1037,23 +740,7 @@ export class StreamingSpeechDetector {
     } = {},
   ): void {
     const nextProfileId = partial.profileId ?? this.profileId;
-    const nextOverrides = {
-      ...this.getCurrentConfigOverrides(),
-      ...partial,
-    };
-    delete nextOverrides.profileId;
-    if (
-      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
-      && !Object.prototype.hasOwnProperty.call(partial, 'vadHopDurationMs')
-    ) {
-      delete nextOverrides.vadHopDurationMs;
-    }
-    if (
-      Object.prototype.hasOwnProperty.call(partial, 'vadBackend')
-      && !Object.prototype.hasOwnProperty.call(partial, 'vadVisualBucketDurationMs')
-    ) {
-      delete nextOverrides.vadVisualBucketDurationMs;
-    }
+    const nextOverrides = mergeConfigOverrides(this.getCurrentConfigOverrides(), partial);
 
     const previousTenVadEnabled = this.config.tenVadEnabled;
     const previousVadBackend = this.config.vadBackend;
@@ -1108,8 +795,6 @@ export class StreamingSpeechDetector {
       waveformFrameSpan,
     );
     const waveformPointCount = Math.max(1, Math.floor(waveform.minMax.length / 2));
-    const defaultNoiseFloorDbfs = amplitudeToDbfs(this.config.initialNoiseFloor);
-    const lastNoiseFloor = this.lastMetrics?.noiseFloor ?? this.config.initialNoiseFloor;
 
     return {
       state: this.state,
@@ -1133,80 +818,18 @@ export class StreamingSpeechDetector {
         vadBackend: this.config.vadBackend,
         tenVadReady: this.isTenVadReady(),
       },
-      rough: this.lastMetrics
-        ? {
-            energy: this.lastMetrics.energy,
-            rawEnergy: this.lastMetrics.rawEnergy,
-            snr: this.lastMetrics.snr,
-            noiseFloor: this.lastMetrics.noiseFloor,
-            noiseFloorDbfs: this.lastMetrics.noiseFloorDbfs,
-            backgroundAverage: this.lastMetrics.backgroundAverage,
-            backgroundAverageDbfs: this.lastMetrics.backgroundAverageDbfs,
-            confirmedSilenceAverage: this.lastMetrics.confirmedSilenceAverage,
-            confirmedSilenceAverageDbfs: this.lastMetrics.confirmedSilenceAverageDbfs,
-            rejectedCandidateAverage: this.lastMetrics.rejectedCandidateAverage,
-            rejectedCandidateAverageDbfs: this.lastMetrics.rejectedCandidateAverageDbfs,
-            threshold: this.lastMetrics.threshold,
-            thresholdDbfs: this.lastMetrics.thresholdDbfs,
-            levelDbfs: this.lastMetrics.levelDbfs,
-            levelWindowRms: this.lastMetrics.levelWindowRms,
-            levelWindowDbfs: this.lastMetrics.levelWindowDbfs,
-            levelWindowMs: this.lastMetrics.levelWindowMs,
-            energyPass: this.lastMetrics.energyPass,
-            candidateReason: this.lastMetrics.candidateReason,
-            snrThreshold: this.lastMetrics.snrThreshold,
-            minSnrThreshold: this.lastMetrics.minSnrThreshold,
-            useSnrGate: this.config.useSnrGate,
-            snrPass: this.lastMetrics.snrPass,
-            isSpeech: this.lastMetrics.isSpeech,
-            recent: this.roughGate.getRecentChunks(),
-            timeline: this.roughGate.getTimeline(
-              waveform.startFrame,
-              waveform.endFrame,
-              waveformPointCount,
-            ),
-          }
-        : {
-            energy: 0,
-            rawEnergy: 0,
-            snr: 0,
-            noiseFloor: this.config.initialNoiseFloor,
-            noiseFloorDbfs: defaultNoiseFloorDbfs,
-            backgroundAverage: this.config.initialNoiseFloor,
-            backgroundAverageDbfs: defaultNoiseFloorDbfs,
-            confirmedSilenceAverage: this.config.initialNoiseFloor,
-            confirmedSilenceAverageDbfs: defaultNoiseFloorDbfs,
-            rejectedCandidateAverage: this.config.initialNoiseFloor,
-            rejectedCandidateAverageDbfs: defaultNoiseFloorDbfs,
-            threshold: this.config.energyThreshold,
-            thresholdDbfs: this.config.minSpeechLevelDbfs,
-            levelDbfs: -100,
-            levelWindowRms: 0,
-            levelWindowDbfs: -100,
-            levelWindowMs: this.config.levelWindowMs,
-            energyPass: false,
-            candidateReason: 'none',
-            snrThreshold: this.config.snrThreshold,
-            minSnrThreshold: this.config.minSnrThreshold,
-            useSnrGate: this.config.useSnrGate,
-            snrPass: false,
-            isSpeech: false,
-            recent: [],
-            timeline: [],
-          },
-      foreground: {
-        enabled: this.config.foregroundFilterEnabled,
-        noiseFloor: lastNoiseFloor,
-        noiseFloorDbfs: this.lastMetrics?.noiseFloorDbfs ?? defaultNoiseFloorDbfs,
-        energyThreshold: this.config.energyThreshold,
-        energyThresholdDbfs: this.config.minSpeechLevelDbfs,
-        minSpeechDurationMs: this.config.minSpeechDurationMs,
-        minEnergyPerSecond: this.config.minEnergyPerSecond,
-        minEnergyIntegral: this.config.minEnergyIntegral,
-        adaptiveEnergyThresholdsEnabled: this.config.useAdaptiveEnergyThresholds,
-        activeResult: null,
-        lastResult: this.lastForegroundResult as unknown as Record<string, unknown> | null,
-      },
+      rough: buildRoughSnapshot(
+        this.lastMetrics,
+        this.config,
+        this.roughGate,
+        waveform,
+        waveformPointCount,
+      ),
+      foreground: buildForegroundSnapshot(
+        this.config,
+        this.lastMetrics,
+        this.lastForegroundResult,
+      ),
       tenVad: this.getTenVadStatus(),
       warnings: this.buildWarnings(),
       error: this.lastError?.message ?? null,
@@ -1214,41 +837,11 @@ export class StreamingSpeechDetector {
   }
 
   private buildWarnings(): string[] {
-    const warnings: string[] = [];
-    const tenVadStatus = this.tenVad?.getStatus();
-    const backendName = this.getVadBackendName();
-
-    if (tenVadStatus?.state === 'degraded') {
-      const detail =
-        typeof tenVadStatus.error === 'string' && tenVadStatus.error.length > 0
-          ? ` (${tenVadStatus.error})`
-          : '';
-      warnings.push(`${backendName} is degraded. Runtime plots may be incomplete.${detail}`);
-    }
-
-    if (
-      this.config.tenVadEnabled &&
-      this.resolveEffectiveGateMode() === STREAMING_GATE_MODES.ROUGH_ONLY
-    ) {
-      warnings.push(`Speech segmentation is running on the rough gate. ${backendName} is diagnostics-only.`);
-    }
-
-    if (
-      this.config.gateMode !== STREAMING_GATE_MODES.ROUGH_ONLY &&
-      this.resolveEffectiveGateMode() === STREAMING_GATE_MODES.ROUGH_ONLY
-    ) {
-      const backendLabel =
-        this.config.vadBackend === STREAMING_VAD_BACKENDS.FIRERED_VAD
-          ? 'FireRed-first'
-          : 'TEN-VAD-first';
-      warnings.push(`Requested ${backendLabel} gating is ignored by this Parakeet-style detector port.`);
-    }
-
-    if (!this.config.foregroundFilterEnabled) {
-      warnings.push('Final segment energy rejection is disabled. Quiet background audio may be accepted.');
-    }
-
-    return warnings;
+    return buildDetectorWarnings(
+      this.config,
+      this.tenVad?.getStatus(),
+      this.resolveEffectiveGateMode(),
+    );
   }
 
   async dispose(): Promise<void> {
