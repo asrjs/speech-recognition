@@ -22,9 +22,9 @@ export interface MoonshineLoadOptions {
   readonly encoderUrl: string;
   readonly encoderDataUrl?: string;
   /** Projects encoder states into per-layer cross-attention key and value. */
-  readonly crossKvUrl: string;
+  readonly crossKvUrl?: string;
   readonly crossKvDataUrl?: string;
-  readonly decoderUrl: string;
+  readonly decoderUrl?: string;
   readonly decoderDataUrl?: string;
   readonly tokenizerUrl: string;
   readonly generationUrl?: string;

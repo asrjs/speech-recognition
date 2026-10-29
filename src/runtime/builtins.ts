@@ -1,7 +1,4 @@
-import {
-  createWebGpuBackend,
-  createWasmBackend,
-} from '../inference/index.js';
+import { createWebGpuBackend, createWasmBackend } from '../inference/index.js';
 import type { AudioInputLike } from '../types/audio.js';
 import {
   createDefaultModelInferenceLimits,
@@ -42,7 +39,11 @@ import { createGigaAmCtcPresetFactory } from '../presets/gigaam-ctc-local.js';
 import { createGigaAmRnntPresetFactory } from '../presets/gigaam-rnnt-local.js';
 import { createSenseVoicePresetFactory } from '../presets/sensevoice-local.js';
 import { createXAsrPresetFactory } from '../presets/x-asr-local.js';
-import { getBuiltInModelDescriptor } from '../presets/descriptors.js';
+import {
+  buildBuiltInHubLoadOptions,
+  getBuiltInModelDescriptor,
+  listApprovedSpeechModelManifests,
+} from '../presets/descriptors.js';
 import {
   createExperimentalArtifactMissingError,
   getExperimentalSpeechFamily,
@@ -280,6 +281,89 @@ function resolveBuiltInModelRequest<TLoadOptions>(
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function resolveAutomaticManifestLoadOptions(
+  runtime: DefaultSpeechRuntime,
+  modelId: string,
+  backend: string | undefined,
+  supplied: unknown,
+  useManifestSources: boolean | undefined,
+): Promise<unknown> {
+  const descriptor = getBuiltInModelDescriptor(modelId);
+  if (!descriptor) return supplied;
+  const manifest = listApprovedSpeechModelManifests().find(
+    (item) => item.modelId === descriptor.modelId,
+  );
+  if (!manifest) return supplied;
+  const suppliedOptions = isRecord(supplied) ? supplied : {};
+  const suppliedSource = isRecord(suppliedOptions.source) ? suppliedOptions.source : undefined;
+  if (
+    suppliedSource &&
+    (suppliedSource.kind !== 'huggingface' ||
+      suppliedSource.repoId !== manifest.repoId ||
+      (suppliedSource.revision !== undefined && suppliedSource.revision !== manifest.revision))
+  )
+    return supplied;
+  if (useManifestSources === false && !suppliedSource) return supplied;
+  const capabilities = await runtime.probeBackends();
+  const webgpu = capabilities.find((item) => item.id === 'webgpu');
+  const wasm = capabilities.find((item) => item.id === 'wasm');
+  const artifactIdentity = manifest
+    ? {
+        repoId: manifest.repoId!,
+        revision: manifest.revision!,
+        encoderSha256: manifest.encoderSha256!,
+        decoderSha256: manifest.decoderSha256!,
+        configSha256: manifest.configSha256!,
+        vocabularySha256: manifest.vocabularySha256!,
+      }
+    : undefined;
+  // An explicit backend narrows the execution plan; it must not drop the
+  // pinned artifact revision and identity. Unsupported plans fall through to
+  // the caller's options so the runtime reports the backend error itself.
+  let built: ReturnType<typeof buildBuiltInHubLoadOptions>;
+  try {
+    built = buildBuiltInHubLoadOptions({
+      modelId: descriptor.modelId,
+      backend: backend ?? 'webgpu-hybrid',
+      runtime: {
+        webgpu: webgpu?.available === true,
+        wasm: wasm?.available === true,
+        webgpuPrecisions: webgpu?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
+        wasmPrecisions: wasm?.supportedPrecisions as ('int8' | 'fp32' | 'fp16')[] | undefined,
+      },
+      artifactIdentity,
+      encoderBackend: suppliedSource?.encoderBackend as 'webgpu' | 'wasm' | undefined,
+      decoderBackend: suppliedSource?.decoderBackend as 'webgpu' | 'wasm' | undefined,
+      encoderQuant: suppliedSource?.encoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+      decoderQuant: suppliedSource?.decoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+    });
+  } catch {
+    // The requested plan is unsupported on this runtime (for example a
+    // WebGPU-only request for a WASM-only decoder). Keep the pinned revision
+    // and let the catalog picker degrade component backends; the runtime
+    // still reports any hard backend error on load.
+    built = buildBuiltInHubLoadOptions({
+      modelId: descriptor.modelId,
+      backend: backend ?? 'webgpu-hybrid',
+      encoderBackend: suppliedSource?.encoderBackend as 'webgpu' | 'wasm' | undefined,
+      decoderBackend: suppliedSource?.decoderBackend as 'webgpu' | 'wasm' | undefined,
+      encoderQuant: suppliedSource?.encoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+      decoderQuant: suppliedSource?.decoderQuant as 'int8' | 'fp32' | 'fp16' | undefined,
+    });
+  }
+  const generatedOptions = isRecord(built.options) ? built.options : {};
+  const generatedSource = isRecord(generatedOptions.source) ? generatedOptions.source : {};
+  return {
+    ...generatedOptions,
+    ...suppliedOptions,
+    source: suppliedSource ? { ...generatedSource, ...suppliedSource } : generatedSource,
+  };
+}
+
 function isFamilyBuiltInModelRequest(
   request:
     | {
@@ -351,8 +435,16 @@ export function registerBuiltInPresets(
   runtime.registerPreset(createParakeetCtcPresetFactory());
   runtime.registerPreset(createOmnilingualCtcPresetFactory());
   runtime.registerPreset(createWav2Vec2TurkishPresetFactory());
-  runtime.registerPreset(createMoonshinePresetFactory());
-  runtime.registerPreset(createQwen3AsrPresetFactory());
+  runtime.registerPreset(
+    createMoonshinePresetFactory({
+      useManifestSource: options.useManifestSources ?? true,
+    }),
+  );
+  runtime.registerPreset(
+    createQwen3AsrPresetFactory({
+      useManifestSource: options.useManifestSources ?? true,
+    }),
+  );
   runtime.registerPreset(createMedAsrPresetFactory());
   runtime.registerPreset(createGigaAmCtcPresetFactory());
   runtime.registerPreset(createGigaAmRnntPresetFactory());
@@ -457,6 +549,15 @@ export async function loadBuiltInSpeechModel<
       options.backend,
       options.selectionCriteria,
     );
+    const resolvedLoadOptions = resolved.modelId
+      ? await resolveAutomaticManifestLoadOptions(
+          activeRuntime,
+          resolved.modelId,
+          options.backend,
+          options.options,
+          options.useManifestSources,
+        )
+      : options.options;
 
     if (options.runtime) {
       emitProgress(options, {
@@ -473,7 +574,7 @@ export async function loadBuiltInSpeechModel<
         modelId: resolved.modelId,
         backend: resolvedBackend.backend,
         classification: options.classification,
-        options: options.options,
+        options: resolvedLoadOptions as TLoadOptions,
         selectionCriteria: resolvedBackend.selectionCriteria,
         signal: options.signal,
       })) as unknown as SpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;
@@ -483,7 +584,7 @@ export async function loadBuiltInSpeechModel<
         modelId: resolved.modelId,
         backend: resolvedBackend.backend,
         classification: options.classification,
-        options: options.options,
+        options: resolvedLoadOptions as TLoadOptions,
         selectionCriteria: resolvedBackend.selectionCriteria,
         signal: options.signal,
       })) as unknown as SpeechModel<TLoadOptions, TTranscriptionOptions, TNative>;

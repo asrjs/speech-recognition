@@ -10,7 +10,9 @@ describe('public root API compatibility', () => {
   it('retains the complete runtime export surface from before the import refactor', () => {
     // Keep the historical baseline intact; enumerate intentional API additions.
     expect(Object.keys(root).sort()).toEqual(
-      [...exportsBeforeRefactor, 'transcribeSpeechFromAudioSource'].sort(),
+      [...exportsBeforeRefactor, 'transcribeSpeechFromAudioSource',
+        'listApprovedSpeechModelManifests', 'resolveSpeechModelExecutionPlan',
+        'probeSpeechModelExecutionPlan'].sort(),
     );
     expect(root.transcribeSpeechFromAudioSource).toBeTypeOf('function');
   });
