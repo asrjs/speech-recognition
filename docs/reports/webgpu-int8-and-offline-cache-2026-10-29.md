@@ -11,16 +11,16 @@ NVIDIA Blackwell adaptörü, onnxruntime-web 1.29.0, `dist/` main `d2e14861` son
 
 Decoder her koşuda int8/WASM (`webgpu-hybrid`), değişen yalnız encoder.
 
-| Encoder        | Yükleme (soğuk) | Çıkarım soğuk | Çıkarım sıcak (3 koşu) | GPU dispatch | Metin |
-| -------------- | --------------- | ------------- | ---------------------- | ------------ | ----- |
-| int8 / WebGPU  | 7,5 s           | 6,65 s        | 5,17 / 5,00 / 7,61 s   | 1966         | doğru |
-| fp16 / WebGPU  | 31,3 s          | 3,18 s        | 0,73 / 0,67 / 0,64 s   | 1281         | doğru |
-| int8 / WASM    | 15,8 s          | 7,86 s        | 7,54 / 6,66 / 5,25 s   | 0            | doğru |
-| fp32 / WebGPU  | —               | —             | —                      | —            | `Failed to fetch` (2,4 GB `.onnx.data`, harness `fetch().blob()` sınırı) |
+| Encoder       | Yükleme (soğuk) | Çıkarım soğuk | Çıkarım sıcak (3 koşu) | GPU dispatch | Metin                                                                    |
+| ------------- | --------------- | ------------- | ---------------------- | ------------ | ------------------------------------------------------------------------ |
+| int8 / WebGPU | 7,5 s           | 6,65 s        | 5,17 / 5,00 / 7,61 s   | 1966         | doğru                                                                    |
+| fp16 / WebGPU | 31,3 s          | 3,18 s        | 0,73 / 0,67 / 0,64 s   | 1281         | doğru                                                                    |
+| int8 / WASM   | 15,8 s          | 7,86 s        | 7,54 / 6,66 / 5,25 s   | 0            | doğru                                                                    |
+| fp32 / WebGPU | —               | —             | —                      | —            | `Failed to fetch` (2,4 GB `.onnx.data`, harness `fetch().blob()` sınırı) |
 
 ORT her iki WebGPU oturumunda `VerifyEachNodeIsAssignedToAnEp` uyarısı veriyor; düğüm
 listesi minimal build'de görünmüyor. Kanıt zamanlamadan: int8 WebGPU, tek iş parçacıklı
-WASM int8 ile aynı bantta ve fp16'dan ~7× yavaş. Sonuç: int8 graf WebGPU EP'de *çalışıyor*
+WASM int8 ile aynı bantta ve fp16'dan ~7× yavaş. Sonuç: int8 graf WebGPU EP'de _çalışıyor_
 (doğru çıktı, oturum WASM'a düşmüyor) ama nicemlenmiş matmul'lar düğüm düzeyinde CPU'ya
 gidiyor; GPU hızlanması yok.
 
@@ -39,10 +39,10 @@ IndexedDB'yi doldurdu (1199 MB). Faz 2'de 127.0.0.1 dışındaki her istek
 `ERR_INTERNET_DISCONNECTED` ile düşürüldü. (`context.set_offline` localhost'u da
 kestiği için kullanılmadı.)
 
-| Faz      | Sonuç  | Yükleme | Çıkarım | HF istekleri |
-| -------- | ------ | ------- | ------- | ------------ |
+| Faz       | Sonuç | Yükleme | Çıkarım | HF istekleri                                    |
+| --------- | ----- | ------- | ------- | ----------------------------------------------- |
 | Çevrimiçi | geçti | 29,3 s  | 2,10 s  | encoder fp16, decoder int8, vocab, tree listing |
-| Ağsız    | geçti  | 6,8 s   | 0,68 s  | 4 başarısız deneme, hepsi yutuldu |
+| Ağsız     | geçti | 6,8 s   | 0,68 s  | 4 başarısız deneme, hepsi yutuldu               |
 
 Revizyon `f88260fa…` her iki fazda pinli. Ağsız fazda doğru transkript üretildi;
 bulgu 1 düzeltmesi gerçek ağırlıkla doğrulandı.
