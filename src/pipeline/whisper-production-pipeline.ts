@@ -12,10 +12,7 @@
  * @module pipeline/whisper-production-pipeline
  */
 
-import type {
-  FormattedTranscript,
-  Sentence,
-} from '../post-processing/extras.js';
+import type { DedupWord, FormattedTranscript, Sentence } from '../post-processing/extras.js';
 import type {
   ProductionTranscript,
   ProductionTranscriptMetrics,
@@ -54,30 +51,64 @@ export interface ProductionWhisperExecutorLike {
     audio: Float32Array,
     options?: any,
     context?: any,
-  ): Promise<WhisperNativeTranscriptLike>;
+  ): Promise<ProductionWhisperTranscriptInput>;
   dispose(): Promise<void>;
 }
 
-interface WhisperNativeTranscriptLike {
+/**
+ * Transcript returned by the executor.
+ *
+ * `EnhancedWhisperExecutor` returns the Whisper native shape, whose words use
+ * `text`, `startTime`, `endTime` and `confidence`. Older custom executors may
+ * still return `word`, `start`, `end` and `probability`; both are accepted.
+ */
+export interface ProductionWhisperTranscriptInput {
   readonly utteranceText: string;
   readonly isFinal: boolean;
-  readonly language: string;
-  readonly segments?: readonly SegmentLike[];
-  readonly words?: readonly WordLike[];
+  readonly language?: string;
+  readonly segments?: readonly unknown[];
+  readonly words?: readonly ProductionWhisperWordInput[];
 }
 
-interface SegmentLike {
-  readonly text: string;
-  readonly start: number;
-  readonly end: number;
-  readonly words?: readonly WordLike[];
-}
-
-interface WordLike {
-  readonly word: string;
-  readonly start: number;
-  readonly end: number;
+/** One executor word in either the Whisper native or the legacy shape. */
+export interface ProductionWhisperWordInput {
+  /** Whisper native word text. */
+  readonly text?: string;
+  readonly startTime?: number;
+  readonly endTime?: number;
+  readonly confidence?: number;
+  /** Legacy field names accepted from older custom executors. */
+  readonly word?: string;
+  readonly start?: number;
+  readonly end?: number;
   readonly probability?: number;
+}
+
+/**
+ * Converts executor words to the post-processing shape.
+ *
+ * Words without text or finite timing cannot be placed in sentences or
+ * subtitles, so they are skipped. A missing confidence becomes 0 rather than an
+ * invented value, so a scored duplicate always wins de-duplication.
+ */
+function toDedupWords(words: readonly ProductionWhisperWordInput[]): DedupWord[] {
+  const result: DedupWord[] = [];
+  for (const input of words) {
+    const word = input.text ?? input.word;
+    const start = input.startTime ?? input.start;
+    const end = input.endTime ?? input.end;
+    if (typeof word !== 'string' || !Number.isFinite(start) || !Number.isFinite(end)) {
+      continue;
+    }
+    const confidence = input.confidence ?? input.probability;
+    result.push({
+      word,
+      start: start as number,
+      end: end as number,
+      probability: Number.isFinite(confidence) ? (confidence as number) : 0,
+    });
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,12 +143,7 @@ export class ProductionWhisperPipeline {
     } as any);
 
     // 2. Extract words for post-processing
-    const words: DedupWordLike[] = (nativeResult.words ?? []).map((w: WordLike) => ({
-      word: w.word,
-      start: w.start,
-      end: w.end,
-      probability: w.probability ?? 0.9,
-    }));
+    const words = toDedupWords(nativeResult.words ?? []);
 
     // 3. Format transcript (sentence boundary + normalization)
     let formatted: FormattedTranscript;
@@ -147,10 +173,10 @@ export class ProductionWhisperPipeline {
       // Normalized version from sentence processing
       normalized: formatted.normalized,
       raw: nativeResult.utteranceText,
-      language: nativeResult.language,
+      language: nativeResult.language ?? options.language ?? 'en',
       sentences: formatted.sentences,
-      words: words as any,
-      segments: nativeResult.segments as any,
+      words,
+      segments: nativeResult.segments ?? [],
       subtitles,
       metrics: {
         ...metrics,
@@ -170,7 +196,7 @@ export class ProductionWhisperPipeline {
 
   private generateSubtitles(
     sentences: readonly Sentence[],
-    _words: readonly DedupWordLike[],
+    _words: readonly DedupWord[],
   ): ProductionTranscriptSubtitles {
     let srt = '';
     let vtt = '';
@@ -185,7 +211,7 @@ export class ProductionWhisperPipeline {
 
   private collectMetrics(
     formatted: FormattedTranscript,
-    _nativeResult: WhisperNativeTranscriptLike,
+    _nativeResult: ProductionWhisperTranscriptInput,
   ): ProductionTranscriptMetrics {
     return {
       duration: formatted.duration,
@@ -203,17 +229,6 @@ export function createWhisperProductionPipeline(
   options: ProductionWhisperPipelineOptions,
 ): ProductionWhisperPipeline {
   return new ProductionWhisperPipeline(options);
-}
-
-// ---------------------------------------------------------------------------
-// Types used for post-processing
-// ---------------------------------------------------------------------------
-
-interface DedupWordLike {
-  word: string;
-  start: number;
-  end: number;
-  probability: number;
 }
 
 // ---------------------------------------------------------------------------

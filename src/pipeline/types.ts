@@ -4,7 +4,7 @@
  * @module pipeline/types
  */
 
-import type { Sentence } from '../post-processing/extras.js';
+import type { DedupWord, Sentence } from '../post-processing/extras.js';
 
 export interface ProductionTranscriptSubtitles {
   readonly srt: string;
@@ -28,9 +28,12 @@ export interface ProductionTranscript {
   readonly language: string;
   /** Sentences with word-level timestamps */
   readonly sentences: readonly Sentence[];
-  /** Words with timestamps */
-  readonly words: readonly unknown[];
-  /** Segments from the executor */
+  /**
+   * Executor words in the same shape as `sentences[].words`. `probability` is
+   * the executor confidence, or 0 when the executor reported none.
+   */
+  readonly words: readonly DedupWord[];
+  /** Segments from the executor, passed through unchanged. */
   readonly segments: readonly unknown[];
   /** Subtitles (SRT + VTT) */
   readonly subtitles: ProductionTranscriptSubtitles;
