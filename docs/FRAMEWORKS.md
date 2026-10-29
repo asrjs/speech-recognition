@@ -9,10 +9,16 @@ controller to React, Svelte and Vue:
 | Svelte    | `@asrjs/speech-recognition-svelte` | `createSpeechRecognitionStore(controller)` |
 | Vue       | `@asrjs/speech-recognition-vue`    | `useSpeechRecognition(controller)`         |
 
-The local companion workspace is `../frameworks` beside this repository. Its
-README contains build commands and an executable example for each framework.
-The packages are development builds, not yet published releases. They require
-this checkout's `/controller` export.
+Install the core package with the binding for your framework:
+
+```sh
+npm install @asrjs/speech-recognition @asrjs/speech-recognition-react
+```
+
+The bindings require core 0.3 or later for the `/controller` entry point.
+Their sources and runnable examples live on the
+[`framework-examples` branch](https://github.com/asrjs/demos/tree/framework-examples)
+of `asrjs/demos`.
 
 ## Shared controller
 

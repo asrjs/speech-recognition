@@ -1,6 +1,6 @@
 {
   "name": "@asrjs/speech-recognition",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Speech-first TypeScript runtime for browser and local Node.js inference",
   "type": "module",
   "sideEffects": false,
@@ -297,6 +297,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "!**/*.tsbuildinfo"
   ],
   "publishConfig": {
