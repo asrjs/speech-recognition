@@ -52,13 +52,13 @@ not an unconditional model/environment compatibility claim.
 
 > [!NOTE]
 > The full historical product task log (2,882 lines across library architecture, multi-model engine milestones, and demo evolution) has been archived to:
-> [`docs/archive/PRODUCT_TASKS-2026-10-17.md`](file:///N:/github/asrjs/speech-recognition/docs/archive/PRODUCT_TASKS-2026-10-17.md).
+> [`docs/archive/PRODUCT_TASKS-2026-10-17.md`](archive/PRODUCT_TASKS-2026-10-17.md).
 >
 > The October 17 sprint tasks and verification gates were recorded in:
-> [`docs/ACTIVE_SPRINT.md`](file:///N:/github/asrjs/speech-recognition/docs/ACTIVE_SPRINT.md).
+> [`docs/archive/ACTIVE_SPRINT.md`](archive/ACTIVE_SPRINT.md).
 >
 > Deep architecture audit and future technical roadmap are in:
-> [`docs/reports/deep-review-2026-10-17.md`](file:///N:/github/asrjs/speech-recognition/docs/reports/deep-review-2026-10-17.md).
+> [`docs/reports/deep-review-2026-10-17.md`](reports/deep-review-2026-10-17.md).
 
 ---
 
@@ -88,4 +88,4 @@ not an unconditional model/environment compatibility claim.
    - **T6:** Integrate neural VAD probabilities into real endpointing decisions to eliminate word clipping.
    - **T7:** Link sibling demo applications to the root package and maintain repo hygiene.
 
-For details on completed items and past PR milestones, see the [historical archive](file:///N:/github/asrjs/speech-recognition/docs/archive/PRODUCT_TASKS-2026-10-17.md).
+For details on completed items and past PR milestones, see the [historical archive](archive/PRODUCT_TASKS-2026-10-17.md).

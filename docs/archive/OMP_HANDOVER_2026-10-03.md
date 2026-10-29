@@ -6,9 +6,9 @@ This handover is not a claim of finished Orukeet support or a completed library.
 
 ## Start here
 
-Read [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) and all required documents in its
-order. The durable goal is [GOAL_PROMPT_RECOMMENDED.md](GOAL_PROMPT_RECOMMENDED.md).
-The [PROJECT_CHARTER.md](PROJECT_CHARTER.md) is already stored locally; it need
+Read [AGENT_ENTRYPOINT.md](../AGENT_ENTRYPOINT.md) and all required documents in its
+order. The durable goal is [GOAL_PROMPT_RECOMMENDED.md](../GOAL_PROMPT_RECOMMENDED.md).
+The [PROJECT_CHARTER.md](../PROJECT_CHARTER.md) is already stored locally; it need
 not be pasted separately. Existing task files, not this document, hold task status.
 Old Whisper handoffs and archived goals retain history, not current instructions.
 

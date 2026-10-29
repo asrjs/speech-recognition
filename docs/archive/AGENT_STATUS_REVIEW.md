@@ -1,7 +1,7 @@
 # Agent status review
 
 > Historical record, not the current startup/branch/task instructions. Start at
-> [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) for the active whole-product goal,
+> [AGENT_ENTRYPOINT.md](../AGENT_ENTRYPOINT.md) for the active whole-product goal,
 > latest handover and authoritative task files. Preserve this record's evidence;
 > reconcile its claims with live source/build/artifacts before reuse.
 
@@ -12,7 +12,7 @@
 - **Working tree during this review:** the implementing agent kept moving. Uncommitted, mid-flight edits appeared on `.github/workflows/ci.yml` and `tests/whisper-reproducibility-harness.test.ts` (lazy `onnxruntime-node` load + `ONNXRUNTIME_NODE_INSTALL=skip`). Those files were **not** rewritten or committed by this review.
 - **Implementing agent:** Codex Desktop thread `01a0355a-a7fd-7561-a6a0-3239d834a8c0`, started 2026-08-24 as Whisper WebGPU continuation, still the live coding session (~20M tokens / ~24h by the time the whole-product prompt landed). Commits are authored `ysdede <codex@example.invalid>`.
 - **Prompt-authoring agent:** separate Codex thread `01a03f73-71ee-7f10-b6eb-9ca93540f3e8` wrote the untracked charter/goal docs and did not implement library code.
-- **Older Cursor chat:** [Whisper WebGPU takeover](e59897f8-9164-4312-a0a2-d87ef5975154) is an 2026-08-23 Cursor session, not the agent currently landing commits.
+- **Older Cursor chat:** [Whisper WebGPU takeover](../e59897f8-9164-4312-a0a2-d87ef5975154) is an 2026-08-23 Cursor session, not the agent currently landing commits.
 
 This review evaluates the implementing Codex agent against the **final** whole-product goal prompt in `docs/GOAL_PROMPT.md` (also attached by the user to this review). That prompt is stricter than the earlier “expand with next-generation models” / “self-improving porting platform” objectives the same thread was given on 2026-08-25/26.
 

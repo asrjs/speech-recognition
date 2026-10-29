@@ -1,6 +1,6 @@
 # Active Sprint Tasks (Sprint 2026-10-17)
 
-Active tasks derived from [deep-review-2026-10-17.md](file:///N:/github/asrjs/speech-recognition/docs/reports/deep-review-2026-10-17.md). Historical task logs are archived in [docs/archive/](file:///N:/github/asrjs/speech-recognition/docs/archive/).
+Active tasks derived from [deep-review-2026-10-17.md](../reports/deep-review-2026-10-17.md). Historical task logs are archived in [docs/archive/](./).
 
 ## 3-Tier Verification Gates
 
