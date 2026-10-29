@@ -128,25 +128,170 @@
       "import": "./dist/tokenizers.js",
       "default": "./dist/tokenizers.js"
     },
-    "./models/*": {
-      "types": "./dist/models/*.d.ts",
-      "import": "./dist/models/*.js",
-      "default": "./dist/models/*.js"
-    },
-    "./models/whisper-seq2seq": {
-      "types": "./dist/models/whisper-seq2seq/index.d.ts",
-      "import": "./dist/models/whisper-seq2seq/index.js",
-      "default": "./dist/models/whisper-seq2seq/index.js"
+    "./models/gigaam-ctc": {
+      "types": "./dist/models/gigaam-ctc.d.ts",
+      "import": "./dist/models/gigaam-ctc.js",
+      "default": "./dist/models/gigaam-ctc.js"
     },
     "./models/gigaam-rnnt": {
       "types": "./dist/models/gigaam-rnnt/index.d.ts",
       "import": "./dist/models/gigaam-rnnt/index.js",
       "default": "./dist/models/gigaam-rnnt/index.js"
     },
-    "./presets/*": {
-      "types": "./dist/presets/*.d.ts",
-      "import": "./dist/presets/*.js",
-      "default": "./dist/presets/*.js"
+    "./models/lasr-ctc": {
+      "types": "./dist/models/lasr-ctc.d.ts",
+      "import": "./dist/models/lasr-ctc.js",
+      "default": "./dist/models/lasr-ctc.js"
+    },
+    "./models/moonshine": {
+      "types": "./dist/models/moonshine.d.ts",
+      "import": "./dist/models/moonshine.js",
+      "default": "./dist/models/moonshine.js"
+    },
+    "./models/nemo-aed": {
+      "types": "./dist/models/nemo-aed.d.ts",
+      "import": "./dist/models/nemo-aed.js",
+      "default": "./dist/models/nemo-aed.js"
+    },
+    "./models/nemo-common": {
+      "types": "./dist/models/nemo-common.d.ts",
+      "import": "./dist/models/nemo-common.js",
+      "default": "./dist/models/nemo-common.js"
+    },
+    "./models/nemo-rnnt": {
+      "types": "./dist/models/nemo-rnnt.d.ts",
+      "import": "./dist/models/nemo-rnnt.js",
+      "default": "./dist/models/nemo-rnnt.js"
+    },
+    "./models/nemo-tdt": {
+      "types": "./dist/models/nemo-tdt.d.ts",
+      "import": "./dist/models/nemo-tdt.js",
+      "default": "./dist/models/nemo-tdt.js"
+    },
+    "./models/nemotron-rnnt": {
+      "types": "./dist/models/nemotron-rnnt.d.ts",
+      "import": "./dist/models/nemotron-rnnt.js",
+      "default": "./dist/models/nemotron-rnnt.js"
+    },
+    "./models/omnilingual-ctc": {
+      "types": "./dist/models/omnilingual-ctc.d.ts",
+      "import": "./dist/models/omnilingual-ctc.js",
+      "default": "./dist/models/omnilingual-ctc.js"
+    },
+    "./models/parakeet-ctc": {
+      "types": "./dist/models/parakeet-ctc.d.ts",
+      "import": "./dist/models/parakeet-ctc.js",
+      "default": "./dist/models/parakeet-ctc.js"
+    },
+    "./models/qwen-asr": {
+      "types": "./dist/models/qwen-asr.d.ts",
+      "import": "./dist/models/qwen-asr.js",
+      "default": "./dist/models/qwen-asr.js"
+    },
+    "./models/qwen3-asr": {
+      "types": "./dist/models/qwen3-asr.d.ts",
+      "import": "./dist/models/qwen3-asr.js",
+      "default": "./dist/models/qwen3-asr.js"
+    },
+    "./models/sensevoice": {
+      "types": "./dist/models/sensevoice.d.ts",
+      "import": "./dist/models/sensevoice.js",
+      "default": "./dist/models/sensevoice.js"
+    },
+    "./models/wav2vec2": {
+      "types": "./dist/models/wav2vec2.d.ts",
+      "import": "./dist/models/wav2vec2.js",
+      "default": "./dist/models/wav2vec2.js"
+    },
+    "./models/whisper-seq2seq": {
+      "types": "./dist/models/whisper-seq2seq/index.d.ts",
+      "import": "./dist/models/whisper-seq2seq/index.js",
+      "default": "./dist/models/whisper-seq2seq/index.js"
+    },
+    "./models/x-asr": {
+      "types": "./dist/models/x-asr.d.ts",
+      "import": "./dist/models/x-asr.js",
+      "default": "./dist/models/x-asr.js"
+    },
+    "./models/whisper-seq2seq/local-file": {
+      "types": "./dist/models/whisper-seq2seq/local-file.d.ts",
+      "import": "./dist/models/whisper-seq2seq/local-file.js",
+      "default": "./dist/models/whisper-seq2seq/local-file.js"
+    },
+    "./presets/canary": {
+      "types": "./dist/presets/canary.d.ts",
+      "import": "./dist/presets/canary.js",
+      "default": "./dist/presets/canary.js"
+    },
+    "./presets/gigaam-ctc-local": {
+      "types": "./dist/presets/gigaam-ctc-local.d.ts",
+      "import": "./dist/presets/gigaam-ctc-local.js",
+      "default": "./dist/presets/gigaam-ctc-local.js"
+    },
+    "./presets/gigaam-rnnt-local": {
+      "types": "./dist/presets/gigaam-rnnt-local.d.ts",
+      "import": "./dist/presets/gigaam-rnnt-local.js",
+      "default": "./dist/presets/gigaam-rnnt-local.js"
+    },
+    "./presets/medasr": {
+      "types": "./dist/presets/medasr.d.ts",
+      "import": "./dist/presets/medasr.js",
+      "default": "./dist/presets/medasr.js"
+    },
+    "./presets/moonshine": {
+      "types": "./dist/presets/moonshine.d.ts",
+      "import": "./dist/presets/moonshine.js",
+      "default": "./dist/presets/moonshine.js"
+    },
+    "./presets/nemotron": {
+      "types": "./dist/presets/nemotron.d.ts",
+      "import": "./dist/presets/nemotron.js",
+      "default": "./dist/presets/nemotron.js"
+    },
+    "./presets/omnilingual-ctc": {
+      "types": "./dist/presets/omnilingual-ctc.d.ts",
+      "import": "./dist/presets/omnilingual-ctc.js",
+      "default": "./dist/presets/omnilingual-ctc.js"
+    },
+    "./presets/parakeet": {
+      "types": "./dist/presets/parakeet.d.ts",
+      "import": "./dist/presets/parakeet.js",
+      "default": "./dist/presets/parakeet.js"
+    },
+    "./presets/parakeet-ctc": {
+      "types": "./dist/presets/parakeet-ctc.d.ts",
+      "import": "./dist/presets/parakeet-ctc.js",
+      "default": "./dist/presets/parakeet-ctc.js"
+    },
+    "./presets/qwen3-asr": {
+      "types": "./dist/presets/qwen3-asr.d.ts",
+      "import": "./dist/presets/qwen3-asr.js",
+      "default": "./dist/presets/qwen3-asr.js"
+    },
+    "./presets/sensevoice-local": {
+      "types": "./dist/presets/sensevoice-local.d.ts",
+      "import": "./dist/presets/sensevoice-local.js",
+      "default": "./dist/presets/sensevoice-local.js"
+    },
+    "./presets/wav2vec2": {
+      "types": "./dist/presets/wav2vec2.d.ts",
+      "import": "./dist/presets/wav2vec2.js",
+      "default": "./dist/presets/wav2vec2.js"
+    },
+    "./presets/wav2vec2-tr": {
+      "types": "./dist/presets/wav2vec2-tr.d.ts",
+      "import": "./dist/presets/wav2vec2-tr.js",
+      "default": "./dist/presets/wav2vec2-tr.js"
+    },
+    "./presets/whisper": {
+      "types": "./dist/presets/whisper.d.ts",
+      "import": "./dist/presets/whisper.js",
+      "default": "./dist/presets/whisper.js"
+    },
+    "./presets/x-asr-local": {
+      "types": "./dist/presets/x-asr-local.d.ts",
+      "import": "./dist/presets/x-asr-local.js",
+      "default": "./dist/presets/x-asr-local.js"
     }
   },
   "files": [

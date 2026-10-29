@@ -280,6 +280,10 @@ import { createLasrCtcModelFamily } from '@asrjs/speech-recognition/models/lasr-
 import { createWhisperSeq2SeqModelFamily } from '@asrjs/speech-recognition/models/whisper-seq2seq';
 ```
 
+Only the family entry points are exported. Files inside a family folder are
+internal and cannot be imported; the one exception is the Node-only
+`models/whisper-seq2seq/local-file` loader.
+
 Artifact-gated families use the same model-family subpath convention. Qwen3-ASR
 and Moonshine Streaming Tiny have pinned ONNX Hub bundles as well as local
 loading paths. SenseVoice, GigaAM and X-ASR still require local artifacts.
@@ -296,6 +300,9 @@ import { createParakeetPresetFactory } from '@asrjs/speech-recognition/presets/p
 import { createMedAsrPresetFactory } from '@asrjs/speech-recognition/presets/medasr';
 import { createWhisperPresetFactory } from '@asrjs/speech-recognition/presets/whisper';
 ```
+
+Each branded preset has one entry point. Preset factories, local adapters and
+catalog data are internal; use the preset entry or `@asrjs/speech-recognition/presets`.
 
 Most app code no longer needs this entry just to discover models or build
 preset-aware load/transcription options. Those common helpers are now available
