@@ -36,6 +36,13 @@ First npm release.
 
 ### Breaking
 
+- TEN-VAD is no longer bundled because its license restricts redistribution
+  in developer libraries. Host `ten_vad.js` and `ten_vad.wasm` from the
+  [TEN-VAD Web build](https://github.com/TEN-framework/ten-vad/tree/main/lib/Web)
+  and pass `tenVadConfig.assetBaseUrl`. Without it, TEN-VAD initialization
+  fails with `TenVadAssetsNotConfiguredError`. FireRed VAD and the rough gate
+  are unaffected.
+
 - `package.json` exports list model-family and preset entry points
   explicitly. Deep imports of internal files such as
   `/models/nemo-tdt/executor` or `/presets/parakeet/manifest` now fail with
