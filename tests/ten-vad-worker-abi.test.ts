@@ -87,7 +87,11 @@ describe('TEN-VAD worker C ABI lifecycle', () => {
       expect(responses).toEqual([
         { type: 'ERROR', id: 2, payload: 'ten_vad_destroy failed with code -1' },
       ]);
-      expect(module._free).not.toHaveBeenCalled();
+      if (type === 'RESET') {
+        expect(module._free).not.toHaveBeenCalled();
+      } else {
+        expect(module._free).toHaveBeenCalledTimes(4);
+      }
       expect(module._ten_vad_create).toHaveBeenCalledTimes(1);
     });
   }
