@@ -1,7 +1,7 @@
 # Parakeet variants: ordered implementation tasks
 
 Started: 2026-10-01; dated updates below retain their own evidence scope.
-Resume through [AGENT_ENTRYPOINT.md](AGENT_ENTRYPOINT.md) and the latest handover;
+Resume through [AGENT_ENTRYPOINT.md](../AGENT_ENTRYPOINT.md) and the latest handover;
 later appended receipts supersede earlier next-step wording, not failed gates.
 Active candidate: `oruk/orukeet`, a Parakeet TDT v3 fine-tune. TDT distilled,
 quantized/faster derivatives and locale fine-tunes enter the same queue after
@@ -30,7 +30,7 @@ solely because its teacher is NVIDIA; unrelated new NVIDIA models remain out.
 Full-size is not a small student, but can still be a useful speed/memory/quality
 candidate. Integer/ternary feasibility is explicit research, not default adoption.
 
-- [x] Recover the existing [2026 candidate list](reports/light-asr-diarization-hunt-2026-09-30.md)
+- [x] Recover the existing [2026 candidate list](../reports/light-asr-diarization-hunt-2026-09-30.md)
       and distinguish distillation, quantization, conversion and fine-tuning.
 - [x] Reopen `moondream/parakeet-redux` for **packed-runtime feasibility**;
       preserve the 627,270,687-parameter correction and failed teacher-graph
@@ -43,7 +43,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       not reference inference or a successful port. C52 holds the commands.
 - [x] Bind cached Redux archive/config/manifest to live HF revision and add
       offline SHA-bound packed preflight: 264 modules pass, 28 local tests pass.
-      See [packed tools](../tools/parakeet-ternary/README.md) and the source-bound
+      See [packed tools](../../tools/parakeet-ternary/README.md) and the source-bound
       receipt. Historical `efec...` address is unreachable; no oracle is claimed.
 - [ ] Redux: inspect the recommended original runtime/source and relative-position,
       subsampler, decoder/joint and VAD contracts; capture an exact-checkpoint
@@ -54,7 +54,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       segmentation contracts are mapped, including candidate deviations from
       NeMo log-mel and the no-overlap 30 s pause-midpoint segmentation rule;
       Ultra shares the same runtime registration. Receipt:
-      [redux-kestrel-contract-2026-10-08.json](../tools/data/results/model-candidates/redux-kestrel-contract-2026-10-08.json).
+      [redux-kestrel-contract-2026-10-08.json](../../tools/data/results/model-candidates/redux-kestrel-contract-2026-10-08.json).
       The exact-checkpoint oracle half remains blocked on user authority to
       install the pinned kestrel reference environment; kernel bit-order and
       activation arithmetic stay unestablished without a kernel/reference run.
@@ -64,8 +64,8 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       this Skylake-W CPU has no VNNI so the packed int8 kernel cannot run at
       all here — `set_gemm_isa('avx2')` raises inside the gemm; oracle runs use
       the official dense/oracle resident form. Exact-weight JFK oracle receipt:
-      [redux-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/redux-official-oracle-jfk-2026-10-08.json);
-      environment and limits: [parakeet-kestrel README](../tools/model-debugging/reference/parakeet-kestrel/README.md).
+      [redux-official-oracle-jfk-2026-10-08.json](../../tools/data/results/model-candidates/redux-official-oracle-jfk-2026-10-08.json);
+      environment and limits: [parakeet-kestrel README](../../tools/model-debugging/reference/parakeet-kestrel/README.md).
 - [ ] Redux: choose a bounded packed compute experiment or a clearly labeled
       dense baseline. Measure decode/repack cost, graph/working memory and kernel
       support; expanding weights to fp32 does not preserve packed-runtime gains.
@@ -78,7 +78,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       Kestrel contract map (1024/24/8/4096, factor 8, vocab 8193, durations
       [0..4], vad_head tensors present), and the official Kestrel oracle on the
       pinned JFK effective PCM returns the canonical transcript. Receipt:
-      [ultra-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/ultra-official-oracle-jfk-2026-10-08.json).
+      [ultra-official-oracle-jfk-2026-10-08.json](../../tools/data/results/model-candidates/ultra-official-oracle-jfk-2026-10-08.json).
       Dense-oracle CPU timings (6.2 s wall, ~4.3 GB peak) are machine context,
       not matched speed/memory evaluation; that comparison stays open.
 - [ ] `efederici/parakeet-tdt-0.6b-v3-onnx-int4`: audit the 409 MB hybrid
@@ -92,7 +92,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       durations) are identical to our fp32 Orukeet family contract; vocab is
       byte-identical after newline normalization. Evidence-only per the fp16
       precision preference; no execution or accuracy claim. Receipt:
-      [int4-graph-audit-2026-10-08.json](../tools/data/results/model-candidates/int4-graph-audit-2026-10-08.json).
+      [int4-graph-audit-2026-10-08.json](../../tools/data/results/model-candidates/int4-graph-audit-2026-10-08.json).
 - [ ] Audit other genuine TDT students and precision variants; pin exact IDs,
       revisions and licenses. No smaller-student claim from file size alone.
 - [ ] Continue dated non-NVIDIA order: Moonshine streaming, Fun-ASR MLT Nano,
@@ -107,8 +107,8 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       attention mask (without it the whole-utterance path degenerates; offline
       moonshine is mask-insensitive). Old remapped/4.57-era layouts and the
       invalid historical graphs stay excluded. Receipt:
-      [moonshine-streaming-official-oracle-jfk-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-official-oracle-jfk-2026-10-08.json);
-      environment and next export step: [moonshine-streaming README](../tools/model-debugging/reference/moonshine-streaming/README.md).
+      [moonshine-streaming-official-oracle-jfk-2026-10-08.json](../../tools/data/results/model-candidates/moonshine-streaming-official-oracle-jfk-2026-10-08.json);
+      environment and next export step: [moonshine-streaming README](../../tools/model-debugging/reference/moonshine-streaming/README.md).
       Same day, encoder re-export PASS: our own fp32 ONNX streaming encoder
       (dynamo exporter; opset 18; dynamic batch/time; mask input carried) —
       ORT-vs-torch hidden max abs 4.26e-5 / cosine 0.99999996, and greedy
@@ -117,7 +117,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       explicit tolerances plus exact tokens (rationale in the receipt). Decoder
       graph (cache/prefill-step contract) is next; invalid historical streaming
       graphs remain excluded. Receipt:
-      [moonshine-streaming-encoder-fp32-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-encoder-fp32-2026-10-08.json).
+      [moonshine-streaming-encoder-fp32-2026-10-08.json](../../tools/data/results/model-candidates/moonshine-streaming-encoder-fp32-2026-10-08.json).
       Same day, decoder graphs PASS: fp32 seed (prefill) + step graphs with
       per-layer past K/V and in-graph cross attention from encoder states;
       static single-token dimension keeps SDPA is_causal non-symbolic without
@@ -125,7 +125,7 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       sanitizer. Per-step logits max abs 2.67e-5 vs torch reference over 27
       steps; the fully-ONNX pipeline reproduces the oracle's 28 ids/text.
       Receipt:
-      [moonshine-streaming-decoder-fp32-2026-10-08.json](../tools/data/results/model-candidates/moonshine-streaming-decoder-fp32-2026-10-08.json).
+      [moonshine-streaming-decoder-fp32-2026-10-08.json](../../tools/data/results/model-candidates/moonshine-streaming-decoder-fp32-2026-10-08.json).
       Remaining: fp16 re-gate, chunked-state encoder refinement, library
       integration.
       2026-10-09, fp16 set PASS: all three graphs re-exported directly from
@@ -134,21 +134,21 @@ candidate. Integer/ternary feasibility is explicit research, not default adoptio
       the fp32 pipeline's tokens; drift cosine 0.9999876 (encoder) /
       0.9999996 (logits); artifacts halve to 284 MB. No WebGPU run yet.
       Receipt:
-      [moonshine-streaming-fp16-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-fp16-2026-10-09.json).
+      [moonshine-streaming-fp16-2026-10-09.json](../../tools/data/results/model-candidates/moonshine-streaming-fp16-2026-10-09.json).
       2026-10-09, chunked-state equivalence PASS: torch-level proof that the
       streaming encoder with explicit state (conv tails <=4 frames + per-layer
       15-frame window context, 4-frame lookahead) reproduces whole-utterance
       hidden states across chunk sizes 16/64/137/512 on JFK and a synthetic
       odd-length waveform (cosine 1.0, max abs <= 3.2e-5). The chunked ONNX
       graph export, library integration and WebGPU validation remain. Receipt:
-      [moonshine-streaming-chunked-equivalence-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-chunked-equivalence-2026-10-09.json).
+      [moonshine-streaming-chunked-equivalence-2026-10-09.json](../../tools/data/results/model-candidates/moonshine-streaming-chunked-equivalence-2026-10-09.json).
       Same day, chunked graph export PASS (torch/ONNX parity 1.2e-5/3.9e-5,
       fully-ONNX tokens == oracle) and library integration:
       `src/models/moonshine/streaming-session.ts` consumes the contract with
       injected runners; 9 scripted-mock tests pin the window rules and 3
       real-graph Node-ORT tests finalize one-second-pushed audio to the exact
       official oracle transcript (reset/reuse at emit=64 identical). Charts:
-      [moonshine-streaming-chunked-encoder-graph-2026-10-09.json](../tools/data/results/model-candidates/moonshine-streaming-chunked-encoder-graph-2026-10-09.json).
+      [moonshine-streaming-chunked-encoder-graph-2026-10-09.json](../../tools/data/results/model-candidates/moonshine-streaming-chunked-encoder-graph-2026-10-09.json).
       Same day, fp16 chunked graph PASS: `encoder_chunked_model.onnx` added to
       the fp16 set (dynamic whole-encoder time dim), fully-fp16 chunked pipeline
       tokens == oracle; session dtype option added; Node ORT fp16 feeds are
@@ -176,7 +176,7 @@ Pinned research identities (verify artifact hashes and access before execution):
 
 ### Earlier provenance correction (retained with its historical scope)
 
-Read the [status report and working guide](reports/model-port-status-and-guide-2026-10-08.md)
+Read the [status report and working guide](../reports/model-port-status-and-guide-2026-10-08.md)
 with the current goal before following older next-step wording.
 Redux/ultra/primeline are not genuine smaller students. The implemented
 `ctaguchi/parakeet-hf-ctc-110m-en` path is small, but its
@@ -1078,7 +1078,7 @@ Next inspect weighted power/log terms at those exact coordinates, beginning
 with mel 0/frame 346 (raw delta `2.46048e-4`), then high mel edge bands. Do not
 attempt another normalizer or precision-only FFT patch on this evidence.
 Receipt: `cascade-statistics-decomposition-handoff-2026-10-01.json`.
-The parallel compact-install work item is tracked in [PRODUCT_TASKS.md](./PRODUCT_TASKS.md).
+The parallel compact-install work item is tracked in [PRODUCT_TASKS.md](../PRODUCT_TASKS.md).
 
 ### Packed f32 FFT precision hypothesis — rejected (2026-10-01)
 
@@ -3448,7 +3448,7 @@ spectrum exactly before passing its feature gate. Passing a power-spectrum
 tolerance alone does not establish final feature parity: full-512 fp32/fp64
 already fail 129/120 JFK feature coordinates. Pure-silence normalization has
 a separate, measured fp32 reduction mismatch. See the
-[bounded numerical disposition](GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
+[bounded numerical disposition](../GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
 for evidence and reopening criteria. The production gate remains deferred,
 not closed; no tolerance moves and no claim of portable impossibility.
 

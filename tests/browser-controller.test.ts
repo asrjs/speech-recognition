@@ -862,4 +862,212 @@ describe('browser realtime microphone controller', () => {
 
     await controller.dispose();
   });
+
+  describe('Issue #222: Idempotent start and concurrent lifecycle robustness', () => {
+    it('makes start() an idempotent no-op when microphone is already active, preserving PCM flow', async () => {
+      let captureCallback!: (chunk: any) => void;
+      let startCaptureCalls = 0;
+      const starter = createFakeStarter();
+      const processChunkMock = vi.fn();
+      starter.processChunk = processChunkMock;
+
+      const controller = createBrowserRealtimeMicrophoneController({
+        micMode: 'speech-detect',
+        createStarter: () => starter,
+        createMonitor: createFakeMonitor,
+        startCapture: async (options) => {
+          startCaptureCalls++;
+          captureCallback = options.onChunk;
+          return {
+            sampleRate: 16000,
+            deviceSampleRate: 16000,
+            contextSampleRate: 16000,
+            chunkFrames: 256,
+            chunkDurationMs: 16,
+            stream: { getAudioTracks: () => [] },
+            stop: async () => undefined,
+          } as never;
+        },
+      });
+
+      // First start
+      await controller.start();
+      expect(controller.getState().isMicActive).toBe(true);
+      expect(startCaptureCalls).toBe(1);
+
+      // Deliver chunk 1
+      captureCallback({
+        pcm: new Float32Array(256).fill(0.1),
+        sampleRate: 16000,
+        startFrame: 0,
+        endFrame: 256,
+      });
+      expect(processChunkMock).toHaveBeenCalledTimes(1);
+
+      // Second start while active - must be idempotent no-op
+      await controller.start();
+      expect(controller.getState().isMicActive).toBe(true);
+      expect(startCaptureCalls).toBe(1); // Did not spawn a second capture handle
+
+      // Deliver chunk 2 - must NOT be dropped!
+      captureCallback({
+        pcm: new Float32Array(256).fill(0.2),
+        sampleRate: 16000,
+        startFrame: 256,
+        endFrame: 512,
+      });
+      expect(processChunkMock).toHaveBeenCalledTimes(2);
+
+      // Third start
+      await controller.start();
+      captureCallback({
+        pcm: new Float32Array(256).fill(0.3),
+        sampleRate: 16000,
+        startFrame: 512,
+        endFrame: 768,
+      });
+      expect(processChunkMock).toHaveBeenCalledTimes(3);
+
+      await controller.stop();
+      expect(controller.getState().isMicActive).toBe(false);
+      await controller.dispose();
+    });
+
+    it('handles concurrent start/start calls gracefully without invalidating capture', async () => {
+      let captureCallback!: (chunk: any) => void;
+      let startCaptureCalls = 0;
+      const starter = createFakeStarter();
+      const processChunkMock = vi.fn();
+      starter.processChunk = processChunkMock;
+
+      const controller = createBrowserRealtimeMicrophoneController({
+        micMode: 'speech-detect',
+        createStarter: () => starter,
+        createMonitor: createFakeMonitor,
+        startCapture: async (options) => {
+          startCaptureCalls++;
+          captureCallback = options.onChunk;
+          return {
+            sampleRate: 16000,
+            deviceSampleRate: 16000,
+            contextSampleRate: 16000,
+            chunkFrames: 256,
+            chunkDurationMs: 16,
+            stream: { getAudioTracks: () => [] },
+            stop: async () => undefined,
+          } as never;
+        },
+      });
+
+      // Call start() twice concurrently
+      await Promise.all([controller.start(), controller.start()]);
+      expect(startCaptureCalls).toBe(1);
+      expect(controller.getState().isMicActive).toBe(true);
+
+      // Verify PCM flows cleanly
+      captureCallback({
+        pcm: new Float32Array(256).fill(0.5),
+        sampleRate: 16000,
+        startFrame: 0,
+        endFrame: 256,
+      });
+      expect(processChunkMock).toHaveBeenCalledOnce();
+
+      await controller.stop();
+      await controller.dispose();
+    });
+
+    it('handles concurrent start/stop properly', async () => {
+      const starter = createFakeStarter();
+      const controller = createBrowserRealtimeMicrophoneController({
+        micMode: 'speech-detect',
+        createStarter: () => starter,
+        createMonitor: createFakeMonitor,
+        startCapture: async () => ({
+          sampleRate: 16000,
+          deviceSampleRate: 16000,
+          contextSampleRate: 16000,
+          chunkFrames: 256,
+          chunkDurationMs: 16,
+          stream: { getAudioTracks: () => [] },
+          stop: async () => undefined,
+        } as never),
+      });
+
+      const pStart = controller.start();
+      const pStop = controller.stop({ flush: false });
+      await Promise.all([pStart, pStop]);
+
+      expect(controller.getState().isMicActive).toBe(false);
+      await controller.dispose();
+    });
+
+    it('handles concurrent stop/start properly', async () => {
+      let captureCallback!: (chunk: any) => void;
+      const starter = createFakeStarter();
+      const processChunkMock = vi.fn();
+      starter.processChunk = processChunkMock;
+
+      const controller = createBrowserRealtimeMicrophoneController({
+        micMode: 'speech-detect',
+        createStarter: () => starter,
+        createMonitor: createFakeMonitor,
+        startCapture: async (options) => {
+          captureCallback = options.onChunk;
+          return {
+            sampleRate: 16000,
+            deviceSampleRate: 16000,
+            contextSampleRate: 16000,
+            chunkFrames: 256,
+            chunkDurationMs: 16,
+            stream: { getAudioTracks: () => [] },
+            stop: async () => undefined,
+          } as never;
+        },
+      });
+
+      await controller.start();
+      const pStop = controller.stop({ flush: false });
+      const pStart = controller.start();
+      await Promise.all([pStop, pStart]);
+
+      expect(controller.getState().isMicActive).toBe(true);
+
+      captureCallback({
+        pcm: new Float32Array(256).fill(0.9),
+        sampleRate: 16000,
+        startFrame: 0,
+        endFrame: 256,
+      });
+      expect(processChunkMock).toHaveBeenCalledOnce();
+
+      await controller.dispose();
+    });
+
+    it('handles dispose-during-start properly', async () => {
+      const starter = createFakeStarter();
+      const controller = createBrowserRealtimeMicrophoneController({
+        micMode: 'speech-detect',
+        createStarter: () => starter,
+        createMonitor: createFakeMonitor,
+        startCapture: async () => ({
+          sampleRate: 16000,
+          deviceSampleRate: 16000,
+          contextSampleRate: 16000,
+          chunkFrames: 256,
+          chunkDurationMs: 16,
+          stream: { getAudioTracks: () => [] },
+          stop: async () => undefined,
+        } as never),
+      });
+
+      const pStart = controller.start();
+      const pDispose = controller.dispose();
+      await Promise.all([pStart, pDispose]);
+
+      expect(controller.getState().isMicActive).toBe(false);
+      await expect(controller.start()).rejects.toThrow(/disposed/);
+    });
+  });
 });
+

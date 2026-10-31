@@ -1,4 +1,4 @@
-import { SincResampler, resampleSinc } from '../src/audio/resample.js';
+import { SincResampler, StatefulLinearResampler, resampleSinc } from '../src/audio/resample.js';
 import { resampleLinear } from '../src/runtime/media.js';
 import { startMicrophoneCapture } from '@asrjs/speech-recognition/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -113,6 +113,102 @@ describe('SincResampler streaming', () => {
   });
 });
 
+describe('StatefulLinearResampler streaming (Issue #221)', () => {
+  it('rejects invalid sample rates', () => {
+    expect(() => new StatefulLinearResampler(0, 16000)).toThrow(RangeError);
+    expect(() => new StatefulLinearResampler(44100, -100)).toThrow(RangeError);
+    expect(() => new StatefulLinearResampler(Number.NaN, 16000)).toThrow(RangeError);
+  });
+
+  it('passes equal-rate samples through unchanged', () => {
+    const resampler = new StatefulLinearResampler(16000, 16000);
+    const input = Float32Array.from([0.1, -0.2, 0.3, -0.4]);
+    const out = resampler.process(input);
+    expect(Array.from(out)).toEqual(Array.from(input));
+    expect(resampler.flush().length).toBe(0);
+  });
+
+  it.each([44100, 48000, 32000, 22050, 16000])(
+    'resamples %i Hz to 16 kHz across chunk frame sizes [128, 256, 512, 1024]',
+    (fromRate) => {
+      const input = tone(440, fromRate, 1.0);
+      for (const chunkSize of [128, 256, 512, 1024]) {
+        const resampler = new StatefulLinearResampler(fromRate, 16000);
+        const outputChunks: Float32Array[] = [];
+        for (let offset = 0; offset < input.length; offset += chunkSize) {
+          const chunk = input.subarray(offset, Math.min(input.length, offset + chunkSize));
+          outputChunks.push(resampler.process(chunk));
+        }
+        outputChunks.push(resampler.flush());
+        const totalSamples = outputChunks.reduce((acc, c) => acc + c.length, 0);
+        const expectedSamples = Math.round(input.length * (16000 / fromRate));
+        expect(Math.abs(totalSamples - expectedSamples)).toBeLessThanOrEqual(2);
+      }
+    },
+  );
+
+  it('produces continuous output across irregular chunk sizes', () => {
+    const input = tone(440, 44100, 0.5);
+    const resampler = new StatefulLinearResampler(44100, 16000);
+    const irregularSizes = [1, 7, 23, 128, 3, 512, 11, 43, 256, 99];
+    const chunks: Float32Array[] = [];
+    let offset = 0;
+    let sizeIndex = 0;
+    while (offset < input.length) {
+      const size = irregularSizes[sizeIndex % irregularSizes.length]!;
+      sizeIndex++;
+      const end = Math.min(input.length, offset + size);
+      chunks.push(resampler.process(input.subarray(offset, end)));
+      offset = end;
+    }
+    chunks.push(resampler.flush());
+    const totalOut = chunks.reduce((acc, c) => acc + c.length, 0);
+    const expected = Math.round(input.length * (16000 / 44100));
+    expect(Math.abs(totalOut - expected)).toBeLessThanOrEqual(2);
+  });
+
+  it('supports pause, resume, reset, and flush', () => {
+    const resampler = new StatefulLinearResampler(44100, 16000);
+    const chunk = new Float32Array(256).fill(0.5);
+    const out1 = resampler.process(chunk);
+    expect(out1.length).toBeGreaterThan(0);
+
+    resampler.pause();
+    const pausedOut = resampler.process(chunk);
+    expect(pausedOut.length).toBe(0);
+
+    resampler.resume();
+    const resumedOut = resampler.process(chunk);
+    expect(resumedOut.length).toBeGreaterThan(0);
+
+    resampler.reset();
+    expect(resampler.getPhase()).toBe(0);
+    expect(resampler.getLastSample()).toBe(0);
+  });
+
+  it('survives > 3.5s of 44.1 kHz callbacks with 256 samples without drift, underflow, or NaN', () => {
+    const resampler = new StatefulLinearResampler(44100, 16000);
+    const callbackCount = 700; // 700 * 256 = 179,200 samples = ~4.06 seconds
+    let totalOutputFrames = 0;
+
+    for (let iteration = 0; iteration < callbackCount; iteration++) {
+      const block = tone(440, 44100, 256 / 44100);
+      const out = resampler.process(block);
+      totalOutputFrames += out.length;
+      for (let i = 0; i < out.length; i++) {
+        expect(Number.isFinite(out[i])).toBe(true);
+      }
+      expect(resampler.getPhase()).toBeGreaterThanOrEqual(0);
+      expect(resampler.getPhase()).toBeLessThan(1);
+    }
+    const tail = resampler.flush();
+    totalOutputFrames += tail.length;
+
+    const expectedFrames = Math.round((callbackCount * 256 * 16000) / 44100);
+    expect(Math.abs(totalOutputFrames - expectedFrames)).toBeLessThanOrEqual(2);
+  });
+});
+
 describe('microphone capture resampling', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -121,13 +217,16 @@ describe('microphone capture resampling', () => {
 
   function createContext(sampleRate: number, extra: Record<string, unknown> = {}) {
     const processorNode = { onaudioprocess: null, connect: vi.fn(), disconnect: vi.fn() };
+    const gainNode = { gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() };
     return {
       processorNode,
+      gainNode,
       context: {
         sampleRate,
         destination: {},
         createMediaStreamSource: vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn() })),
         createScriptProcessor: vi.fn(() => processorNode),
+        createGain: vi.fn(() => gainNode),
         close: vi.fn(),
         ...extra,
       },
@@ -250,4 +349,95 @@ describe('microphone capture resampling', () => {
 
     await handle.stop();
   });
+
+  it('handles 44.1 kHz capture with 256-sample callbacks over > 3.5s with zero-gain routing and strong handle reference (Issue #221)', async () => {
+    const { context, processorNode, gainNode } = createContext(44100);
+    const chunks: Float32Array[] = [];
+    const handle = await startMicrophoneCapture({
+      stream,
+      createAudioContext: () => context as never,
+      chunkFrames: 256,
+      targetSampleRate: 16000,
+      resamplerType: 'linear',
+      onChunk: (chunk) => chunks.push(chunk.pcm),
+    });
+
+    // Verify strong references are kept on the handle to prevent GC collection
+    expect(handle._processorNode).toBe(processorNode);
+    expect(handle._scriptProcessorNode).toBe(processorNode);
+
+    // Verify zero-gain GainNode routing to prevent audio feedback howling
+    expect(context.createGain).toHaveBeenCalled();
+    expect(gainNode.gain.value).toBe(0);
+    expect(processorNode.connect).toHaveBeenCalledWith(gainNode);
+    expect(gainNode.connect).toHaveBeenCalledWith(context.destination);
+
+    // Simulate 650 callbacks of 256 samples @ 44.1 kHz = ~3.77 seconds of continuous audio
+    const callbackCount = 650;
+    const block = tone(440, 44100, 256 / 44100);
+    const audioEvent = {
+      inputBuffer: {
+        numberOfChannels: 1,
+        length: 256,
+        sampleRate: 44100,
+        getChannelData: () => block,
+      },
+    };
+
+    for (let i = 0; i < callbackCount; i++) {
+      expect(() => {
+        (processorNode.onaudioprocess as unknown as (event: unknown) => void)(audioEvent);
+      }).not.toThrow();
+    }
+
+    // Output chunks must be emitted steadily without errors or negative length exceptions
+    expect(chunks.length).toBeGreaterThan(200);
+    expect(chunks.every((c) => c.length === 256)).toBe(true);
+
+    await handle.stop();
+    expect(gainNode.disconnect).toHaveBeenCalled();
+  });
+
+  it('adapts when event.inputBuffer.sampleRate differs from audioContext.sampleRate', async () => {
+    const { context, processorNode } = createContext(44100);
+    const chunks: { pcm: Float32Array; sampleRate: number }[] = [];
+    const handle = await startMicrophoneCapture({
+      stream,
+      createAudioContext: () => context as never,
+      chunkFrames: 256,
+      targetSampleRate: 16000,
+      onChunk: (chunk) => chunks.push({ pcm: chunk.pcm, sampleRate: chunk.sampleRate }),
+    });
+
+    const block44 = tone(440, 44100, 256 / 44100);
+    for (let i = 0; i < 20; i++) {
+      (processorNode.onaudioprocess as unknown as (event: unknown) => void)({
+        inputBuffer: {
+          numberOfChannels: 1,
+          length: 256,
+          sampleRate: 44100,
+          getChannelData: () => block44,
+        },
+      });
+    }
+
+    // Now input buffer reports 48000 Hz hardware rate divergence
+    const block48 = tone(440, 48000, 256 / 48000);
+    for (let i = 0; i < 20; i++) {
+      (processorNode.onaudioprocess as unknown as (event: unknown) => void)({
+        inputBuffer: {
+          numberOfChannels: 1,
+          length: 256,
+          sampleRate: 48000,
+          getChannelData: () => block48,
+        },
+      });
+    }
+
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.every((c) => c.pcm.length === 256 && c.sampleRate === 16000)).toBe(true);
+
+    await handle.stop();
+  });
 });
+

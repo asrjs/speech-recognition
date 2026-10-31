@@ -219,6 +219,9 @@ private static readonly rnntBlankReprobeVisits = 6;
     const revision = source.revision ?? 'main';
     let repoFilesPromise: Promise<readonly string[]> | null = null;
     const getRepoFiles = (): Promise<readonly string[]> => {
+      if (source.repoFiles && source.repoFiles.length > 0) {
+        return Promise.resolve(source.repoFiles);
+      }
       repoFilesPromise ??= fetchModelFiles(source.repoId, revision);
       return repoFilesPromise;
     };

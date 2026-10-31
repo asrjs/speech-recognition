@@ -210,6 +210,7 @@ export function createBrowserRealtimeMicrophoneController(
   let lifecycleOperationTail: Promise<void> = Promise.resolve();
   let disposed = false;
   let startAbort: AbortController | null = null;
+  let activeStartPromise: Promise<void> | null = null;
   let state = createInitialState(micMode);
   const pendingTranscriptions = new Set<Promise<void>>();
   const transcriptionErrors: unknown[] = [];
@@ -635,8 +636,14 @@ export function createBrowserRealtimeMicrophoneController(
       if (disposed) {
         throw new Error('BrowserRealtimeMicrophoneController has been disposed.');
       }
+      if (state.isMicActive) {
+        return;
+      }
+      if (activeStartPromise) {
+        return activeStartPromise;
+      }
       const generation = ++lifecycleGeneration;
-      return enqueueLifecycleOperation(async () => {
+      const startPromise = enqueueLifecycleOperation(async () => {
         if (generation !== lifecycleGeneration || disposed || state.isMicActive) {
           return;
         }
@@ -817,11 +824,19 @@ export function createBrowserRealtimeMicrophoneController(
           throw error;
         }
       });
+      activeStartPromise = startPromise;
+      void startPromise.catch(() => undefined).finally(() => {
+        if (activeStartPromise === startPromise) {
+          activeStartPromise = null;
+        }
+      });
+      return startPromise;
     },
     async stop({ flush = true }: { readonly flush?: boolean } = {}): Promise<void> {
       if (disposed) {
         return;
       }
+      activeStartPromise = null;
       const generation = ++lifecycleGeneration;
       startAbort?.abort();
       setState({ isMicActive: false });
@@ -950,6 +965,7 @@ export function createBrowserRealtimeMicrophoneController(
         return;
       }
       disposed = true;
+      activeStartPromise = null;
       ++lifecycleGeneration;
       startAbort?.abort();
       setState({ isMicActive: false });

@@ -208,7 +208,7 @@ would appear in `decoderInitMs`.
 // After device_queue_.Submit(1, &command_buffer) in Flush():
 wgpu::Future fence = device_queue_.OnSubmittedWorkDone(
     wgpu::CallbackMode::WaitAnyOnly,
-    [](../wgpu::QueueWorkDoneStatus) {});
+    [] (wgpu::QueueWorkDoneStatus) {});
 instance_.WaitAny(fence, UINT64_MAX);
 ```
 
@@ -345,7 +345,7 @@ See `ort-flush-fence.patch` alongside this report.
 +  // This prevents the next session from paying the encoder's GPU execution
 +  // time as a hidden penalty in its first compute dispatch.
 +  Wait(device_queue_.OnSubmittedWorkDone(wgpu::CallbackMode::WaitAnyOnly,
-+         [](../wgpu::QueueWorkDoneStatus){}));
++         [] (wgpu::QueueWorkDoneStatus){}));
 +
    if (graph_capture_state_ != GraphCaptureState::Replaying) {
      buffer_mgr.RefreshPendingBuffers(graph_capture_state_);

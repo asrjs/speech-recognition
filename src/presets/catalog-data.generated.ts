@@ -2341,6 +2341,12 @@ const sources = {
     kind: 'huggingface',
     repoId: 'ysdede/parakeet-tdt-0.6b-v3-onnx',
     revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
+    repoFiles: [
+      'encoder-model.fp16.onnx',
+      'decoder_joint-model.int8.onnx',
+      'config.json',
+      'vocab.txt'
+    ],
     preprocessorName: 'nemo128',
     preprocessorBackend: 'js',
     cacheKeyFallbackRevisions: [

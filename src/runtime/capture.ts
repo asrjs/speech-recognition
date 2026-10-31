@@ -1,5 +1,5 @@
 import { mixAudioBufferChannelsToMono } from './media.js';
-import { SincResampler } from '../audio/resample.js';
+import { SincResampler, StatefulLinearResampler } from '../audio/resample.js';
 import { AudioRingBuffer } from './realtime.js';
 import {
   STREAMING_DEVICE_SAMPLE_RATE_FALLBACK,
@@ -47,6 +47,12 @@ export interface MediaStreamSourceNodeLike {
   disconnect(): void;
 }
 
+export interface GainNodeLike {
+  readonly gain?: { value: number };
+  connect(destination: unknown): void;
+  disconnect(): void;
+}
+
 export interface BrowserAudioContextLike {
   readonly sampleRate: number;
   readonly destination: unknown;
@@ -57,6 +63,7 @@ export interface BrowserAudioContextLike {
     numberOfInputChannels: number,
     numberOfOutputChannels: number,
   ): ScriptProcessorAudioNodeLike;
+  createGain?(): GainNodeLike;
   close(): Promise<void> | void;
 }
 
@@ -68,6 +75,7 @@ export interface BrowserMicrophoneCaptureOptions {
   readonly stream?: MediaStream;
   readonly constraints?: MediaStreamConstraints;
   readonly stopTracksOnStop?: boolean;
+  readonly resamplerType?: 'sinc' | 'linear';
   readonly getUserMedia?: (constraints: MediaStreamConstraints) => Promise<MediaStream>;
   readonly createAudioContext?: (sampleRate: number) => BrowserAudioContextLike;
   readonly onChunk: (chunk: MicrophoneAudioChunk) => void;
@@ -81,6 +89,9 @@ export interface BrowserMicrophoneCaptureHandle {
   readonly chunkFrames: number;
   readonly chunkDurationMs: number;
   readonly stream: MediaStream;
+  readonly _processorNode?: unknown;
+  readonly _scriptProcessorNode?: unknown;
+  readonly _scriptProcessor?: unknown;
   stop(): Promise<void>;
 }
 
@@ -213,17 +224,20 @@ registerProcessor('asrjs-capture-processor', AsrjsCaptureProcessor);
 `;
 }
 
-function createFixedChunkResampler(options: {
+export function createFixedChunkResampler(options: {
   readonly sourceSampleRate: number;
   readonly targetSampleRate: number;
   readonly chunkFrames: number;
+  readonly resamplerType?: 'sinc' | 'linear';
   readonly onChunk: (pcm: Float32Array) => void;
 }) {
   const chunkFrames = Math.max(1, options.chunkFrames);
-  const resampler = new SincResampler(
-    Math.max(1, options.sourceSampleRate),
-    Math.max(1, options.targetSampleRate),
-  );
+  const fromRate = Math.max(1, options.sourceSampleRate);
+  const toRate = Math.max(1, options.targetSampleRate);
+  const resampler =
+    options.resamplerType === 'linear'
+      ? new StatefulLinearResampler(fromRate, toRate)
+      : new SincResampler(fromRate, toRate);
   let pending = new Float32Array(chunkFrames);
   let pendingLength = 0;
 
@@ -243,6 +257,12 @@ function createFixedChunkResampler(options: {
           pendingLength = 0;
           options.onChunk(out);
         }
+      }
+    },
+    flush() {
+      const tail = resampler.flush();
+      if (tail.length > 0) {
+        this.push(tail);
       }
     },
   };
@@ -310,6 +330,7 @@ export async function startMicrophoneCapture(
   let source: MediaStreamSourceNodeLike | null = null;
   let workletNode: AudioWorkletNodeLike | null = null;
   let scriptProcessor: ScriptProcessorAudioNodeLike | null = null;
+  let gainNode: GainNodeLike | null = null;
   let processor: AudioWorkletNodeLike | ScriptProcessorAudioNodeLike | null = null;
   let stopped = false;
   let stopPromise: Promise<void> | null = null;
@@ -342,6 +363,7 @@ export async function startMicrophoneCapture(
           workletNode!.onprocessorerror = null;
         });
       }
+      attempt(() => gainNode?.disconnect());
       attempt(() => processor?.disconnect());
       attempt(() => source?.disconnect());
       try {
@@ -420,15 +442,29 @@ export async function startMicrophoneCapture(
         options.onError?.(error);
       };
     } else {
-      const fallbackResampler = createFixedChunkResampler({
-        sourceSampleRate: audioContext.sampleRate,
+      let currentSourceSampleRate = audioContext.sampleRate;
+      let fallbackResampler = createFixedChunkResampler({
+        sourceSampleRate: currentSourceSampleRate,
         targetSampleRate: processingSampleRate,
         chunkFrames,
+        resamplerType: options.resamplerType,
         onChunk: (pcm) => emitChunk(pcm, processingSampleRate),
       });
       scriptProcessor!.onaudioprocess = (event: AudioProcessingEvent) => {
         try {
-          fallbackResampler.push(mixAudioBufferChannelsToMono(event.inputBuffer));
+          const inputBuffer = event.inputBuffer;
+          const actualSampleRate = inputBuffer?.sampleRate || audioContext!.sampleRate;
+          if (actualSampleRate && actualSampleRate !== currentSourceSampleRate) {
+            currentSourceSampleRate = actualSampleRate;
+            fallbackResampler = createFixedChunkResampler({
+              sourceSampleRate: actualSampleRate,
+              targetSampleRate: processingSampleRate,
+              chunkFrames,
+              resamplerType: options.resamplerType,
+              onChunk: (pcm) => emitChunk(pcm, processingSampleRate),
+            });
+          }
+          fallbackResampler.push(mixAudioBufferChannelsToMono(inputBuffer));
         } catch (error) {
           options.onError?.(error);
         }
@@ -436,7 +472,18 @@ export async function startMicrophoneCapture(
     }
 
     source.connect(processor);
-    processor.connect(audioContext.destination);
+    if (scriptProcessor) {
+      gainNode = audioContext.createGain ? audioContext.createGain() : null;
+      if (gainNode?.gain) {
+        gainNode.gain.value = 0;
+        processor.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+      } else {
+        processor.connect(audioContext.destination);
+      }
+    } else {
+      processor.connect(audioContext.destination);
+    }
   } catch (error) {
     try {
       await stopResources();
@@ -456,6 +503,9 @@ export async function startMicrophoneCapture(
     chunkFrames,
     chunkDurationMs: framesToMilliseconds(chunkFrames, processingSampleRate),
     stream,
+    _processorNode: processor,
+    _scriptProcessor: scriptProcessor,
+    _scriptProcessorNode: scriptProcessor,
     stop: stopResources,
   };
 }

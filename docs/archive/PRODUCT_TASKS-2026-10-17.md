@@ -11,7 +11,7 @@ Next combine built/packed browser imports and default packaged TEN worker with
 actual capture-to-ASR; new captured bytes require their own original oracle,
 not reuse of C93 token rows. Strict production feature FAIL, fp16, quality and
 native-streaming gates are unchanged.
-[Recipe, identities and scope](reports/automatic-utterance-original-oracle-2026-10-08.md).
+[Recipe, identities and scope](../reports/automatic-utterance-original-oracle-2026-10-08.md).
 
 ## C92 — Real automatic speech-detect capture to Orukeet ASR
 
@@ -26,7 +26,7 @@ are saved with independent Python window-hash recomputation. 62 lightweight
 tests PASS; final manual/controller regression PASS. No core decoder, threshold
 or integer-default change. Next use existing original NeMo array-input inspector
 on those exact automatic utterance windows, not the full fake-device WAV oracle.
-[Recipe, receipts and scope](reports/speech-detect-capture-asr-2026-10-08.md).
+[Recipe, receipts and scope](../reports/speech-detect-capture-asr-2026-10-08.md).
 
 ## C91 — Exact captured PCM and original-weight oracle comparison
 
@@ -39,7 +39,7 @@ CPU original-weight runs capture 151/154 stages and match each browser session's
 32,000 input samples, 11 tokens and exact text. Model-neutral helper owns PCM;
 Orukeet adapter owns output comparison. Full stage numerics remain UNTESTED for
 these capture inputs; speech-detect ASR remains next integration gate.
-[Recipe, evidence and limits](reports/capture-original-oracle-2026-10-08.md).
+[Recipe, evidence and limits](../reports/capture-original-oracle-2026-10-08.md).
 
 ## C90 — Actual manual microphone capture to Orukeet ASR
 
@@ -52,7 +52,7 @@ Actual WebGPU/WASM execution and context/track/controller/model/browser cleanup
 pass. Base 38-token official file oracle and independent 19-check manifest pass;
 C83 delivered-code pin remains unchanged. 51 lightweight Python methods PASS.
 Speech-detect ASR and original-engine parity on exact capture PCM remain open.
-[Commands, evidence and limits](reports/microphone-capture-asr-2026-10-08.md).
+[Commands, evidence and limits](../reports/microphone-capture-asr-2026-10-08.md).
 
 ## C89 — Current Chrome ASR and windowed controller verification
 
@@ -65,7 +65,7 @@ not C88's runtime/browser-controller.ts (microphone). All 281 pinned paths remai
 byte-identical; ten additional opt-in controller paths are separate scope.
 25 lightweight tests PASS. Next actual capture-to-ASR integration remains open;
 separate TEN/capture and file-fed ASR receipts do not prove that combined path.
-[Commands, evidence and scope correction](reports/chrome-current-controller-2026-10-08.md).
+[Commands, evidence and scope correction](../reports/chrome-current-controller-2026-10-08.md).
 
 ## C88 — Real capture through asynchronous model startup
 
@@ -78,7 +78,7 @@ clears on cancellation/error and fails on overflow. Final hash-bound Chrome
 receipt has 125/125 hops in both starts, exact captured utterance slices and
 actual capture/worker cleanup. Five new regressions; 1,675 full-suite PASS,
 34 SKIP; independent review approves. TEN remains diagnostics-only.
-[Commands, failure and limits](reports/capture-model-startup-2026-10-08.md).
+[Commands, failure and limits](../reports/capture-model-startup-2026-10-08.md).
 
 ## C87 — Public speech-detect controller with actual TEN model diagnostics
 
@@ -92,7 +92,7 @@ All-silence-as-speech negative correctly FAILs with saved receipt; 68 focused
 tests and actual fake-device manual-controller browser regression PASS.
 Independent review approves. Next actual capture plus model integration; TEN
 remains diagnostics-only and rough-gate semantics were not changed.
-[Commands, evidence and limits](reports/ten-vad-controller-pcm-2026-10-08.md).
+[Commands, evidence and limits](../reports/ten-vad-controller-pcm-2026-10-08.md).
 
 ## C86 — Actual TEN-VAD WASM reset/disposal and browser evidence
 
@@ -106,7 +106,7 @@ speech replay and reset/fresh silence probabilities, two disposal ACKs, no
 worker errors and two terminations. Capture-owner browser regression re-passes.
 Independent review approves. Next integrate actual TEN results through the
 public speech detector/controller; energy fallback is not that acceptance.
-[Commands, identities, failed/final receipts and limits](reports/ten-vad-worker-lifecycle-2026-10-08.md).
+[Commands, identities, failed/final receipts and limits](../reports/ten-vad-worker-lifecycle-2026-10-08.md).
 
 ## C85 — Recover and reuse automatic Chrome model-load/test/result capture
 
@@ -117,7 +117,7 @@ C81 contract rejects only expected_code; separate independently reviewed C83 pin
 binds seven verified current response changes, same 281 paths, no weakened gate.
 Fresh manifest JFK/silence runs each pass all 19 checks; 49 Python controls PASS. Preserve
 historical pins and numerical failures; never auto-refresh code identity.
-[Runner, exact reproduction and receipts](reports/chrome-auto-recovery-2026-10-08.md).
+[Runner, exact reproduction and receipts](../reports/chrome-auto-recovery-2026-10-08.md).
 
 ## C84 — VAD smoke WAV identity and corrupt-input rejection
 
@@ -129,7 +129,7 @@ frames and the exact official PCM hash; fake RIFF cannot produce PASS.
 No model/runtime/source fixture edits, builds or GPU jobs. Energy fallback
 remains distinct from actual TEN model inference; local sibling WASM assets
 exist for the next model-backed workflow investigation.
-[Root cause, commands, build identity and scope](reports/vad-smoke-pcm-identity-2026-10-08.md).
+[Root cause, commands, build identity and scope](../reports/vad-smoke-pcm-identity-2026-10-08.md).
 
 ## C83 — Reset rejects neither obsolete successful nor failed VAD work
 
@@ -140,7 +140,7 @@ before / nine new PASS after; 49 focused and 1,666 full-suite PASS / 34 SKIP.
 Typechecks/scoped lint PASS; independent read-only review approves. Current
 browser starter uses a separate segmentation path; this is synthetic callback
 evidence, not physical/model-backed VAD acceptance. C82 pin remains historical.
-[Root cause, commands and scope](reports/realtime-vad-reset-2026-10-08.md).
+[Root cause, commands and scope](../reports/realtime-vad-reset-2026-10-08.md).
 
 ## C82 — Manifest-bound current-code speech and silence browser cases
 
@@ -151,7 +151,7 @@ separate C81 delivered-code contract updates exactly eight reviewed rows of 281.
 Fresh Chrome manifest speech and silence runs each pass all 19 checks, two
 complete oracle outputs and awaited cleanup. 49 Python / 13 demo tests PASS;
 independent read-only review approved. Numerical/quality/soak gates stay open.
-[Commands, identities and scope](reports/browser-manifest-silence-c81-2026-10-08.md).
+[Commands, identities and scope](../reports/browser-manifest-silence-c81-2026-10-08.md).
 
 ## C81 — Actual browser pure-silence output and demo evidence contract
 
@@ -162,7 +162,7 @@ valid token diagnostics in both normal/controller paths, and never invents []
 for missing IDs. 13 focused tests PASS; final Chrome two-repeat hybrid silence
 output and awaited cleanup PASS. Feature numerics and full model gates remain
 open; C78 expected-code snapshot is not silently refreshed.
-[Evidence, failed receipt and runnable recipe](reports/orukeet-browser-pure-silence-2026-10-08.md).
+[Evidence, failed receipt and runnable recipe](../reports/orukeet-browser-pure-silence-2026-10-08.md).
 
 ## C80 — Preserve cancelled-load progress callback failures
 
@@ -173,7 +173,7 @@ entries with primary cause. 48 RED before / PASS after; 153 focused and 1,644
 full-suite PASS / 34 SKIP. Typechecks PASS; independent review approved. Fresh
 direct Chrome same-PCM two-repeat oracle smoke PASS; C78 pinned code snapshot
 is not silently refreshed or certified for the new source.
-[Evidence and remaining scope](reports/load-cancellation-notification-2026-10-08.md).
+[Evidence and remaining scope](../reports/load-cancellation-notification-2026-10-08.md).
 
 ## C79 — Reviewed C78 browser-code snapshot and fresh manifest smoke
 
@@ -183,7 +183,7 @@ old file; separate snapshot updates eight reviewed code/HMR rows, keeps all 281
 paths and binds predecessor/change/seed. A fresh independent Chrome manifest
 run passes all 19 existing checks, two exact 38-token/text results and cleanup.
 48 lightweight tests PASS; no verifier/tolerance/engine/source change.
-[Evidence and exact snapshot scope](reports/browser-code-snapshot-c78-2026-10-08.md).
+[Evidence and exact snapshot scope](../reports/browser-code-snapshot-c78-2026-10-08.md).
 
 ## C78 — Preserve public model-load and cleanup failures
 
@@ -194,7 +194,7 @@ and asynchronous cleanup is awaited. 28 initial RED controls; 44 new tests,
 105 focused PASS and full current-tree 1,596 PASS / 34 SKIP. Fresh real Chrome
 same-PCM two-repeat 38-token/text smoke PASS. The pre-C78 pinned browser-code
 contract remains dated, not silently refreshed or claimed current.
-[Evidence, command and remaining boundary](reports/load-failure-preservation-2026-10-08.md).
+[Evidence, command and remaining boundary](../reports/load-failure-preservation-2026-10-08.md).
 
 ## C77 — Real browser oracle adapter in the port manifest
 
@@ -203,7 +203,7 @@ Explicit browser-oracle dispatch invokes the existing Chrome runner through a
 model-owned adapter, checks two complete token/text outputs, original PCM,
 artifact/runner identity, pinned delivered HTML/JS/TS/WASM and awaited cleanup.
 Final real Chrome run passes all 19 checks; 48 lightweight tests PASS.
-[Evidence, exact scope and command](reports/manifest-browser-oracle-2026-10-08.md).
+[Evidence, exact scope and command](../reports/manifest-browser-oracle-2026-10-08.md).
 Warm-up remains separate; feature numerics, fp16, long/windowed quality and soak
 are not promoted. Code snapshot refresh requires review, not automatic rebasing.
 
@@ -215,7 +215,7 @@ manifest/weights/graphs/sidecars/config/audio/oracles, output under the model
 root, and multiple browser cases sharing the current receipt suffix. Listing
 and fresh-output failure recording remain operational. 24 manifest tests PASS;
 caller-relative output stays bound across the child runner's working directory.
-[Evidence and commands](reports/manifest-output-preflight-2026-10-08.md).
+[Evidence and commands](../reports/manifest-output-preflight-2026-10-08.md).
 Next harness gap: fixture-aware browser inference adapter; existing browser
 manifest entries still mean warm-up only, not oracle acceptance.
 
@@ -225,7 +225,7 @@ Status: G1/G5/G6 same-input output smoke PASS; full numerical gates unchanged.
 Existing Orukeet URL runner reverified with installed Chrome, local fp32 hybrid
 model, two exact 38-token/text results, controller/timing, code binding and
 awaited cleanup. Discovery command added to tools/browser-validation/README.md.
-[Fresh receipt and scope](reports/chrome-auto-browser-resume-2026-10-08.md).
+[Fresh receipt and scope](../reports/chrome-auto-browser-resume-2026-10-08.md).
 No new inference loop or sibling edit; the adapter remains Orukeet-specific.
 
 ## C74 — Isolated production FFT output-component cast
@@ -236,7 +236,7 @@ bins without FFT/preemphasis/window/mel/normalizer edits. Exact upstream bytes
 and independent power formula PASS; candidate still 313 feature failures, first
 45, max error 0.00034236907959, same as production. Final 95 diagnostic tests
 PASS; corrected result-schema verification reproduces identical metrics.
-[C74 evidence and reproduction](reports/orukeet-final-bin-cast-2026-10-08.md).
+[C74 evidence and reproduction](../reports/orukeet-final-bin-cast-2026-10-08.md).
 No production patch or model promotion; do not repeat this rejected cast or C60.
 
 ## C73 — Preserve primary failures in public one-shot transcription
@@ -246,7 +246,7 @@ Single, mono-PCM and batch public helpers retain simultaneous transcription and
 cleanup failures, original cause and nested cleanup identity; only-one-failure
 identity stays unchanged. Twelve RED regressions before; 27 added cases and 67
 focused tests PASS. Final full current-tree suite 1,552 PASS / 34 SKIP.
-[C73 evidence and next distinct numerical hypothesis](reports/one-shot-failure-preservation-2026-10-08.md).
+[C73 evidence and next distinct numerical hypothesis](../reports/one-shot-failure-preservation-2026-10-08.md).
 Sibling cancel/unload authority remains pending; do not repeat completed C55.
 
 ## C72 — Packed public-export browser compactness
@@ -257,7 +257,7 @@ offline archive consumer runs both probes without another pack/install. Real
 bundles 21,433 / 19,772 bytes, no retained model/ORT/native or external imports,
 both within unchanged 32 KiB budgets. Seven tests PASS; packed native-absence,
 strict declarations, payload exports and browser graph checks PASS.
-[C72 evidence and reproduction](reports/packed-compact-browser-2026-10-08.md).
+[C72 evidence and reproduction](../reports/packed-compact-browser-2026-10-08.md).
 Next actual companion cancel/unload needs sibling source approval; file flow
 already PASS C55. No model gates or install-size claims changed.
 
@@ -268,7 +268,7 @@ Repeated and abort-listener reentrant disposal waits for queue drain and one
 session release; every caller observes retained cleanup failure. Seven actual
 wrapper regressions RED before / PASS after. Full current-tree suite 1,525 PASS /
 34 SKIP; typecheck and scoped lint PASS. No family math/output changes.
-[C71 evidence](reports/streaming-disposal-2026-10-08.md).
+[C71 evidence](../reports/streaming-disposal-2026-10-08.md).
 
 ## C70 — Streaming example acquisition and cleanup
 
@@ -277,7 +277,7 @@ Protected load/session/wrapper acquisition; both cleanup layers awaited and
 attempted independently; primary/nested cleanup failures preserved. Initial
 8 RED tests, final 14 new + 27 related PASS; typecheck/scoped lint PASS.
 Next verify concurrent wrapper disposal waits for in-flight cleanup.
-[C70 report](reports/streaming-example-lifecycle-2026-10-08.md).
+[C70 report](../reports/streaming-example-lifecycle-2026-10-08.md).
 
 ## C69 — Detailed/native example cleanup
 
@@ -286,7 +286,7 @@ Awaited transcription and runtime-owner cleanup across success/partial acquisiti
 and failure; primary plus nested cleanup errors preserved without child double
 disposal. Initial seven tests RED; final ten example and 41 related tests PASS.
 Source/examples typecheck and scoped lint PASS. No model/core API change.
-[C69 report and next existing recipe](reports/detailed-native-example-lifecycle-2026-10-08.md).
+[C69 report and next existing recipe](../reports/detailed-native-example-lifecycle-2026-10-08.md).
 
 ## C68 — Original engine reproduces domain-format window difference
 
@@ -296,7 +296,7 @@ match Chrome. Original window also produces `Libravox dot org`, unlike full-file
 context. Six instrumentation controls PASS; no decoder/merger patch justified.
 Two-window attribution budget ends; continue independent product work or a
 specific replay-based overlap defect, not an unchanged model/oracle sweep.
-[C68 evidence and recipe](reports/orukeet-domain-window-oracle-2026-10-08.md).
+[C68 evidence and recipe](../reports/orukeet-domain-window-oracle-2026-10-08.md).
 
 ## C67 — Recorded controller replay without weights/GPU
 
@@ -307,7 +307,7 @@ payloads and reset. 7 focused tests, typecheck and ESLint PASS; negative digest
 and missing-file probes FAIL as required. No acceptance waiver or runtime patch.
 Next non-casing phrase already originates in request 6 (8.16–14.0 s);
 same-window original-engine parity remains UNTESTED there.
-[C67 report and next action](reports/controller-receipt-replay-2026-10-08.md).
+[C67 report and next action](../reports/controller-receipt-replay-2026-10-08.md).
 
 ## C66 — Original-engine nonzero window control
 
@@ -318,7 +318,7 @@ Exact official preprocessor PCM matches Chrome request 3 (3.2–8.0 s); text,
 at this window, no gate waived. Six capture controls and 18 runner tests PASS.
 Numerical and canonical timestamp parity remain UNTESTED for this window.
 Evidence and next bounded replay:
-[C66 report](reports/orukeet-same-window-oracle-2026-10-08.md).
+[C66 report](../reports/orukeet-same-window-oracle-2026-10-08.md).
 
 ## C65 — Automatic timing gate in the existing Chrome runner
 
@@ -329,7 +329,7 @@ inference association. Optional nonzero-origin flag requires actual timed detail
 Fresh JFK Chrome overall PASS; fresh long timing gate PASS but text gate FAIL.
 No decoder/model change or tolerance waiver.
 Evidence and next original-engine window capture:
-[C65 report](reports/orukeet-controller-timing-gate-2026-10-08.md).
+[C65 report](../reports/orukeet-controller-timing-gate-2026-10-08.md).
 
 ## C64 — Real-model rolling timing capture and long-text control
 
@@ -339,7 +339,7 @@ Detailed canonical callback plus cloned local/global/partial timing receipts.
 timing items map correctly. Finalize-only updates now have null inference index.
 52 focused tests PASS. Two full-clip 722-ID/text controls and PCM/cleanup PASS;
 windowed accumulated text differs and remains FAIL, not normalized away.
-Evidence and next: [C64 report](reports/orukeet-controller-timing-long-2026-10-08.md).
+Evidence and next: [C64 report](../reports/orukeet-controller-timing-long-2026-10-08.md).
 Add automatic timing gates; use identical-window original-engine captures to
 separate changed recognition context from actual merger defects.
 
@@ -351,7 +351,7 @@ tokens were global; partial/final now preserve sentence detail. Public-controlle
 34-second synthetic test covers exact PCM slices, nonzero starts, ring eviction,
 offsets, committed text retention and reset. Typecheck passes; 50 focused and
 1492 full-suite tests PASS / 33 SKIP. No model math/merger/segmented-time change.
-Evidence: [C63 report](reports/realtime-sentence-offsets-2026-10-08.md).
+Evidence: [C63 report](../reports/realtime-sentence-offsets-2026-10-08.md).
 Next: enrich existing Chrome controller timestamp receipts and request timestamped
 detail before a bounded real-model nonzero rolling-window control.
 
@@ -364,7 +364,7 @@ preserves valid-length cropping and physical stride without global axis guessing
 passes 1489 / skips 33. Fresh actual Chrome short controller run passes six chunks,
 seven windows, final oracle text and cleanup; normal repeats match all 38 IDs/text.
 Prior FAIL retained. No numerical tolerance or feature/model change.
-Evidence: [C62 report](reports/orukeet-padded-layout-fix-2026-10-08.md).
+Evidence: [C62 report](../reports/orukeet-padded-layout-fix-2026-10-08.md).
 Next: bounded nonzero rolling-window starts and offsets; short zero-start windows
 do not certify long rolling/native streaming, per-window numerics or quality.
 
@@ -376,7 +376,7 @@ optional `--verify-controller`: chunk-fed windowed offline ASR, not native strea
 38 oracle IDs/text and exact PCM; first 2-second controller window fails on
 physical `[1,1024,26]` versus valid length 25. Failed receipt, reset and awaited
 cleanup preserved. No core decoder/layout or parity criteria changed.
-Evidence and next step: [C61 report](reports/orukeet-windowed-controller-2026-10-08.md).
+Evidence and next step: [C61 report](../reports/orukeet-windowed-controller-2026-10-08.md).
 Investigate explicit graph/feature layout contract with regression tests before
 changing `nemo-tdt` executor; do not guess layout from axis magnitude.
 
@@ -387,7 +387,7 @@ JFK captured-PCM/actual-STFT cases use the existing tool and unchanged gates.
 Butterfly single-round gives 179 feature failures; recombination single-round
 gives 220. Unchanged production remains 313; aligned control remains 121.
 98 diagnostic tests pass. No production code/math/model-order change.
-Evidence: [C60 report](reports/orukeet-fft-product-rounding-2026-10-08.md),
+Evidence: [C60 report](../reports/orukeet-fft-product-rounding-2026-10-08.md),
 tracked compact handoff plus hash-bound local raw gzip receipts.
 
 Stop this rounding branch. A future numerical case needs a distinct production
@@ -402,7 +402,7 @@ segments. Four path/config tests and eleven runner tests pass. Fresh actual
 Chrome long control matches two full 722-token/text runs and official PCM,
 binds delivered code and awaits disposal/closure. First failed global-define
 receipt remains preserved. No core math/API change or model gate waiver.
-Evidence/limits: [C59 report](reports/orukeet-browser-portable-path-2026-10-08.md).
+Evidence/limits: [C59 report](../reports/orukeet-browser-portable-path-2026-10-08.md).
 
 This is dev checkout portability, not production deployment or moved-checkout
 browser acceptance. Canary's approved N:/models root remains separate. Continue
@@ -416,7 +416,7 @@ each raw boundary, preserving original production gates and identical power.
 JFK baseline/actual-filterbank/triangle conditions remain 313 failures under
 production normalization and 315 under cascade; pure silence changes 12800 to 0.
 22 targeted tests pass. No production math, oracle or tolerance changed.
-Evidence/recipe: [C58 report](reports/orukeet-filterbank-cascade-2026-10-08.md).
+Evidence/recipe: [C58 report](../reports/orukeet-filterbank-cascade-2026-10-08.md).
 
 Next numerical work must isolate a new portable FFT/window/power hypothesis;
 do not repeat prior f32/thread or captured-PCM full-stage controls unchanged.
@@ -430,7 +430,7 @@ decode between two full oracle-checked runs. Actual 149.7-second browser input
 aborted at 4/1872 frames as PipelineAbortedError/decode, without complete event;
 same-model reuse matched 722 official tokens/text and effective PCM, then awaited
 disposal and closed Chrome. 37 focused tests pass.
-Recipe/evidence: [C57 report](reports/orukeet-browser-cancel-reuse-2026-10-08.md).
+Recipe/evidence: [C57 report](../reports/orukeet-browser-cancel-reuse-2026-10-08.md).
 
 This is cooperative cancellation, not hard GPU interruption/reclamation or
 classic app cancel/unload UI acceptance. Orukeet feature numerics, quality,
@@ -444,7 +444,7 @@ The existing companion runner saves a failed JSON receipt for requested missing
 consumer/model/audio without opening Chrome; protected/existing outputs still
 fail without writing. Three negative subprocess cases reproduce the prior gap;
 35 focused tests and a fresh no-weight real Chrome UI control pass.
-Evidence: [C56 report](reports/browser-input-preflight-2026-10-08.md).
+Evidence: [C56 report](../reports/browser-input-preflight-2026-10-08.md).
 
 Live classic demo has no user cancel/unload actions; sibling write authority was
 requested. C14 app cancellation/disposal remains open, not satisfied by Chrome
@@ -463,7 +463,7 @@ deliberately wrong expected text failed with exit 1 and a saved failed receipt.
 34 focused helper tests pass. No sibling source, model math or oracle changed.
 Caller-supplied expected text and audio-file hashes are app smoke evidence, not
 effective-PCM or original-engine/numerical parity. Recipe and evidence:
-[C55 report](reports/browser-demo-file-auto-2026-10-08.md).
+[C55 report](../reports/browser-demo-file-auto-2026-10-08.md).
 Next C14 slice: actual app cancellation/disposal. Orukeet's open feature gates
 and model queue are unchanged.
 
@@ -480,7 +480,7 @@ matches all 722 original NeMo tokens and full text twice, with identical effecti
 f32le PCM, real WebGPU encoder / WASM decoder+joint and awaited disposal/Chrome
 closure. Served code/runtime bytes and runner source are hash-bound.
 
-Evidence and exact command: [long-browser report](reports/orukeet-auto-browser-long-2026-10-08.md).
+Evidence and exact command: [long-browser report](../reports/orukeet-auto-browser-long-2026-10-08.md).
 Receipt: `tools/data/results/orukeet/auto-browser-long-repeat8-2026-10-08-06.json`.
 Nine new-runner regressions plus nine browser helpers and 14 local-Parakeet
 helpers pass (32 tests). No production family math, tolerance, original weight,
@@ -537,7 +537,7 @@ No model inference, port acceptance, speedup or browser result is claimed.
 
 Latest direct instruction (2026-10-08) pauses Parakeet CTC work and resumes
 Parakeet TDT distills, quantized/faster derivatives and the recorded 2026
-candidate list. See active P10 in [PARAKEET_VARIANT_TASKS.md](PARAKEET_VARIANT_TASKS.md).
+candidate list. See active P10 in [PARAKEET_VARIANT_TASKS.md](../PARAKEET_VARIANT_TASKS.md).
 Preserve CTC code/review findings without making their repair a prerequisite.
 Redux/Ultra remain full-size but are eligible for bounded benefit investigation;
 old NVIDIA-lineage/full-size exclusions do not override this latest direction.
@@ -617,7 +617,7 @@ is unchanged and still required before any Redux/Ultra oracle.
 
 ## 2026-10-08 — Model provenance and status correction
 
-Read the [Turkish status report and working guide](reports/model-port-status-and-guide-2026-10-08.md)
+Read the [Turkish status report and working guide](../reports/model-port-status-and-guide-2026-10-08.md)
 before resuming the model lane. It reconciles existing C/P records, not a new queue.
 The current [ctaguchi model card](https://huggingface.co/ctaguchi/parakeet-hf-ctc-110m-en/raw/main/README.md)
 states that its checkpoint was converted from `nvidia/parakeet-tdt_ctc-110m`.
@@ -1707,7 +1707,7 @@ soak remain UNTESTED.
 
 Receipt: `tools/data/results/orukeet/long-repeat8-end-to-end-parity-2026-10-03.json`.
 Reusable lesson recorded as step 8 of the
-[porting parity playbook](../tools/model-debugging/playbooks/model-porting-parity.md#recommended-flow):
+[porting parity playbook](../../tools/model-debugging/playbooks/model-porting-parity.md#recommended-flow):
 verify a port on a clip longer than the encoder feature dimension, not only a
 short fixture.
 
@@ -1755,7 +1755,7 @@ values, and the Parakeet v1 maximum sits entirely on boundary frame 1100 of
 Whether the strict per-coordinate gate keeps binding for Orukeet is the user's
 call. Either it stays binding and `full_asr` stays unproven, or the historical
 functional standard the shipped ports used is adopted. The
-[focus goal](GOAL_MODEL_PORT_HARNESS.md#two-standards-what-shipped-and-what-this-lane-gates-on)
+[focus goal](../GOAL_MODEL_PORT_HARNESS.md#two-standards-what-shipped-and-what-this-lane-gates-on)
 records both options; this repository does not pick (b) on its own.
 
 Pure silence remains a separate recorded divergence: an official masked fp32
@@ -1793,10 +1793,10 @@ or multi-input discrimination.
 Receipts under `tools/data/results/qwen/`:
 `goal-harness-existing-port-jfk-2026-10-03.json` and
 `goal-harness-encoder-layout-attribution-jfk-2026-10-03.json`.
-The existing [Qwen guide](../tools/model-debugging/reference/qwen3-asr-0.6b/README.md#shared-encoder-boundary-control)
+The existing [Qwen guide](../../tools/model-debugging/reference/qwen3-asr-0.6b/README.md#shared-encoder-boundary-control)
 now exposes the tested control recipe and its limits.
 
-The [focus goal](GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
+The [focus goal](../GOAL_MODEL_PORT_HARNESS.md#bounded-orukeet-numerical-disposition)
 records the bounded Orukeet disposition: official-complex/native-real-FFT
 controls pass downstream feature gates, portable full-512 FFT already fails
 end-to-end, and pure silence has a separate measured reduction mismatch.
@@ -1824,8 +1824,8 @@ Conda is installed but absent from `PATH`; explicit invocation locates `nemo`,
 3.13.15 interpreter, but no uv tool environment or project uv manifest/lockfile
 was found. Its visible NumPy comes from the user site, not an isolated ASR stack.
 
-The [tool map](../tools/README.md#python-reference-environments), local skill
-and [workstation inventory](WORKSPACE_CONTEXT.md#python-reference-environment-inventory)
+The [tool map](../../tools/README.md#python-reference-environments), local skill
+and [workstation inventory](../WORKSPACE_CONTEXT.md#python-reference-environment-inventory)
 now expose interpreter selection, package provenance, isolation and actual
 dependency-check outcomes. The recommended unit is a version-pinned reference
 dependency stack, shared across compatible models, with separate environments
@@ -1845,7 +1845,7 @@ or numerical acceptance. User requested easier discovery after agents missed
 existing model-porting skills, reference engines and local artifacts.
 
 The tracked startup now exposes the project-local Model Debugging Skill and
-the [task-to-tool map](../tools/README.md#task-to-tool-map) before long task
+the [task-to-tool map](../../tools/README.md#task-to-tool-map) before long task
 records. The map routes ports, feature contracts, original captures, stage
 comparison, attribution, artifact audits and browser checks to existing tools.
 No registry, second runner, inference loop or global skill install was added.
