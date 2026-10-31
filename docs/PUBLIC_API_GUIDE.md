@@ -709,17 +709,21 @@ Architecture-based implementation families currently present in the repo:
 
 Current branded presets include:
 
-- `parakeet`
-- `orukeet`
-- `whisper`
+- `parakeet` (including the `oruk/orukeet` candidate)
+- `parakeet-ctc`
 - `canary`
 - `medasr`
-- `moonshine`
-- `qwen-asr`
-- `wav2vec2`
-- `sensevoice`
-- `gigaam`
 - `nemotron`
+- `whisper`
+- `wav2vec2`
+- `wav2vec2-tr`
+- `moonshine`
+- `qwen3-asr`
+- `omnilingual-ctc`
+- `gigaam-ctc`
+- `gigaam-rnnt`
+- `sensevoice`
+- `x-asr`
 
 ## Extending @asrjs/speech-recognition
 

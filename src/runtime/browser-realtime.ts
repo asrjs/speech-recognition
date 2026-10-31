@@ -22,6 +22,7 @@ import {
   type TenVadAdapterConfig,
   type TenVadAdapterOptions,
 } from './ten-vad-browser.js';
+import { getGlobalStreamingTelemetry } from './streaming-telemetry.js';
 import {
   FireRedVadAdapter,
   resolveSupportedFireRedVadHopSize,
@@ -446,6 +447,7 @@ export function createBrowserRealtimeStarter(
       readonly sampleRate?: number;
       readonly signal?: { readonly aborted: boolean } | null;
     } = {}): Promise<void> {
+      getGlobalStreamingTelemetry().recordCaptureStart();
       await detector.start({ sampleRate, signal });
       if (controller) {
         controller.reset();
@@ -467,6 +469,7 @@ export function createBrowserRealtimeStarter(
       return detector.flush(reason);
     },
     stop(options: { readonly flush?: boolean } = {}) {
+      getGlobalStreamingTelemetry().recordCaptureStop();
       return detector.stop(options);
     },
     updateConfig(
@@ -541,11 +544,15 @@ export function createBrowserRealtimeStarter(
       };
     },
     async dispose(): Promise<void> {
+      const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
       tenVadUnsubscribe?.();
+      await tenVad?.dispose().catch(() => undefined);
       await detector.dispose();
       if (controller) {
         controller.reset();
       }
+      const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startTime;
+      getGlobalStreamingTelemetry().recordDisposal(durationMs);
     },
   };
 }

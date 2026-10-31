@@ -24,6 +24,10 @@ describe('public exports', () => {
     expect(module.transcribeSpeech).toBeTypeOf('function');
     expect(module.transcribeSpeechBatch).toBeTypeOf('function');
     expect(module.transcribeSpeechFromMonoPcm).toBeTypeOf('function');
+    expect(module.transcribeSpeechFromAudioSource).toBeTypeOf('function');
+    expect(module.listApprovedSpeechModelManifests).toBeTypeOf('function');
+    expect(module.resolveSpeechModelExecutionPlan).toBeTypeOf('function');
+    expect(module.probeSpeechModelExecutionPlan).toBeTypeOf('function');
     expect(module.createSpeechPipeline).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');
     expect(module.createWasmBackend).toBeTypeOf('function');

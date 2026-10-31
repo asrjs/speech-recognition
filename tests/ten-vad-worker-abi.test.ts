@@ -75,20 +75,60 @@ describe('TEN-VAD worker C ABI lifecycle', () => {
     expect(module._free).toHaveBeenCalledTimes(4);
   });
 
+  it('RESET cannot acknowledge a failed native destruction', async () => {
+    module._ten_vad_destroy.mockReturnValue(-1);
+    await scope.onmessage({ data: { type: 'RESET', id: 2, payload: null } });
+    expect(responses).toEqual([
+      { type: 'ERROR', id: 2, payload: 'ten_vad_destroy failed with code -1' },
+    ]);
+    expect(module._free).not.toHaveBeenCalled();
+    expect(module._ten_vad_create).toHaveBeenCalledTimes(1);
+  });
+
+  it('DISPOSE frees memory even if native destruction fails', async () => {
+    module._ten_vad_destroy.mockReturnValue(-1);
+    await scope.onmessage({ data: { type: 'DISPOSE', id: 2, payload: null } });
+    expect(responses).toEqual([
+      { type: 'ERROR', id: 2, payload: 'ten_vad_destroy failed with code -1' },
+    ]);
+    expect(module._free.mock.calls.map(([ptr]) => ptr).sort()).toEqual([4, 8, 12, 16].sort());
+  });
+
+  it('frees buffers if _ten_vad_create fails during INIT', async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    pointer = 0;
+    responses.length = 0;
+    heap.fill(0);
+    module._ten_vad_create.mockReturnValueOnce(-2);
+    await import('../src/runtime/ten-vad-worker.js');
+    await scope.onmessage({
+      data: {
+        type: 'INIT',
+        id: 10,
+        payload: {
+          hopSize: 256,
+          threshold: 0.5,
+          scriptUrl: '/test.js',
+          wasmUrl: '/test.wasm',
+          fallbackScriptUrl: null,
+          fallbackWasmUrl: null,
+        },
+      },
+    });
+    expect(responses[0]).toEqual({
+      type: 'ERROR',
+      id: 10,
+      payload: 'ten_vad_create failed with code -2',
+    });
+    expect(module._free.mock.calls.map(([ptr]) => ptr).sort()).toEqual([4, 8, 12, 16].sort());
+  });
+
   for (const type of ['RESET', 'DISPOSE']) {
     it(`${type} passes the handle pointer, not the handle value`, async () => {
       await scope.onmessage({ data: { type, id: 2, payload: null } });
       expect(module._ten_vad_destroy).toHaveBeenCalledWith(4);
       expect(responses[0].type).toBe(type);
-    });
-    it(`${type} cannot acknowledge a failed native destruction`, async () => {
-      module._ten_vad_destroy.mockReturnValue(-1);
-      await scope.onmessage({ data: { type, id: 2, payload: null } });
-      expect(responses).toEqual([
-        { type: 'ERROR', id: 2, payload: 'ten_vad_destroy failed with code -1' },
-      ]);
-      expect(module._free).not.toHaveBeenCalled();
-      expect(module._ten_vad_create).toHaveBeenCalledTimes(1);
     });
   }
 });

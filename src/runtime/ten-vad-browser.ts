@@ -21,6 +21,7 @@ import type {
   TenVadResultPayload,
 } from './ten-vad-protocol.js';
 import { isTenVadWorkerResponse } from './ten-vad-protocol.js';
+import { getGlobalStreamingTelemetry } from './streaming-telemetry.js';
 
 export interface TenVadAdapterConfig {
   readonly sampleRate?: number;
@@ -272,9 +273,11 @@ export class TenVadAdapter implements StreamingTenVadLike {
 
     this.status = 'initializing';
     this.worker = this.workerFactory();
+    getGlobalStreamingTelemetry().incrementActiveWorkers();
     this.worker.onmessage = (event) => this.handleMessage(event.data);
     this.worker.onerror = (event) => {
       const message = event?.message || 'TEN-VAD worker error';
+      this.terminateWorker();
       this.fail(new Error(message));
     };
 
@@ -310,18 +313,17 @@ export class TenVadAdapter implements StreamingTenVadLike {
         await this.dispose();
         throw createTenVadInitAbortedError();
       }
+      this.terminateWorker();
       this.fail(error);
       throw error;
     }
   }
 
   private fail(error: unknown): void {
-    if (!this.worker) {
-      return;
-    }
     this.status = 'degraded';
     this.lastError = error instanceof Error ? error : new Error(String(error));
     this.rejectPending(this.lastError);
+    this.terminateWorker();
   }
 
   private rejectPending(error: Error): void {
@@ -460,14 +462,19 @@ export class TenVadAdapter implements StreamingTenVadLike {
       }
     }
     this.rejectPending(new Error('TEN-VAD adapter disposed.'));
-    if (worker) {
-      worker.onmessage = null;
-      worker.onerror = null;
-      worker.terminate();
-    }
-    this.worker = null;
+    this.terminateWorker();
     this.status = 'idle';
     this.resetTemporalState();
+  }
+
+  private terminateWorker(): void {
+    if (this.worker) {
+      this.worker.onmessage = null;
+      this.worker.onerror = null;
+      this.worker.terminate();
+      this.worker = null;
+      getGlobalStreamingTelemetry().decrementActiveWorkers();
+    }
   }
 
   private resetTemporalState(): void {

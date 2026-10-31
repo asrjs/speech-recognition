@@ -94,6 +94,10 @@ async function handleInit(id: number, config: TenVadInitPayload) {
 
   const createStatus = moduleInstance._ten_vad_create(handlePtr, hopSize, threshold);
   if (createStatus !== 0) {
+    for (const ptr of [audioPtr, probPtr, flagPtr, handlePtr]) {
+      if (ptr) moduleInstance._free(ptr);
+    }
+    audioPtr = probPtr = flagPtr = handlePtr = 0;
     throw new Error(`ten_vad_create failed with code ${createStatus}`);
   }
   vadHandle = moduleInstance.HEAP32[handlePtr >> 2];
@@ -228,21 +232,24 @@ function handleUpdateConfig(id: number, config: TenVadUpdateConfigPayload) {
 
 function handleDispose(id: number) {
   if (moduleInstance) {
-    if (vadHandle) {
-      const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
-      if (destroyStatus !== 0) {
-        throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+    try {
+      if (vadHandle) {
+        const destroyStatus = moduleInstance._ten_vad_destroy(handlePtr);
+        if (destroyStatus !== 0) {
+          throw new Error(`ten_vad_destroy failed with code ${destroyStatus}`);
+        }
       }
-    }
-    for (const ptr of [audioPtr, probPtr, flagPtr, handlePtr]) {
-      if (ptr) moduleInstance._free(ptr);
+    } finally {
+      for (const ptr of [audioPtr, probPtr, flagPtr, handlePtr]) {
+        if (ptr) moduleInstance._free(ptr);
+      }
+      audioPtr = probPtr = flagPtr = handlePtr = 0;
+      moduleInstance = null;
+      vadHandle = 0;
+      accumulator = null;
+      accumulatorPos = 0;
     }
   }
-  audioPtr = probPtr = flagPtr = handlePtr = 0;
-  moduleInstance = null;
-  vadHandle = 0;
-  accumulator = null;
-  accumulatorPos = 0;
   respond({ type: 'DISPOSE', id, payload: { success: true } });
 }
 

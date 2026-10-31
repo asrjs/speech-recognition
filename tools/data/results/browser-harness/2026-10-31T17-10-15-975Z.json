@@ -1,0 +1,630 @@
+{
+  "schema": "asrjs.browser-verification.v2",
+  "status": "UNVERIFIED",
+  "scope": "public-api-execution-and-normalized-text",
+  "requested": {
+    "localFolder": "__external_models__/onnx/nemo/parakeet-tdt-0.6b-v3-onnx",
+    "modelId": null,
+    "preset": null,
+    "family": null,
+    "backend": "webgpu-hybrid",
+    "fixture": "jfk-short.wav",
+    "chunkMs": 160,
+    "forceReload": true,
+    "mode": "offline",
+    "oracle": null,
+    "warmRerun": true
+  },
+  "browser_version": "156.0.8078.76",
+  "runs": {
+    "cold": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "offline",
+      "modelId": "parakeet-tdt-0.6b-v3",
+      "backendId": "webgpu",
+      "reportedBackendId": "webgpu",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "e15758376496ed8c71da50dc819e1544da6fd1e031f5abdf99668b0d9135b67b",
+      "supportsStreaming": false,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 11813.3,
+        "inferenceMs": 3194.9,
+        "totalMs": 15008.2,
+        "rtfx": 3.4,
+        "gpuDispatches": 1281
+      },
+      "cached": false,
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "words": [
+        {
+          "index": 0,
+          "text": "And",
+          "startTime": 0.24,
+          "endTime": 0.56,
+          "confidence": 0.9996877877962134,
+          "tokenIndices": [
+            0
+          ]
+        },
+        {
+          "index": 1,
+          "text": "so,",
+          "startTime": 0.56,
+          "endTime": 1.04,
+          "confidence": 0.9225610070302988,
+          "tokenIndices": [
+            1,
+            2
+          ]
+        },
+        {
+          "index": 2,
+          "text": "my",
+          "startTime": 1.04,
+          "endTime": 1.28,
+          "confidence": 0.9993852290754583,
+          "tokenIndices": [
+            3
+          ]
+        },
+        {
+          "index": 3,
+          "text": "fellow",
+          "startTime": 1.28,
+          "endTime": 1.76,
+          "confidence": 0.9979980675449246,
+          "tokenIndices": [
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "index": 4,
+          "text": "Americans,",
+          "startTime": 1.76,
+          "endTime": 3.28,
+          "confidence": 0.9722203740188621,
+          "tokenIndices": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "index": 5,
+          "text": "ask",
+          "startTime": 3.28,
+          "endTime": 3.92,
+          "confidence": 0.9978849910087978,
+          "tokenIndices": [
+            11,
+            12
+          ]
+        },
+        {
+          "index": 6,
+          "text": "not",
+          "startTime": 4.24,
+          "endTime": 4.56,
+          "confidence": 0.9999727997834543,
+          "tokenIndices": [
+            13
+          ]
+        },
+        {
+          "index": 7,
+          "text": "what",
+          "startTime": 5.2,
+          "endTime": 5.52,
+          "confidence": 0.9994556399550475,
+          "tokenIndices": [
+            14
+          ]
+        },
+        {
+          "index": 8,
+          "text": "your",
+          "startTime": 5.68,
+          "endTime": 6,
+          "confidence": 0.9999216572374646,
+          "tokenIndices": [
+            15
+          ]
+        },
+        {
+          "index": 9,
+          "text": "country",
+          "startTime": 6,
+          "endTime": 6.56,
+          "confidence": 0.9996483072111253,
+          "tokenIndices": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "index": 10,
+          "text": "can",
+          "startTime": 6.56,
+          "endTime": 6.8,
+          "confidence": 0.9999734909588328,
+          "tokenIndices": [
+            20
+          ]
+        },
+        {
+          "index": 11,
+          "text": "do",
+          "startTime": 6.8,
+          "endTime": 7.12,
+          "confidence": 0.9999923325901192,
+          "tokenIndices": [
+            21
+          ]
+        },
+        {
+          "index": 12,
+          "text": "for",
+          "startTime": 7.12,
+          "endTime": 7.44,
+          "confidence": 0.9999899873191416,
+          "tokenIndices": [
+            22
+          ]
+        },
+        {
+          "index": 13,
+          "text": "you,",
+          "startTime": 7.44,
+          "endTime": 8.16,
+          "confidence": 0.9348707158617898,
+          "tokenIndices": [
+            23,
+            24
+          ]
+        },
+        {
+          "index": 14,
+          "text": "ask",
+          "startTime": 8.16,
+          "endTime": 8.72,
+          "confidence": 0.9994383195059371,
+          "tokenIndices": [
+            25,
+            26
+          ]
+        },
+        {
+          "index": 15,
+          "text": "what",
+          "startTime": 8.72,
+          "endTime": 8.96,
+          "confidence": 0.9999326486885518,
+          "tokenIndices": [
+            27
+          ]
+        },
+        {
+          "index": 16,
+          "text": "you",
+          "startTime": 8.96,
+          "endTime": 9.28,
+          "confidence": 0.9996256543022248,
+          "tokenIndices": [
+            28
+          ]
+        },
+        {
+          "index": 17,
+          "text": "can",
+          "startTime": 9.28,
+          "endTime": 9.52,
+          "confidence": 0.9999261877596821,
+          "tokenIndices": [
+            29
+          ]
+        },
+        {
+          "index": 18,
+          "text": "do",
+          "startTime": 9.52,
+          "endTime": 9.68,
+          "confidence": 0.9999153260068441,
+          "tokenIndices": [
+            30
+          ]
+        },
+        {
+          "index": 19,
+          "text": "for",
+          "startTime": 9.68,
+          "endTime": 9.92,
+          "confidence": 0.9999862753546496,
+          "tokenIndices": [
+            31
+          ]
+        },
+        {
+          "index": 20,
+          "text": "your",
+          "startTime": 9.92,
+          "endTime": 10.08,
+          "confidence": 0.9996083394772456,
+          "tokenIndices": [
+            32
+          ]
+        },
+        {
+          "index": 21,
+          "text": "country.",
+          "startTime": 10.08,
+          "endTime": 10.88,
+          "confidence": 0.9883484882835534,
+          "tokenIndices": [
+            33,
+            34,
+            35,
+            36,
+            37
+          ]
+        }
+      ],
+      "timestamp": "2026-10-31T17:10:14.641Z"
+    },
+    "warm": {
+      "schema": "asrjs.browser-execution.v2",
+      "status": "EXECUTED",
+      "mode": "offline",
+      "modelId": "parakeet-tdt-0.6b-v3",
+      "backendId": "webgpu",
+      "reportedBackendId": "webgpu",
+      "instanceId": "browser-session-1",
+      "loadFingerprint": "e15758376496ed8c71da50dc819e1544da6fd1e031f5abdf99668b0d9135b67b",
+      "supportsStreaming": false,
+      "gpuObservation": {
+        "instrumented": true,
+        "available": true
+      },
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": ""
+      },
+      "limits": {
+        "maxBufferSize": 2147483648,
+        "maxStorageBufferBindingSize": 2147483644
+      },
+      "audio": {
+        "fixture": "jfk-short.wav",
+        "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+        "durationSeconds": 11,
+        "samples": 176000,
+        "sampleRate": 16000
+      },
+      "metrics": {
+        "loadMs": 0,
+        "inferenceMs": 553.2,
+        "totalMs": 553.2,
+        "rtfx": 19.9,
+        "gpuDispatches": 1276
+      },
+      "cached": true,
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "words": [
+        {
+          "index": 0,
+          "text": "And",
+          "startTime": 0.24,
+          "endTime": 0.56,
+          "confidence": 0.9996877877962134,
+          "tokenIndices": [
+            0
+          ]
+        },
+        {
+          "index": 1,
+          "text": "so,",
+          "startTime": 0.56,
+          "endTime": 1.04,
+          "confidence": 0.9225610070302988,
+          "tokenIndices": [
+            1,
+            2
+          ]
+        },
+        {
+          "index": 2,
+          "text": "my",
+          "startTime": 1.04,
+          "endTime": 1.28,
+          "confidence": 0.9993852290754583,
+          "tokenIndices": [
+            3
+          ]
+        },
+        {
+          "index": 3,
+          "text": "fellow",
+          "startTime": 1.28,
+          "endTime": 1.76,
+          "confidence": 0.9979980675449246,
+          "tokenIndices": [
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "index": 4,
+          "text": "Americans,",
+          "startTime": 1.76,
+          "endTime": 3.28,
+          "confidence": 0.9722203740188621,
+          "tokenIndices": [
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "index": 5,
+          "text": "ask",
+          "startTime": 3.28,
+          "endTime": 3.92,
+          "confidence": 0.9978849910087978,
+          "tokenIndices": [
+            11,
+            12
+          ]
+        },
+        {
+          "index": 6,
+          "text": "not",
+          "startTime": 4.24,
+          "endTime": 4.56,
+          "confidence": 0.9999727997834543,
+          "tokenIndices": [
+            13
+          ]
+        },
+        {
+          "index": 7,
+          "text": "what",
+          "startTime": 5.2,
+          "endTime": 5.52,
+          "confidence": 0.9994556399550475,
+          "tokenIndices": [
+            14
+          ]
+        },
+        {
+          "index": 8,
+          "text": "your",
+          "startTime": 5.68,
+          "endTime": 6,
+          "confidence": 0.9999216572374646,
+          "tokenIndices": [
+            15
+          ]
+        },
+        {
+          "index": 9,
+          "text": "country",
+          "startTime": 6,
+          "endTime": 6.56,
+          "confidence": 0.9996483072111253,
+          "tokenIndices": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "index": 10,
+          "text": "can",
+          "startTime": 6.56,
+          "endTime": 6.8,
+          "confidence": 0.9999734909588328,
+          "tokenIndices": [
+            20
+          ]
+        },
+        {
+          "index": 11,
+          "text": "do",
+          "startTime": 6.8,
+          "endTime": 7.12,
+          "confidence": 0.9999923325901192,
+          "tokenIndices": [
+            21
+          ]
+        },
+        {
+          "index": 12,
+          "text": "for",
+          "startTime": 7.12,
+          "endTime": 7.44,
+          "confidence": 0.9999899873191416,
+          "tokenIndices": [
+            22
+          ]
+        },
+        {
+          "index": 13,
+          "text": "you,",
+          "startTime": 7.44,
+          "endTime": 8.16,
+          "confidence": 0.9348707158617898,
+          "tokenIndices": [
+            23,
+            24
+          ]
+        },
+        {
+          "index": 14,
+          "text": "ask",
+          "startTime": 8.16,
+          "endTime": 8.72,
+          "confidence": 0.9994383195059371,
+          "tokenIndices": [
+            25,
+            26
+          ]
+        },
+        {
+          "index": 15,
+          "text": "what",
+          "startTime": 8.72,
+          "endTime": 8.96,
+          "confidence": 0.9999326486885518,
+          "tokenIndices": [
+            27
+          ]
+        },
+        {
+          "index": 16,
+          "text": "you",
+          "startTime": 8.96,
+          "endTime": 9.28,
+          "confidence": 0.9996256543022248,
+          "tokenIndices": [
+            28
+          ]
+        },
+        {
+          "index": 17,
+          "text": "can",
+          "startTime": 9.28,
+          "endTime": 9.52,
+          "confidence": 0.9999261877596821,
+          "tokenIndices": [
+            29
+          ]
+        },
+        {
+          "index": 18,
+          "text": "do",
+          "startTime": 9.52,
+          "endTime": 9.68,
+          "confidence": 0.9999153260068441,
+          "tokenIndices": [
+            30
+          ]
+        },
+        {
+          "index": 19,
+          "text": "for",
+          "startTime": 9.68,
+          "endTime": 9.92,
+          "confidence": 0.9999862753546496,
+          "tokenIndices": [
+            31
+          ]
+        },
+        {
+          "index": 20,
+          "text": "your",
+          "startTime": 9.92,
+          "endTime": 10.08,
+          "confidence": 0.9996083394772456,
+          "tokenIndices": [
+            32
+          ]
+        },
+        {
+          "index": 21,
+          "text": "country.",
+          "startTime": 10.08,
+          "endTime": 10.88,
+          "confidence": 0.9883484882835534,
+          "tokenIndices": [
+            33,
+            34,
+            35,
+            36,
+            37
+          ]
+        }
+      ],
+      "timestamp": "2026-10-31T17:10:15.213Z"
+    }
+  },
+  "verification": {
+    "status": "UNVERIFIED",
+    "warmSessionReused": true,
+    "runs": [
+      {
+        "phase": "cold",
+        "mode": "offline",
+        "status": "UNVERIFIED",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "UNVERIFIED",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": null,
+          "matchExpected": null
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "webgpu-hybrid",
+          "reported": "webgpu",
+          "evidence": "gpu-compute-observed"
+        }
+      },
+      {
+        "phase": "warm",
+        "mode": "offline",
+        "status": "UNVERIFIED",
+        "execution": {
+          "status": "PASS",
+          "failures": []
+        },
+        "transcript": {
+          "status": "UNVERIFIED",
+          "comparison": "normalized-text-exact",
+          "fixtureMatches": null,
+          "matchExpected": null
+        },
+        "provider": {
+          "status": "PASS",
+          "requested": "webgpu-hybrid",
+          "reported": "webgpu",
+          "evidence": "gpu-compute-observed"
+        }
+      }
+    ]
+  },
+  "timestamp": "2026-10-31T17:10:15.975Z"
+}
