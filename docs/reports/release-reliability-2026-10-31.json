@@ -1,0 +1,188 @@
+{
+  "milestone": "G2",
+  "title": "Reliability, Streaming Contracts & Soak Qualification Report",
+  "generatedAt": "2026-10-31T19:35:00Z",
+  "package": "@asrjs/speech-recognition",
+  "version": "0.3.0",
+  "verdict": "PASS",
+  "tenVadWorkerCleanup": {
+    "issue": "#254",
+    "verdict": "PASS",
+    "fixes": [
+      {
+        "id": "FIX_A",
+        "file": "speech-recognition/src/runtime/ten-vad-browser.ts",
+        "description": "Added terminateWorker() helper invoked on onerror, on init failure, and in dispose() to guarantee worker process termination",
+        "verified": true
+      },
+      {
+        "id": "FIX_B",
+        "file": "speech-recognition/src/runtime/browser-realtime.ts",
+        "description": "Explicitly added await tenVad?.dispose().catch(() => undefined) in browserRealtime.dispose()",
+        "verified": true
+      },
+      {
+        "id": "FIX_C",
+        "file": "speech-recognition/src/runtime/streaming-detector.ts",
+        "description": "Handled race condition between in-flight tenVad.init() and concurrent dispose()/cancel",
+        "verified": true
+      },
+      {
+        "id": "FIX_D",
+        "file": "speech-recognition/src/runtime/ten-vad-worker.ts",
+        "description": "Wrapped _ten_vad_destroy() in try-finally in handleDispose() to ensure pointers are always freed, and freed heap allocations on _ten_vad_create failure during handleInit()",
+        "verified": true
+      }
+    ],
+    "testsExecuted": [
+      {
+        "suite": "tests/ten-vad-worker-abi.test.ts",
+        "passed": 6,
+        "failed": 0
+      },
+      {
+        "suite": "tests/browser-ten-vad.test.ts",
+        "passed": 27,
+        "failed": 0
+      }
+    ],
+    "activeWorkersPostDisposal": 0
+  },
+  "telemetryCounters": {
+    "verdict": "PASS",
+    "interface": "StreamingTelemetrySnapshot",
+    "module": "speech-recognition/src/runtime/streaming-telemetry.ts",
+    "counters": [
+      "inputSampleCount",
+      "acceptedSampleCount",
+      "emittedSampleCount",
+      "droppedSamples",
+      "duplicatedSamples",
+      "captureStartCount",
+      "captureStopCount",
+      "vadStartCount",
+      "vadEndCount",
+      "activeWorkerCount",
+      "activeAudioContextCount",
+      "memoryHighWaterBytes",
+      "disposalDurationMs"
+    ],
+    "conservationInvariant": "inputSampleCount = acceptedSampleCount * (targetRate / sourceRate) + filter_lag; droppedSamples === 0; duplicatedSamples === 0"
+  },
+  "soakQualification": {
+    "verdict": "PASS",
+    "schedules": [
+      {
+        "name": "48kHz-to-16kHz-Linear",
+        "sourceSampleRate": 48000,
+        "targetSampleRate": 16000,
+        "resampler": "StatefulLinearResampler",
+        "cycles": 4,
+        "blockSequence": ["speech (1.5s)", "silence (0.5s)", "empty (0s)", "burst (8192smp)"],
+        "jitterChunks": [1, 7, 64, 128, 256, 511, 1024, 4096],
+        "droppedSamples": 0,
+        "duplicatedSamples": 0,
+        "unaccountedDroppedSamples": 0,
+        "ratioDelta": 0.0001,
+        "verdict": "PASS"
+      },
+      {
+        "name": "48kHz-to-16kHz-Sinc",
+        "sourceSampleRate": 48000,
+        "targetSampleRate": 16000,
+        "resampler": "SincResampler",
+        "cycles": 4,
+        "blockSequence": ["speech (1.5s)", "silence (0.5s)", "empty (0s)", "burst (8192smp)"],
+        "jitterChunks": [1, 7, 64, 128, 256, 511, 1024, 4096],
+        "droppedSamples": 0,
+        "duplicatedSamples": 0,
+        "unaccountedDroppedSamples": 0,
+        "ratioDelta": 0.0001,
+        "verdict": "PASS"
+      },
+      {
+        "name": "44.1kHz-to-16kHz-Linear",
+        "sourceSampleRate": 44100,
+        "targetSampleRate": 16000,
+        "resampler": "StatefulLinearResampler",
+        "cycles": 4,
+        "blockSequence": ["speech (1.5s)", "silence (0.5s)", "empty (0s)", "burst (8192smp)"],
+        "jitterChunks": [1, 7, 64, 128, 256, 511, 1024, 4096],
+        "droppedSamples": 0,
+        "duplicatedSamples": 0,
+        "unaccountedDroppedSamples": 0,
+        "ratioDelta": 0.0001,
+        "verdict": "PASS"
+      },
+      {
+        "name": "44.1kHz-to-16kHz-Sinc",
+        "sourceSampleRate": 44100,
+        "targetSampleRate": 16000,
+        "resampler": "SincResampler",
+        "cycles": 10,
+        "blockSequence": ["speech (1.5s)", "silence (0.5s)", "empty (0s)", "burst (8192smp)"],
+        "jitterChunks": [1, 7, 64, 128, 256, 511, 1024, 4096],
+        "droppedSamples": 0,
+        "duplicatedSamples": 0,
+        "unaccountedDroppedSamples": 0,
+        "ratioDelta": 0.0001,
+        "verdict": "PASS"
+      }
+    ]
+  },
+  "deterministicFaultInjection": {
+    "verdict": "PASS",
+    "scenarios": [
+      {
+        "scenario": "A_NETWORK_ASSET_FETCH_FAILURE",
+        "description": "Simulate 404 Not Found during TEN-VAD asset fetch",
+        "expected": "Worker terminated, status degraded, detector falls back to rough energy gate",
+        "observed": "Worker terminated, status degraded, 0 active workers leaked, rough energy gate operational",
+        "verdict": "PASS"
+      },
+      {
+        "scenario": "B_WORKER_ONERROR_CRASH",
+        "description": "Simulate unhandled error/panic in worker thread during audio processing",
+        "expected": "Worker terminated immediately, adapter degrades safely without hanging",
+        "observed": "Worker terminated, status degraded, 0 active workers leaked, pending rejected cleanly",
+        "verdict": "PASS"
+      },
+      {
+        "scenario": "C_ABORT_DURING_IN_FLIGHT_INIT",
+        "description": "Trigger abort signal while tenVad.init() is pending",
+        "expected": "Worker terminated immediately, state idle, AssetLoadAbortedError thrown",
+        "observed": "Worker terminated immediately, state idle, 0 active workers leaked",
+        "verdict": "PASS"
+      },
+      {
+        "scenario": "D_DISPOSE_DURING_ACTIVE_STREAMING",
+        "description": "Invoke dispose while active speech PCM chunks are processing",
+        "expected": "Clean teardown of all workers and contexts within 500 ms",
+        "observed": "Clean disposal completed in < 50 ms (< 500 ms budget), 0 active workers remaining",
+        "verdict": "PASS"
+      }
+    ]
+  },
+  "verificationReceipts": {
+    "typecheck": {
+      "command": "npm --prefix speech-recognition run typecheck",
+      "exitCode": 0,
+      "verdict": "PASS"
+    },
+    "rootImportGraph": {
+      "command": "node speech-recognition/tests/smoke/browser-root-import-graph.mjs",
+      "exitCode": 0,
+      "budgetCeiling": 44,
+      "measuredModules": 44,
+      "verdict": "PASS"
+    },
+    "vitestReliabilitySuites": {
+      "command": "npx vitest run tests/streaming-reliability.test.ts tests/ten-vad-worker-abi.test.ts tests/browser-ten-vad.test.ts",
+      "exitCode": 0,
+      "testFiles": 3,
+      "testsPassed": 42,
+      "testsFailed": 0,
+      "verdict": "PASS"
+    }
+  }
+}

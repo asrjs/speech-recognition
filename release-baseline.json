@@ -1,0 +1,695 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ASR.js Release Baseline Evidence Package",
+  "timestamp": "2026-10-31T15:25:00Z",
+  "git": {
+    "speechRecognition": {
+      "branch": "feature/maintenance-and-release-fixes",
+      "commit": "a4dd0947",
+      "openPr": "https://github.com/asrjs/speech-recognition/pull/255",
+      "untrackedHandoverClean": true
+    },
+    "demos": {
+      "branch": "feature/ort-deduplication",
+      "commit": "052a243",
+      "openPr": "https://github.com/asrjs/demos/pull/9"
+    }
+  },
+  "matrix": [
+    {
+      "combination": "Parakeet v3 FP16 WebGPU + INT8 WASM",
+      "status": "PASS",
+      "claim": "Full pipeline streaming ASR on WebGPU (encoder) and WASM (decoder/joint) with verified accuracy",
+      "evidenceUri": "speech-recognition/docs/reports/evidence/microphone-composition-2026-10-25/real-run-final/receipt.json",
+      "notes": "Verified on Chrome hardware WebGPU JFK fixture and real microphone input"
+    },
+    {
+      "combination": "Parakeet v3 WASM fallback",
+      "status": "PARTIAL",
+      "claim": "CPU WASM fallback for both encoder and decoder/joint when WebGPU is unavailable",
+      "evidenceUri": "speech-recognition/tests/nemo-tdt-native-ort.test.ts",
+      "notes": "Functional fallback paths implemented and unit-tested; cold/warm benchmark performance receipts pending G3"
+    },
+    {
+      "combination": "Whisper 4-Graph",
+      "status": "PARTIAL",
+      "claim": "Whisper 4-Graph architecture for Tiny/Base/Large-v3-Turbo with externalized graphs",
+      "evidenceUri": "speech-recognition/docs/reports/whisper-large-v3-turbo-variant-validation.json",
+      "notes": "PR #255 fixed line count constraint (<=783 lines); models exported; regression anchor pending"
+    },
+    {
+      "combination": "Moonshine streaming tiny",
+      "status": "ARTIFACT-GATED",
+      "claim": "Streaming Moonshine tiny encoder with cross-KV caching",
+      "evidenceUri": "speech-recognition/models/onnx/moonshine-streaming-tiny-fp32/export-receipt.json",
+      "notes": "Experimental architecture with local ONNX weights; public weights not published to HuggingFace"
+    },
+    {
+      "combination": "X-ASR",
+      "status": "ARTIFACT-GATED",
+      "claim": "Zipformer2 causal chunk streaming with 160ms chunk size",
+      "evidenceUri": "speech-recognition/src/runtime/experimental-families.ts",
+      "notes": "Causal streaming contracts verified; public model weights gated"
+    },
+    {
+      "combination": "Nemotron RNNT",
+      "status": "ARTIFACT-GATED",
+      "claim": "Nemotron 0.6B RNNT streaming model with bounded context",
+      "evidenceUri": "speech-recognition/docs/reports/evidence/model-ports-v11-2026-10-24/nemotron-native/official-reference-jfk2-en-prompt-en.json",
+      "notes": "Official reference parity demonstrated; model port paused and artifact-gated"
+    },
+    {
+      "combination": "Qwen3-ASR 0.6B",
+      "status": "ARTIFACT-GATED",
+      "claim": "Dynamic audio frontend with decoder step ONNX graphs in FP16/FP32",
+      "evidenceUri": "speech-recognition/tests/smoke/qwen3-asr-node-wasm-benchmark.mjs",
+      "notes": "Verified in Node WASM on JFK fixture; browser WebGPU execution requires public weights distribution"
+    },
+    {
+      "combination": "Native Node/Bun Resource Lifecycle",
+      "status": "PASS",
+      "claim": "Native ONNX runtime resource management, session disposal, and environment creation",
+      "evidenceUri": "speech-recognition/tests/native-resource-smoke.test.ts",
+      "notes": "125-byte Identity ONNX graph passes cleanly in Node and Bun smoke tests without leaks"
+    },
+    {
+      "combination": "Native Node ASR Inference",
+      "status": "UNTESTED",
+      "claim": "End-to-end ASR speech transcription inside pure Node.js runtime",
+      "evidenceUri": "speech-recognition/tests/smoke/transcribe-fixture.mjs",
+      "notes": "Native ORT binding and audio decoders are untested for full pipeline inference parity; planned for post-release"
+    },
+    {
+      "combination": "TEN-VAD Worker Cleanup (#254)",
+      "status": "PARTIAL",
+      "claim": "WASM pointer deallocation and lifecycle cleanup on ten-vad worker termination",
+      "evidenceUri": "https://github.com/asrjs/speech-recognition/pull/254",
+      "notes": "Classified as FAIL/PARTIAL: normal termination succeeds, but handleDispose() leaks WASM pointers when _ten_vad_destroy returns non-zero. PR #254 unmerged; fix scheduled for Milestone G2."
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "tests/fixtures/00a74da8fdcf346733fb3186ba622b66298714d6b8e51717680151a6ae31abcc_04.en.wav",
+      "sizeBytes": 846444,
+      "sha256": "58ce74b97dfb2c459966baf899a98e217d14130f23dc431b8b86aba121da4335",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 26.45,
+      "license": "MIT (Kokoro-82M TTS)",
+      "goldTranscript": "Functionally, the lower leg is supplied by two vessels: ay tee pee and fibular artery..."
+    },
+    {
+      "path": "tests/fixtures/019b50a9c564e61682b48068caed8d1e08eba0584b665c31bafd7431438e9ef0.tr.wav",
+      "sizeBytes": 596552,
+      "sha256": "b2b2a48e917527bda2ba97f161e642943d63fbd1c703c6b51fae882857f9f363",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 18.641,
+      "license": "CC-BY (XTTS v1 TTS)",
+      "goldTranscript": "Bulaşıcı hastalıkların beklenmedik zamanlarda yaptıkları salgınlar..."
+    },
+    {
+      "path": "tests/fixtures/0b89c2ac3fc76616b77b958030f97546b503ac842d9e51ad5173d54ea6811458_01.en.wav",
+      "sizeBytes": 322444,
+      "sha256": "ff7d3472ccd412e26e4f134ff60f51091d71b56f8d0e2fea0d1484454916a9a2",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 10.075,
+      "license": "MIT (Kokoro-82M TTS)",
+      "goldTranscript": "No evidence of periaortic collections..."
+    },
+    {
+      "path": "tests/fixtures/12_dans.tr.m4a",
+      "sizeBytes": 10713797,
+      "sha256": "8b6a99ce7fa43ed2acb5c1211f44d4eb614e22a62bf5f7d4d7cebe193749353a",
+      "format": "M4A",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Open Access (Turkish Fairy Tale / LibriVox TR)",
+      "goldTranscript": "tests/fixtures/12_dans.tr.vtt"
+    },
+    {
+      "path": "tests/fixtures/common_voice_tr_38277367.tr.mp3",
+      "sizeBytes": 11961,
+      "sha256": "02011be4bfd08302fd662a9b8821cda5a06280910ddf70b06596cbaefa4fdef4",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC0-1.0 (Mozilla Common Voice)",
+      "goldTranscript": "Burada yazı artık okunmaz bir şekil alıyordu."
+    },
+    {
+      "path": "tests/fixtures/common_voice_tr_38284290.tr.mp3",
+      "sizeBytes": 5949,
+      "sha256": "da5eb2459b73e002abd6189c331450193139d6090344191eea8b5923381f2c70",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC0-1.0 (Mozilla Common Voice)",
+      "goldTranscript": "Daha sonra bu görevi bir süre vekâleten yürüttü."
+    },
+    {
+      "path": "tests/fixtures/common_voice_tr_38284299.tr.mp3",
+      "sizeBytes": 15957,
+      "sha256": "25b5670e9958e23c2d6bff404340eb2020da1648d8f49ee4b6ee3d64f9980f4e",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC0-1.0 (Mozilla Common Voice)",
+      "goldTranscript": "Bu durumun tek istisnası, daha sonra değineceğimiz gibi, çöl kurbağasıdır."
+    },
+    {
+      "path": "tests/fixtures/common_voice_tr_38289682.tr.mp3",
+      "sizeBytes": 31941,
+      "sha256": "a284496198fcded7aa531e84f98250cf14b4aeddf943c2c9776f103f8fa321f6",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC0-1.0 (Mozilla Common Voice)",
+      "goldTranscript": "Ailesi ona 'küçük prenses' derdi."
+    },
+    {
+      "path": "tests/fixtures/end-of-chapter-4.en.mp3",
+      "sizeBytes": 1340192,
+      "sha256": "bcb1544bedab93c7ec97734dce50316bbaef5ca59377f75d0f9e1eff4dac784c",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (LibriVox)",
+      "goldTranscript": "The very close examination thus afforded me..."
+    },
+    {
+      "path": "tests/fixtures/ItsLifeJim.en.wav",
+      "sizeBytes": 100314,
+      "sha256": "720029790d0718aff094b0e1c353d7890bce1c9feba0029f935cd82b3a804e66",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 3.133,
+      "license": "Fair Use / Benchmark sample",
+      "goldTranscript": "It's life Jim but not as we know it"
+    },
+    {
+      "path": "tests/fixtures/jfk2.en.wav",
+      "sizeBytes": 352078,
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 11,
+      "license": "Public Domain (US Gov)",
+      "goldTranscript": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+    },
+    {
+      "path": "tests/fixtures/JFK_Short.en.wav",
+      "sizeBytes": 548504,
+      "sha256": "77468f8e15fd3b4132d7ecb75a3a6794cde6e071704770485da68a744aa40876",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 17.139,
+      "license": "Public Domain (US Gov)",
+      "goldTranscript": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+    },
+    {
+      "path": "tests/fixtures/librivox.org-1600hz.en.wav",
+      "sizeBytes": 599086,
+      "sha256": "799de7f940b9086723ced5691cfc7aed5b3af59f3df74b170a6518751db4ba7c",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 18.714,
+      "license": "Public Domain (LibriVox)",
+      "goldTranscript": "LibriVox 16kHz speech sample"
+    },
+    {
+      "path": "tests/fixtures/train_000015.tr.mp3",
+      "sizeBytes": 87093,
+      "sha256": "898bfc0a59beef008e240601f498aa8938687df19a93bbef628bad16204d8b79",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC-BY-SA-4.0",
+      "goldTranscript": "Turkish speech training/eval corpus"
+    },
+    {
+      "path": "tests/fixtures/train_000017.tr.mp3",
+      "sizeBytes": 199557,
+      "sha256": "c8a48f643a009188553f3e594add6d08aa187d060d04bdb56a224f906d4834cc",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC-BY-SA-4.0",
+      "goldTranscript": "Turkish speech training/eval corpus"
+    },
+    {
+      "path": "tests/fixtures/train_000058.tr.mp3",
+      "sizeBytes": 33345,
+      "sha256": "15fe1f9093e3eadd9af8561c2b5e6b059abe9c2c8549c35ad18c657d649332fc",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC-BY-SA-4.0",
+      "goldTranscript": "Turkish speech training/eval corpus"
+    },
+    {
+      "path": "tests/fixtures/train_000085.tr.mp3",
+      "sizeBytes": 111141,
+      "sha256": "966d50fb9a2f316a060eeea911a1df0b0884fe9c047810b372930759d3607154",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC-BY-SA-4.0",
+      "goldTranscript": "Turkish speech training/eval corpus"
+    },
+    {
+      "path": "tests/fixtures/train_000094.tr.mp3",
+      "sizeBytes": 246681,
+      "sha256": "0767e92c1d81dfe9156ac9665b9d3ae8403c4773dc2186faa0eeb29a9dcec1bc",
+      "format": "MP3",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "CC-BY-SA-4.0",
+      "goldTranscript": "Turkish speech training/eval corpus"
+    },
+    {
+      "path": "tools/data/fixtures/audio/Harvard-L2-1.ogg",
+      "sizeBytes": 18235,
+      "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (IEEE)",
+      "goldTranscript": "The birch canoe slid on the smooth planks."
+    },
+    {
+      "path": "tools/data/fixtures/audio/jfk-short.wav",
+      "sizeBytes": 352078,
+      "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 11,
+      "license": "Public Domain (US Gov)",
+      "goldTranscript": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+    },
+    {
+      "path": "tools/data/fixtures/audio/JFK.ogg",
+      "sizeBytes": 434941,
+      "sha256": "ab126000032326b5ac98faf187bc8f8506e78c6fd7a1f9600c0c945e4e52284c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (US Gov)",
+      "goldTranscript": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+    },
+    {
+      "path": "tools/data/fixtures/audio/librivox-blankgaps-synthetic.wav",
+      "sizeBytes": 1790504,
+      "sha256": "3479a461cfca404165c71905e9b66a77faaee685434134786e8fed5161e60ba7",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 40.6,
+      "license": "Public Domain (LibriVox / Synthetic)",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/librivox-doubled.wav",
+      "sizeBytes": 1677468,
+      "sha256": "36d8e707d5bb6413fcdcdd69aafa84d109fb7d3e7fe6acd9137e0a4c01274413",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 38.037,
+      "license": "Public Domain (LibriVox / Concatenated)",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/librivox.org.16k.pcm16.wav",
+      "sizeBytes": 598894,
+      "sha256": "ab27bd101385c5e78fad1207a46b079723ccafa76fb6b2c8047ea54aabebd6b9",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 18.714,
+      "license": "Public Domain (LibriVox)",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/librivox.org.16k.wav",
+      "sizeBytes": 1197780,
+      "sha256": "d4ce45c6391f2bd4195baa0bb2f8d412f83d8599ba9756bd323725ef80cf3f88",
+      "format": "WAV",
+      "sampleRate": "16000",
+      "channels": "1",
+      "durationSec": 18.714,
+      "license": "Public Domain (LibriVox)",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/librivox.org.wav",
+      "sizeBytes": 825526,
+      "sha256": "2f6886c1956765b56b996bd6fbb00c5e4001368db8cb4be94987ca2e3166b8b4",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 18.714,
+      "license": "Public Domain (LibriVox)",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/omnilingual/de.wav",
+      "sizeBytes": 121388,
+      "sha256": "36d3c4845b9808a1656a2a2e92d884590e2db94389e6fe559643291ae0cd3710",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 2.752,
+      "license": "CC-BY-4.0 / Open",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/omnilingual/en.wav",
+      "sizeBytes": 184608,
+      "sha256": "148b936b43ce7c546a866e64da059f0458aee2d65e617f16e9d94f06e8d99ed6",
+      "format": "WAV",
+      "sampleRate": "24000",
+      "channels": "1",
+      "durationSec": 3.845,
+      "license": "CC-BY-4.0 / Open",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/omnilingual/es.wav",
+      "sizeBytes": 235052,
+      "sha256": "49fd2cfa4b62db7068143c582b35de9d31ec2733495ece3611105131d21de06c",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 5.329,
+      "license": "CC-BY-4.0 / Open",
+      "goldTranscript": null
+    },
+    {
+      "path": "tools/data/fixtures/audio/omnilingual/fr.wav",
+      "sizeBytes": 219180,
+      "sha256": "b59be4349b92d344fb903677165eaf4694025d1ab119c608726ecbcb3164b528",
+      "format": "WAV",
+      "sampleRate": "22050",
+      "channels": "1",
+      "durationSec": 4.969,
+      "license": "CC-BY-4.0 / Open",
+      "goldTranscript": null
+    },
+    {
+      "path": "examples/demo/public/audio/jfk.ogg",
+      "sizeBytes": 434941,
+      "sha256": "ab126000032326b5ac98faf187bc8f8506e78c6fd7a1f9600c0c945e4e52284c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (US Gov)",
+      "goldTranscript": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country"
+    },
+    {
+      "path": "demos/apps/benchmark/public/assets/life_Jim.wav",
+      "sizeBytes": 224248,
+      "sha256": "7cedf38d2c2b669ebf8c9345aacda4f0bea3b79cfb4c5c4d6256761603c212e4",
+      "format": "WAV",
+      "sampleRate": "44100",
+      "channels": "1",
+      "durationSec": 2.542,
+      "license": "Fair Use / Benchmark sample",
+      "goldTranscript": "It's life Jim but not as we know it"
+    },
+    {
+      "path": "demos/apps/playground/public/assets/Harvard-L2-1.ogg",
+      "sizeBytes": 18235,
+      "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (IEEE)",
+      "goldTranscript": "The birch canoe slid on the smooth planks."
+    },
+    {
+      "path": "demos/apps/realtime/public/assets/Harvard-L2-1.ogg",
+      "sizeBytes": 18235,
+      "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (IEEE)",
+      "goldTranscript": "The birch canoe slid on the smooth planks."
+    },
+    {
+      "path": "demos/apps/showcase/public/assets/Harvard-L2-1.ogg",
+      "sizeBytes": 18235,
+      "sha256": "6e8379d6a016c3b9606f952d2ef5049740476dc98f2050e9bf30769af610935c",
+      "format": "OGG",
+      "sampleRate": "compressed",
+      "channels": "compressed",
+      "durationSec": null,
+      "license": "Public Domain (IEEE)",
+      "goldTranscript": "The birch canoe slid on the smooth planks."
+    }
+  ],
+  "models": [
+    {
+      "modelId": "parakeet-tdt-0.6b-v3",
+      "profileId": "webgpu-fp16-wasm-int8-v1",
+      "status": "approved",
+      "repoId": "ysdede/parakeet-tdt-0.6b-v3-onnx",
+      "revision": "f88260fa0777fe0868dda6df85d1a98f012a4a7a",
+      "artifacts": {
+        "encoder": {
+          "path": "encoder-model.fp16.onnx",
+          "sha256": "a2bdeeb99cb7e5548818e823127b33854dd0c26f5d0c8da91effdd895ea0e717",
+          "sizeBytes": 1238960452
+        },
+        "decoderJoint": {
+          "path": "decoder_joint-model.int8.onnx",
+          "sha256": "eea7483ee3d1a30375daedc8ed83e3960c91b098812127a0d99d1c8977667a70",
+          "sizeBytes": 18202004
+        },
+        "config": {
+          "path": "config.json",
+          "sha256": "562aedb0b804acbeb4e04215de190846c37e0bb239b696376df69d555785373a",
+          "sizeBytes": 101
+        },
+        "vocabulary": {
+          "path": "vocab.txt",
+          "sha256": "ba8e4007c65f4bb4358ffe2ecc13d9ccc7a10351151065242b5c3a943e685742",
+          "sizeBytes": 102132
+        }
+      }
+    },
+    {
+      "modelId": "moonshine-streaming-tiny",
+      "profileId": "streaming-tiny-fp32",
+      "status": "artifact-gated",
+      "repoId": "usefulsensors/moonshine",
+      "revision": "local-export",
+      "artifacts": {
+        "encoder": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/encoder_model.onnx",
+          "sha256": "cea305f8d1d99e9e183b58a455a219c225267d27885398b8e65aca9cb9abc7de",
+          "sizeBytes": 768296
+        },
+        "encoderData": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/encoder_model.onnx.data",
+          "sha256": "a5c6110494c8793cd1073ac911e77c8e5ad7f8f507aeb5ee9a61ee8641097dcd",
+          "sizeBytes": 37978112
+        },
+        "decoderWithPast": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/decoder_with_past_model.onnx",
+          "sha256": "17d0430d7c2bdb4536c9ac563449c3fa525dbb7bdc2f0415d1e7272a0c2582d4",
+          "sizeBytes": 1208635
+        },
+        "decoderWithPastData": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/decoder_with_past_model.onnx.data",
+          "sha256": "c03f554a4180eba9171ffe0d8ba698c02cee25d727d7f04add71fdf3e14b8157",
+          "sizeBytes": 128253952
+        },
+        "decoderCrossKv": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/decoder_cross_kv_model.onnx",
+          "sha256": "7b66636225ff4237c0669ddebeed261080fba493bccdf28f9d5cc3607198b44c",
+          "sizeBytes": 16915
+        },
+        "decoderCrossKvData": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/decoder_cross_kv_model.onnx.data",
+          "sha256": "6ce3134d2c27b9b6e66f3e9d17d28cd0916e69636eed1d390d81df7bb2b919d0",
+          "sizeBytes": 4915200
+        },
+        "tokenizer": {
+          "path": "models/onnx/moonshine-streaming-tiny-fp32/tokenizer.json",
+          "sha256": "28bbc54a47dfa33673affa26010f23ac452685b18c76e81451d9b3ea25a54d54",
+          "sizeBytes": 1676069
+        }
+      }
+    },
+    {
+      "modelId": "omnilingual-ctc-300m",
+      "profileId": "ctc-wasm-int8-v1",
+      "status": "artifact-gated",
+      "repoId": "facebook/mms-300m",
+      "revision": "local-export",
+      "artifacts": {
+        "model": {
+          "path": "models/onnx/omnilingual-ctc-300m/model.int8.onnx",
+          "sha256": "38a6cc569d46eb382f27d85b3208b883e834ff281b2057a606ec79e4ae501545",
+          "sizeBytes": 328094283
+        },
+        "tokens": {
+          "path": "models/onnx/omnilingual-ctc-300m/tokens.txt",
+          "sha256": "7d99997ef207ff14c2cfe825f2aa037528ea250113cc3c6392bfe49326884ba6",
+          "sizeBytes": 90630
+        }
+      }
+    },
+    {
+      "modelId": "parakeet-ctc-110m-en",
+      "profileId": "ctc-wasm-fp32-v1",
+      "status": "experimental",
+      "repoId": "nvidia/parakeet-ctc-110m",
+      "revision": "local-export",
+      "artifacts": {
+        "model": {
+          "path": "models/onnx/parakeet-ctc-110m-en/model.onnx",
+          "sha256": "c261d58ef199e2b2c365ada9d8812ab603ea37066be514e8a34c6bced487f787",
+          "sizeBytes": 437740665
+        },
+        "tokenizer": {
+          "path": "models/onnx/parakeet-ctc-110m-en/tokenizer.json",
+          "sha256": "5512c7db80d6b1144c58192d0d6435728b250edcf6a7bbb7abe7c2c269a34aea",
+          "sizeBytes": 400141
+        }
+      }
+    },
+    {
+      "modelId": "qwen3-asr-0.6b",
+      "profileId": "dynamic-front-fp16-v1",
+      "status": "artifact-gated",
+      "repoId": "ysdede/qwen3-asr-0.6b-onnx",
+      "revision": "main",
+      "artifacts": {
+        "audioFront": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/audio_front_model.onnx",
+          "sha256": "c36c3e4e0de205ac6bdfbd422714059b0dd3f5aeadd3feb6ff8608c19ebadee4",
+          "sizeBytes": 1672305
+        },
+        "audioFrontData": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/audio_front_model.onnx.data",
+          "sha256": "e685f135fb6617286f95c866a127150b7484a53c0e9892495d85eb484e72ac3a",
+          "sizeBytes": 372772800
+        },
+        "decoderStep": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/decoder_step_model.onnx",
+          "sha256": "77d54c43500ee3d15144218055f882cbaf43bcc9da3930adc0457ffa15178fc4",
+          "sizeBytes": 1599009
+        },
+        "decoderStepData": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/decoder_step_model.onnx.data",
+          "sha256": "eb70ea155757cd0a0923e8ea576470449357d7ee985670870080622d7615e8b9",
+          "sizeBytes": 1192085504
+        },
+        "embedTokens": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/embed_tokens_model.onnx",
+          "sha256": "e8072f01f312c718911058e39077df0deb34bd7b3d79228b613266ecf58171d8",
+          "sizeBytes": 407
+        },
+        "embedTokensData": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/embed_tokens_model.onnx.data",
+          "sha256": "40a0a0a4c9958c990cb323c258d4cba06f4f6173eb3f3680603bd15bb48046aa",
+          "sizeBytes": 311164928
+        },
+        "tokenizer": {
+          "path": "models/onnx/qwen3-asr-0.6b-fp16/tokenizer.json",
+          "sha256": "fe1fad59be22a41ee293363fcf95fdedbc7c93f3b49270b1d2e18bd1399a7a05",
+          "sizeBytes": 11429653
+        }
+      }
+    },
+    {
+      "modelId": "wav2vec2-xls-r-300m-tr",
+      "profileId": "wav2vec2-wasm-fp32-v1",
+      "status": "experimental",
+      "repoId": "facebook/wav2vec2-xls-r-300m",
+      "revision": "local-export",
+      "artifacts": {
+        "model": {
+          "path": "models/onnx/wav2vec2-xls-r-300m-tr/model.onnx",
+          "sha256": "d7b2152fcb8db548779ebb8f69946f371a23be30a7e038593e09a879be70ba11",
+          "sizeBytes": 1262344930
+        },
+        "vocab": {
+          "path": "models/onnx/wav2vec2-xls-r-300m-tr/vocab.json",
+          "sha256": "6641ad4761f75bbba7ca2591b1eaef57d1ab444762bf6a51f2ddbd70bfe3ee2f",
+          "sizeBytes": 351
+        }
+      }
+    },
+    {
+      "modelId": "x-asr",
+      "profileId": "zipformer2-160ms-v1",
+      "status": "artifact-gated",
+      "repoId": "k2-fsa/sherpa-onnx",
+      "revision": "local-export",
+      "artifacts": {
+        "encoder": {
+          "path": "models/onnx/x-asr/encoder.onnx",
+          "sha256": "unreleased-local-model",
+          "sizeBytes": 0
+        }
+      }
+    },
+    {
+      "modelId": "nemotron-rnnt",
+      "profileId": "rnnt-official-bound-v1",
+      "status": "artifact-gated",
+      "repoId": "nvidia/nemotron-speech-0.6b",
+      "revision": "local-export",
+      "artifacts": {
+        "encoder": {
+          "path": "models/onnx/nemotron/encoder.onnx",
+          "sha256": "unreleased-local-model",
+          "sizeBytes": 0
+        }
+      }
+    },
+    {
+      "modelId": "whisper",
+      "profileId": "whisper-4-graph-v1",
+      "status": "experimental",
+      "repoId": "openai/whisper",
+      "revision": "main",
+      "artifacts": {
+        "encoder": {
+          "path": "models/onnx/whisper/encoder.onnx",
+          "sha256": "external-multigraph-onnx",
+          "sizeBytes": 0
+        }
+      }
+    }
+  ]
+}

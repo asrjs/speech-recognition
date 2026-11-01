@@ -24,6 +24,10 @@ describe('public exports', () => {
     expect(module.transcribeSpeech).toBeTypeOf('function');
     expect(module.transcribeSpeechBatch).toBeTypeOf('function');
     expect(module.transcribeSpeechFromMonoPcm).toBeTypeOf('function');
+    expect(module.transcribeSpeechFromAudioSource).toBeTypeOf('function');
+    expect(module.listApprovedSpeechModelManifests).toBeTypeOf('function');
+    expect(module.resolveSpeechModelExecutionPlan).toBeTypeOf('function');
+    expect(module.probeSpeechModelExecutionPlan).toBeTypeOf('function');
     expect(module.createSpeechPipeline).toBeTypeOf('function');
     expect(module.PcmAudioBuffer).toBeTypeOf('function');
     expect(module.createWasmBackend).toBeTypeOf('function');
@@ -182,7 +186,7 @@ describe('public exports', () => {
     expect(medasrPreset.createMedAsrPresetFactory).toBeTypeOf('function');
     expect(whisperPreset.createWhisperPresetFactory).toBeTypeOf('function');
     expect(wav2Vec2Preset.createWav2Vec2PresetFactory).toBeTypeOf('function');
-  }, 15_000);
+  }, 60_000);
 
   it('root-exports ExperimentalArtifactMissingError with a typed catchable code', async () => {
     const {

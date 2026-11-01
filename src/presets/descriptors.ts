@@ -543,12 +543,19 @@ export function buildBuiltInHubLoadOptions(
       if (!source || source.kind !== 'huggingface') {
         throw new Error(`Could not resolve Parakeet artifact source for "${descriptor.modelId}".`);
       }
+      const resolvedRevision =
+        input.revision || source.revision || descriptor.loading.defaultRevision;
+      const sourceRepoFiles =
+        'repoFiles' in source && resolvedRevision === source.revision
+          ? source.repoFiles
+          : undefined;
       return {
         ...base,
         options: {
           source: {
             ...source,
-            revision: input.revision || source.revision || descriptor.loading.defaultRevision,
+            revision: resolvedRevision,
+            repoFiles: sourceRepoFiles,
             encoderBackend: componentBackends.encoderBackend,
             decoderBackend: componentBackends.decoderBackend,
             encoderQuant: executionPlan?.encoderQuant ?? input.encoderQuant,

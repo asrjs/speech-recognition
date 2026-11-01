@@ -8,9 +8,9 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 
 | Family                                     | Source            | Frontend            | Encoder             | Topology            | Decoding          | Doc                                                    |
 | ------------------------------------------ | ----------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------------------------------------------ |
-| **NeMo (Parakeet, Canary, FastConformer)** | NeMo              | Mel 80/128          | Conformer           | CTC, RNNT, TDT, AED | Greedy, beam, TSD | [NEMO](../NEMO_ASR_MODEL_ARCHITECTURE.md)              |
-| **MedASR**                                 | Google Health     | 128-bin kaldi-mel   | Conformer           | CTC                 | CTC greedy/beam   | [MEDASR](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)       |
-| **Whisper**                                | HF whisper        | Whisper mel (log10) | 2 conv + Trans      | AED                 | AR generation     | [WHISPER](../WHISPER_ASR_MODEL_ARCHITECTURE.md)        |
+| **NeMo (Parakeet, Canary, FastConformer)** | NeMo              | Mel 80/128          | Conformer           | CTC, RNNT, TDT, AED | Greedy, beam, TSD | [NEMO](./NEMO_ASR_MODEL_ARCHITECTURE.md)               |
+| **MedASR**                                 | Google Health     | 128-bin kaldi-mel   | Conformer           | CTC                 | CTC greedy/beam   | [MEDASR](./GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)        |
+| **Whisper**                                | HF whisper        | Whisper mel (log10) | 2 conv + Trans      | AED                 | AR generation     | [WHISPER](./WHISPER_ASR_MODEL_ARCHITECTURE.md)         |
 | **Kaldi / Vosk**                           | onnx-asr          | Kaldi mel (80)      | Zipformer           | Stateless RNNT      | Transducer        | [ONNX](./ONNX_ASR_MODEL_ARCHITECTURE.md)               |
 | **GigaAM**                                 | onnx-asr          | GigaAM mel (64)     | Conformer           | CTC, RNNT           | Greedy            | [ONNX](./ONNX_ASR_MODEL_ARCHITECTURE.md)               |
 | **T-one**                                  | onnx-asr          | **Identity** (raw)  | Chunk encoder       | CTC                 | CTC greedy        | [ONNX](./ONNX_ASR_MODEL_ARCHITECTURE.md)               |
@@ -96,9 +96,9 @@ Master reference for designing `@asrjs/speech-recognition` from scratch. Maps al
 
 | Document                                                                       | Content                                     |
 | ------------------------------------------------------------------------------ | ------------------------------------------- |
-| [NEMO_ASR_MODEL_ARCHITECTURE.md](../NEMO_ASR_MODEL_ARCHITECTURE.md)            | NeMo pipelines, Conformer, CTC/RNNT/TDT/AED |
-| [GOOGLE-MEDASR_MODEL_ARCHITECTURE.md](../GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)  | MedASR / LASR CTC implementation boundary   |
-| [WHISPER_ASR_MODEL_ARCHITECTURE.md](../WHISPER_ASR_MODEL_ARCHITECTURE.md)      | Whisper encoder–decoder                     |
+| [NEMO_ASR_MODEL_ARCHITECTURE.md](./NEMO_ASR_MODEL_ARCHITECTURE.md)            | NeMo pipelines, Conformer, CTC/RNNT/TDT/AED |
+| [GOOGLE-MEDASR_MODEL_ARCHITECTURE.md](./GOOGLE-MEDASR_MODEL_ARCHITECTURE.md)  | MedASR / LASR CTC implementation boundary   |
+| [WHISPER_ASR_MODEL_ARCHITECTURE.md](./WHISPER_ASR_MODEL_ARCHITECTURE.md)      | Whisper encoder–decoder                     |
 | [ONNX_ASR_MODEL_ARCHITECTURE.md](./ONNX_ASR_MODEL_ARCHITECTURE.md)             | Kaldi, GigaAM, T-one, NeMo/Whisper ONNX     |
 | [TRANSFORMERS_ASR_SPEECH_LLM_GUIDE.md](./TRANSFORMERS_ASR_SPEECH_LLM_GUIDE.md) | HF transformers ASR & speech LLM families   |
 | [FIRERED_ASR2S_MODEL_ARCHITECTURE.md](./FIRERED_ASR2S_MODEL_ARCHITECTURE.md)   | FireRedASR2S (ASR-AED, ASR-LLM, VAD, LID)   |

@@ -16,3 +16,4 @@ export * from './session.js';
 export * from './timing.js';
 export * from './transcripts.js';
 export * from './vad.js';
+export * from './streaming-telemetry.js';

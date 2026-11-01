@@ -1,5 +1,12 @@
-import type { TranscriptMetrics } from '../../types/index.js';
-import type { WhisperNativeSegment, WhisperNativeToken, WhisperNativeTranscript, WhisperNativeWord } from './types.js';
+import { planWhisperChunks } from '../../pipeline/whisper-chunking.js';
+import type { AudioBufferLike, TranscriptMetrics } from '../../types/index.js';
+import type {
+  WhisperNativeSegment,
+  WhisperNativeToken,
+  WhisperNativeTranscript,
+  WhisperNativeWord,
+  WhisperSeq2SeqTranscriptionOptions,
+} from './types.js';
 
 export interface WhisperChunkTranscriptInput {
   readonly chunkStartTime: number;
@@ -167,3 +174,50 @@ function mergeWhisperChunkMetrics(
     emittedWordCount: sumMetrics(metrics, 'emittedWordCount'),
   };
 }
+
+export function shouldChunkWhisperAudio(
+  audio: AudioBufferLike,
+  options: WhisperSeq2SeqTranscriptionOptions,
+): boolean {
+  if (options.windowing === 'disabled' || options.unsafeAllowOverMaxWindow) return false;
+  const maxDuration = options.chunkLengthSeconds ?? options.maxInputDurationSeconds ?? 30;
+  return audio.durationSeconds > maxDuration;
+}
+
+export async function transcribeWhisperLongAudio(
+  audio: AudioBufferLike,
+  options: WhisperSeq2SeqTranscriptionOptions,
+  transcribeChunk: (
+    chunkAudio: AudioBufferLike,
+    options: WhisperSeq2SeqTranscriptionOptions,
+  ) => Promise<WhisperNativeTranscript>,
+): Promise<WhisperNativeTranscript> {
+  const pcmData = audio.channels?.[0] ?? new Float32Array(0);
+  const chunkLengthSeconds = options.chunkLengthSeconds ?? 30;
+  const chunks = planWhisperChunks(
+    pcmData.length,
+    audio.sampleRate,
+    chunkLengthSeconds,
+    options.strideLengthSeconds,
+  );
+
+  const chunkTranscripts: WhisperChunkTranscriptInput[] = [];
+  for (const chunk of chunks) {
+    const samples = pcmData.slice(chunk.startSample, chunk.endSample);
+    const chunkAudio: AudioBufferLike = {
+      sampleRate: audio.sampleRate,
+      durationSeconds: samples.length / audio.sampleRate,
+      channels: [samples],
+      numberOfChannels: 1,
+      numberOfFrames: samples.length,
+    };
+    const transcript = await transcribeChunk(chunkAudio, {
+      ...options,
+      unsafeAllowOverMaxWindow: true,
+    });
+    chunkTranscripts.push({ chunkStartTime: chunk.startTime, transcript });
+  }
+
+  return mergeWhisperChunkTranscripts(chunkTranscripts);
+}
+

@@ -215,3 +215,167 @@ export function resampleSinc(
   }
   return output;
 }
+
+/**
+ * Stateful linear resampler with fractional phase accumulator.
+ *
+ * Maintains fractional phase and boundary samples across arbitrary chunk sizes
+ * without lookahead delay, integer underflow, or floating-phase drift.
+ *
+ * Designed for microphone capture fallbacks (e.g. ScriptProcessorNode) where
+ * incoming chunk sizes are irregular or small (e.g. 128, 256, 512 frames) and
+ * fractional sample rate ratios (e.g. 44,100 Hz to 16,000 Hz: step = 2.75625)
+ * require continuous sample-accurate phase tracking across millions of frames.
+ */
+export class StatefulLinearResampler {
+  readonly sourceSampleRate: number;
+  readonly targetSampleRate: number;
+  readonly step: number;
+  private readonly passthrough: boolean;
+  private phase = 0;
+  private lastSample = 0;
+  private hasLastSample = false;
+  private sourceOffset = 0;
+  private isPaused = false;
+
+  constructor(sourceSampleRate: number, targetSampleRate: number) {
+    if (
+      !Number.isFinite(sourceSampleRate) ||
+      !Number.isFinite(targetSampleRate) ||
+      sourceSampleRate <= 0 ||
+      targetSampleRate <= 0
+    ) {
+      throw new RangeError(
+        `Invalid resample rates: from=${sourceSampleRate}, to=${targetSampleRate}`,
+      );
+    }
+    this.sourceSampleRate = sourceSampleRate;
+    this.targetSampleRate = targetSampleRate;
+    this.passthrough = sourceSampleRate === targetSampleRate;
+    this.step = sourceSampleRate / targetSampleRate;
+  }
+
+  getPhase(): number {
+    return this.phase;
+  }
+
+  getLastSample(): number {
+    return this.lastSample;
+  }
+
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  resume(): void {
+    this.isPaused = false;
+  }
+
+  reset(): void {
+    this.phase = 0;
+    this.lastSample = 0;
+    this.hasLastSample = false;
+    this.sourceOffset = 0;
+    this.isPaused = false;
+  }
+
+  process(input: Float32Array): Float32Array {
+    if (this.isPaused || input.length === 0) {
+      return new Float32Array(0);
+    }
+    if (this.passthrough) {
+      this.lastSample = input[input.length - 1]!;
+      this.hasLastSample = true;
+      return new Float32Array(input);
+    }
+
+    const inputLength = input.length;
+    if (inputLength < 0) {
+      throw new RangeError(`StatefulLinearResampler received negative input length: ${inputLength}`);
+    }
+
+    let i = this.sourceOffset;
+    if (i < -1) {
+      throw new RangeError(`StatefulLinearResampler negative offset invariant violation: ${i}`);
+    }
+
+    if (!this.hasLastSample) {
+      this.lastSample = input[0]!;
+      this.hasLastSample = true;
+      this.phase = 0;
+      i = 0;
+    }
+
+    const outputValues: number[] = [];
+
+    while (true) {
+      const lastNeededIndex = this.phase === 0 ? i : i + 1;
+      if (lastNeededIndex >= inputLength) {
+        break;
+      }
+
+      const s0 = i === -1 ? this.lastSample : input[i]!;
+      let value: number;
+      if (this.phase === 0) {
+        value = s0;
+      } else {
+        const s1 = input[i + 1]!;
+        value = s0 + this.phase * (s1 - s0);
+      }
+      outputValues.push(value);
+
+      const nextPos = this.phase + this.step;
+      let advance = Math.floor(nextPos);
+      let nextPhase = nextPos - advance;
+
+      if (nextPhase >= 1) {
+        const extra = Math.floor(nextPhase);
+        advance += extra;
+        nextPhase -= extra;
+      }
+      if (nextPhase < 0 || Object.is(nextPhase, -0)) {
+        nextPhase = 0;
+      }
+      if (nextPhase > 1 - 1e-12) {
+        advance += 1;
+        nextPhase = 0;
+      }
+
+      if (advance < 0) {
+        throw new RangeError(`StatefulLinearResampler negative advance invariant violation: ${advance}`);
+      }
+
+      this.phase = nextPhase;
+      i += advance;
+    }
+
+    const nextOffset = i - inputLength;
+    if (nextOffset < -1) {
+      throw new RangeError(
+        `StatefulLinearResampler sourceOffset underflow invariant violation: ${nextOffset}`,
+      );
+    }
+    this.sourceOffset = nextOffset;
+    this.lastSample = input[inputLength - 1]!;
+
+    return Float32Array.from(outputValues);
+  }
+
+  flush(): Float32Array {
+    if (this.passthrough || !this.hasLastSample) {
+      return new Float32Array(0);
+    }
+    if (this.sourceOffset === -1 && this.phase > 0) {
+      const sample = (1 - this.phase) * this.lastSample;
+      this.sourceOffset = 0;
+      this.phase = 0;
+      this.hasLastSample = false;
+      return new Float32Array([sample]);
+    }
+    this.sourceOffset = 0;
+    this.phase = 0;
+    this.hasLastSample = false;
+    return new Float32Array(0);
+  }
+}
+

@@ -1,5 +1,6 @@
 import { AudioRingBuffer } from './realtime.js';
 import { subscribeToAbortSignal } from '../io/abort.js';
+import { getGlobalStreamingTelemetry } from './streaming-telemetry.js';
 
 import {
   durationMsToAlignedFrameCount,
@@ -220,6 +221,11 @@ export class StreamingSpeechDetector {
   }
 
   private emit(event: StreamingSpeechDetectorEvent): void {
+    if (event.type === 'speech-start') {
+      getGlobalStreamingTelemetry().recordVadStart();
+    } else if (event.type === 'speech-end') {
+      getGlobalStreamingTelemetry().recordVadEnd();
+    }
     for (const listener of this.listeners) {
       listener(event);
     }
@@ -294,6 +300,7 @@ export class StreamingSpeechDetector {
         try {
           await this.tenVad.init(startAbort.signal);
           if (this.startCancelled || this.disposed) {
+            await this.tenVad.dispose().catch(() => undefined);
             return;
           }
           if (startAbort.signal.aborted || callerSignal?.aborted) {
@@ -309,6 +316,7 @@ export class StreamingSpeechDetector {
           );
         } catch (error) {
           if (this.startCancelled || this.disposed) {
+            await this.tenVad.dispose().catch(() => undefined);
             return;
           }
           if (isStreamingVadInitAborted(error, startAbort.signal) || callerSignal?.aborted) {
@@ -360,6 +368,7 @@ export class StreamingSpeechDetector {
     }
 
     this.ringBuffer.write(chunk);
+    getGlobalStreamingTelemetry().recordAcceptedSamples(chunk.length);
     this.tenVad?.process(chunk, chunkStartFrame);
 
     const rough = this.roughGate.process(chunk);
@@ -627,6 +636,7 @@ export class StreamingSpeechDetector {
     const activeSegment = this.activeSegment;
     const bounds = this.finalizeBounds(activeSegment.startFrame, endFrame);
     const pcm = this.ringBuffer.read(bounds.extractedStartFrame, bounds.extractedEndFrame);
+    getGlobalStreamingTelemetry().recordEmittedSamples(pcm.length);
     const tenVadStatus = this.getTenVadStatus();
     const filterResult = scoreSegmentForeground(
       pcm,

@@ -319,6 +319,37 @@ describe('TenVadAdapter', () => {
     expect(adapter.getStatus().state).toBe('idle');
   });
 
+  it('terminates the worker when init fails due to worker error', async () => {
+    const worker = new FakeWorker('fail-init');
+    let terminated = false;
+    worker.terminate = () => {
+      terminated = true;
+    };
+    const adapter = new TenVadAdapter({ ...TEN_VAD_ASSETS }, { workerFactory: () => worker });
+
+    await expect(adapter.init()).rejects.toThrow('init failed');
+    expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('degraded');
+  });
+
+  it('terminates the worker on unhandled worker onerror event', async () => {
+    const worker = new FakeWorker();
+    let terminated = false;
+    worker.terminate = () => {
+      terminated = true;
+    };
+    const adapter = new TenVadAdapter({ ...TEN_VAD_ASSETS }, { workerFactory: () => worker });
+
+    await adapter.init();
+    expect(adapter.getStatus().state).toBe('ready');
+
+    worker.onerror?.({ message: 'Script error in worker' } as ErrorEvent);
+    expect(terminated).toBe(true);
+    expect(worker.onmessage).toBeNull();
+    expect(adapter.getStatus().state).toBe('degraded');
+  });
+
   it('does not reset the worker when only non-worker tuning changes', async () => {
     const worker = new FakeWorker();
     const adapter = new TenVadAdapter(

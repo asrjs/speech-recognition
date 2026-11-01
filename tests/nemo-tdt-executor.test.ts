@@ -335,6 +335,50 @@ describe('nemo-tdt Hugging Face artifact materialization', () => {
     expect(artifacts.encoderDataUrl).toBeUndefined();
     expect(artifacts.decoderDataUrl).toBeUndefined();
   });
+
+  it('skips both fetchModelFiles and optional .onnx.data probes when source.repoFiles is known', async () => {
+    const requests: string[] = [];
+    const config = parseNemoTdtConfig('test-nemo-tdt', {
+      subsamplingFactor: 4,
+      frameShiftSeconds: 0.01,
+      melBins: 2,
+      vocabularySize: 3,
+      predictionLayers: 1,
+      predictionHiddenSize: 4,
+    });
+    const executor = new OrtNemoTdtExecutor(
+      'test-nemo-tdt',
+      DEFAULT_NEMO_TDT_CLASSIFICATION,
+      config,
+      'wasm',
+      undefined,
+      { assetProvider: createRecordingAssetProvider(requests) },
+    ) as OrtNemoTdtExecutor & {
+      sourceOptions: NemoTdtArtifactSource;
+      materializeHuggingFaceArtifacts(
+        artifacts: Record<string, string | undefined>,
+      ): Promise<Record<string, string | undefined>>;
+    };
+
+    executor.sourceOptions = resolveParakeetPresetManifest('parakeet-tdt-0.6b-v3')!.source!;
+
+    const artifacts = await executor.materializeHuggingFaceArtifacts({
+      encoderUrl: 'https://example.test/encoder-model.fp16.onnx',
+      decoderUrl: 'https://example.test/decoder_joint-model.int8.onnx',
+      tokenizerUrl: 'https://example.test/vocab.txt',
+      encoderFilename: 'encoder-model.fp16.onnx',
+      decoderFilename: 'decoder_joint-model.int8.onnx',
+    });
+
+    expect(fetchModelFiles).not.toHaveBeenCalled();
+    expect(requests).toEqual([
+      'encoder-model.fp16.onnx',
+      'decoder_joint-model.int8.onnx',
+      'vocab.txt',
+    ]);
+    expect(artifacts.encoderDataUrl).toBeUndefined();
+    expect(artifacts.decoderDataUrl).toBeUndefined();
+  });
 });
 
 describe('nemo-tdt Hugging Face artifact materialization offline', () => {

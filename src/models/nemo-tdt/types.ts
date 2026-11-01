@@ -84,6 +84,8 @@ export interface NemoTdtHuggingFaceSource {
   readonly repoId: string;
   readonly revision?: string;
   readonly cacheKeyFallbackRevisions?: readonly string[];
+  /** Known repo filenames for a pinned revision, avoiding hub tree/metadata requests when checking optional sidecars. */
+  readonly repoFiles?: readonly string[];
   readonly encoderBackend?: NemoTdtExecutionBackend;
   readonly decoderBackend?: NemoTdtExecutionBackend;
   /** Experimental decoder state placement; effective only for a WebGPU decoder. */

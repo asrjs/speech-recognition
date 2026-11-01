@@ -19,6 +19,10 @@ export interface DefaultStreamingTranscriberOptions extends StreamingSessionOpti
   readonly sampleRate?: number;
 }
 
+function normalizeWordKey(word: string): string {
+  return word.toLowerCase().replace(/^[^\w\s]+|[^\w\s]+$/g, '').trim();
+}
+
 export class DefaultStreamingTranscriber<
   TOptions extends BaseTranscriptionOptions = BaseTranscriptionOptions,
   TNative = unknown,
@@ -32,6 +36,7 @@ export class DefaultStreamingTranscriber<
   private isFinalized = false;
   private totalDurationSeconds = 0;
   private heardSpeech = false;
+  private consecutiveSilenceSeconds = 0;
   private stateGeneration = 0;
   private operationAbortController = new AbortController();
   private operationTail: Promise<void> = Promise.resolve();
@@ -67,22 +72,32 @@ export class DefaultStreamingTranscriber<
     const normalized = normalizePcmInput(input);
     const chunkStartTime = this.totalDurationSeconds;
     this.totalDurationSeconds += normalized.durationSeconds;
-    this.window.push(normalized, chunkStartTime);
 
     if (this.vad) {
       const event = await this.vad.analyze(normalized);
-      this.heardSpeech ||= event.isSpeech;
-
-      if (
-        !event.isSpeech &&
-        this.heardSpeech &&
-        normalized.durationSeconds * 1000 >= this.minFinalSilenceMs
-      ) {
-        return this.finalizeInternal(generation);
+      if (event.isSpeech) {
+        this.heardSpeech = true;
+        this.consecutiveSilenceSeconds = 0;
+      } else if (this.heardSpeech) {
+        this.consecutiveSilenceSeconds += normalized.durationSeconds;
+        if (this.consecutiveSilenceSeconds * 1000 >= this.minFinalSilenceMs) {
+          this.consecutiveSilenceSeconds = 0;
+          return this.finalizeInternal(generation);
+        }
       }
     }
 
     if (generation !== this.stateGeneration) return this.staleUpdate();
+
+    // Eviction-Before-Drop Rule: when audio is about to be evicted from the window,
+    // transcribe the current audio and seal words/tokens before the freeze boundary.
+    if (this.window.wouldEvict(normalized.durationSeconds)) {
+      await this.commitBeforeEviction(generation);
+    }
+
+    if (generation !== this.stateGeneration) return this.staleUpdate();
+
+    this.window.push(normalized, chunkStartTime);
 
     if (!this.emitPartials) {
       return this.accumulator.update(this.blankResult(), 'partial');
@@ -95,6 +110,7 @@ export class DefaultStreamingTranscriber<
     const generation = this.stateGeneration;
     return this.enqueue(() => {
       this.assertNotFinalized();
+      this.consecutiveSilenceSeconds = 0;
       return this.transcribeBuffered('partial', generation);
     });
   }
@@ -113,6 +129,7 @@ export class DefaultStreamingTranscriber<
     this.window.reset();
     this.accumulator.reset();
     this.totalDurationSeconds = 0;
+    this.consecutiveSilenceSeconds = 0;
     this.heardSpeech = false;
     this.isFinalized = false;
   }
@@ -122,6 +139,7 @@ export class DefaultStreamingTranscriber<
     if (this.disposePromise) return this.disposePromise;
     this.disposed = true;
     this.stateGeneration += 1;
+    this.consecutiveSilenceSeconds = 0;
     // Publish before abort dispatch, whose listeners may reenter dispose().
     this.disposePromise = Promise.resolve().then(() => this.disposeInternal());
     this.operationAbortController.abort();
@@ -142,6 +160,166 @@ export class DefaultStreamingTranscriber<
       previewText: state.previewText,
       isFinalized: this.isFinalized,
     };
+  }
+
+  private async commitBeforeEviction(generation: number): Promise<void> {
+    const audio = this.window.toPcmAudioBuffer();
+    if (audio.numberOfFrames === 0) return;
+
+    const signal = this.operationAbortController.signal;
+    const windowBaseSeconds = this.window.getWindowBaseSeconds();
+    let rawResult: TranscriptResult;
+    try {
+      rawResult = await this.canonicalTranscribe(audio, signal);
+    } catch (error) {
+      if (generation !== this.stateGeneration || signal.aborted) {
+        return;
+      }
+      throw error;
+    }
+
+    if (generation !== this.stateGeneration) return;
+
+    const offsetResult = this.applyWindowOffset(rawResult, windowBaseSeconds);
+    const evictionDuration = this.window.getEvictionDuration();
+    const freezeBoundary = windowBaseSeconds + evictionDuration;
+
+    if (offsetResult.words && offsetResult.words.length > 0) {
+      const wordsToCommit = offsetResult.words.filter(
+        (w) => w.endTime <= freezeBoundary + 1e-4,
+      );
+      const committedWords = this.accumulator.getCommittedWords();
+      const lastCommittedTime =
+        committedWords.length > 0 ? committedWords[committedWords.length - 1]!.endTime : -1;
+      const newWordsToCommit = wordsToCommit.filter(
+        (w) => w.startTime >= lastCommittedTime - 0.15,
+      );
+      const textToCommit = newWordsToCommit.map((w) => w.text).join(' ');
+      const segmentsToCommit = (offsetResult.segments ?? []).filter(
+        (s) => s.endTime <= freezeBoundary + 1e-4,
+      );
+      const tokensToCommit = (offsetResult.tokens ?? []).filter(
+        (t) => (t.endTime ?? t.startTime ?? 0) <= freezeBoundary + 1e-4,
+      );
+      this.accumulator.commit(textToCommit, newWordsToCommit, segmentsToCommit, tokensToCommit);
+    } else if (offsetResult.text.trim().length > 0) {
+      const allWords = offsetResult.text.trim().split(/\s+/).filter(Boolean);
+      const bufferedSeconds = this.window.getBufferedDurationSeconds();
+      const fraction = bufferedSeconds > 0 ? Math.min(1, evictionDuration / bufferedSeconds) : 0;
+      const commitCount = Math.min(
+        allWords.length,
+        Math.max(1, Math.floor(allWords.length * fraction)),
+      );
+      const wordsToCommit = allWords.slice(0, commitCount);
+      const deduplicatedCandidate = this.deduplicateAgainstCommitted({
+        ...this.blankResult(),
+        text: wordsToCommit.join(' '),
+      });
+      this.accumulator.commit(deduplicatedCandidate.text);
+    }
+  }
+
+  private applyWindowOffset(result: TranscriptResult, baseSeconds: number): TranscriptResult {
+    if (baseSeconds === 0) return result;
+    const words = result.words?.map((word) => ({
+      ...word,
+      startTime: word.startTime + baseSeconds,
+      endTime: word.endTime + baseSeconds,
+    }));
+    const segments = result.segments?.map((segment) => ({
+      ...segment,
+      startTime: segment.startTime + baseSeconds,
+      endTime: segment.endTime + baseSeconds,
+    }));
+    const tokens = result.tokens?.map((token) => ({
+      ...token,
+      startTime: token.startTime !== undefined ? token.startTime + baseSeconds : undefined,
+      endTime: token.endTime !== undefined ? token.endTime + baseSeconds : undefined,
+    }));
+    return {
+      ...result,
+      words,
+      segments,
+      tokens,
+    };
+  }
+
+  private deduplicateAgainstCommitted(result: TranscriptResult): TranscriptResult {
+    const committedWords = this.accumulator.getCommittedWords();
+    const committedText = this.accumulator.getCommittedText();
+
+    if (committedWords.length > 0 && result.words && result.words.length > 0) {
+      const lastCommitted = committedWords[committedWords.length - 1]!;
+      const lastEndTime = lastCommitted.endTime;
+      let firstKeptIndex = 0;
+
+      for (let i = 0; i < result.words.length; i++) {
+        const w = result.words[i]!;
+        if (w.endTime <= lastEndTime + 0.15) {
+          firstKeptIndex = i + 1;
+          continue;
+        }
+        if (w.startTime < lastEndTime - 0.15) {
+          const match = committedWords.some(
+            (cw) =>
+              Math.abs(cw.endTime - w.endTime) < 0.15 &&
+              normalizeWordKey(cw.text) === normalizeWordKey(w.text),
+          );
+          if (match) {
+            firstKeptIndex = i + 1;
+            continue;
+          }
+        }
+        break;
+      }
+
+      const keptWords = result.words.slice(firstKeptIndex);
+      const keptText = keptWords.map((w) => w.text).join(' ');
+      const keptSegments = result.segments?.filter(
+        (s) => s.endTime > lastEndTime + 0.15,
+      );
+      const keptTokens = result.tokens?.filter(
+        (t) => (t.endTime ?? t.startTime ?? 0) > lastEndTime + 0.15,
+      );
+
+      return {
+        ...result,
+        text: keptText,
+        words: keptWords.length > 0 ? keptWords : undefined,
+        segments: keptSegments && keptSegments.length > 0 ? keptSegments : undefined,
+        tokens: keptTokens && keptTokens.length > 0 ? keptTokens : undefined,
+      };
+    }
+
+    if (committedText.trim().length > 0 && result.text.trim().length > 0) {
+      const committedWordList = committedText.trim().split(/\s+/);
+      const activeWordList = result.text.trim().split(/\s+/);
+      let maxOverlap = 0;
+      const maxPossibleOverlap = Math.min(committedWordList.length, activeWordList.length);
+
+      for (let k = 1; k <= maxPossibleOverlap; k++) {
+        let match = true;
+        for (let j = 0; j < k; j++) {
+          const c = normalizeWordKey(committedWordList[committedWordList.length - k + j]!);
+          const a = normalizeWordKey(activeWordList[j]!);
+          if (c !== a) {
+            match = false;
+            break;
+          }
+        }
+        if (match) {
+          maxOverlap = k;
+        }
+      }
+
+      const keptWordList = activeWordList.slice(maxOverlap);
+      return {
+        ...result,
+        text: keptWordList.join(' '),
+      };
+    }
+
+    return result;
   }
 
   private async transcribeBuffered(
@@ -165,11 +343,15 @@ export class DefaultStreamingTranscriber<
 
     if (generation !== this.stateGeneration) return this.staleUpdate();
 
-    return this.accumulator.update(canonical, kind);
+    const offsetResult = this.applyWindowOffset(canonical, this.window.getWindowBaseSeconds());
+    const deduplicatedResult = this.deduplicateAgainstCommitted(offsetResult);
+
+    return this.accumulator.update(deduplicatedResult, kind);
   }
 
   private async finalizeInternal(generation: number): Promise<PartialTranscript> {
     this.assertNotFinalized();
+    this.consecutiveSilenceSeconds = 0;
     const update = await this.transcribeBuffered('final', generation);
     if (generation !== this.stateGeneration) return update;
     this.isFinalized = true;
@@ -189,6 +371,9 @@ export class DefaultStreamingTranscriber<
 
   private staleUpdate(): PartialTranscript {
     const state = this.accumulator.getState();
+    const words = this.accumulator.getCommittedWords();
+    const segments = this.accumulator.getCommittedSegments();
+    const tokens = this.accumulator.getCommittedTokens();
     return {
       kind: 'partial',
       revision: state.revision,
@@ -201,6 +386,9 @@ export class DefaultStreamingTranscriber<
         isFinal: false,
         durationSeconds: this.window.getBufferedDurationSeconds(),
       },
+      words: words.length > 0 ? words.map((w, index) => ({ ...w, index })) : undefined,
+      segments: segments.length > 0 ? segments.map((s, index) => ({ ...s, index })) : undefined,
+      tokens: tokens.length > 0 ? tokens.map((t, index) => ({ ...t, index })) : undefined,
     };
   }
 
@@ -238,3 +426,4 @@ export class DefaultStreamingTranscriber<
     return run;
   }
 }
+
