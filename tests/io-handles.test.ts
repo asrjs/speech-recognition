@@ -92,7 +92,7 @@ describe('UrlAssetHandle', () => {
     },
   );
 
-  it('returns a single streamed response chunk without an extra materialization copy', async () => {
+  it('returns a materialized copy of a single streamed response chunk to prevent aliasing', async () => {
     const payload = new Uint8Array([11, 22, 33, 44]);
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -119,7 +119,7 @@ describe('UrlAssetHandle', () => {
 
     const bytes = await handle.readBytes();
 
-    expect(bytes).toBe(payload);
+    expect(bytes).not.toBe(payload);
     expect(Array.from(bytes)).toEqual([11, 22, 33, 44]);
   });
 
