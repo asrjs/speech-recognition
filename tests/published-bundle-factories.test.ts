@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { createMoonshinePresetFactory } from '../src/presets/moonshine-factory.js';
 import { createQwen3AsrPresetFactory } from '../src/presets/qwen3-asr-factory.js';
 import type { ResolveModelRequestContext } from '../src/types/index.js';
 
@@ -95,28 +94,4 @@ describe('published ONNX bundle preset routing', () => {
     ).rejects.toThrow(/explicit direct graph source/);
   });
 
-  it('maps only the streaming Tiny catalog id to the four-graph Moonshine bundle', async () => {
-    const factory = createMoonshinePresetFactory();
-    const resolved = await factory.resolveModelRequest(
-      { modelId: 'moonshine-ai/moonshine-streaming-tiny' },
-      context,
-    );
-    expect(resolved.options).toMatchObject({
-      encoderUrl: expect.stringContaining('/encoder_model.onnx'),
-      tokenizerUrl: expect.stringContaining('/tokenizer.json'),
-      generationUrl: expect.stringContaining('/generation_config.json'),
-      streaming: {
-        encoderDataUrl: expect.stringContaining('/encoder_model.onnx.data'),
-        chunkedEncoderUrl: expect.stringContaining('/encoder_chunked_model.onnx'),
-        chunkedEncoderDataUrl: expect.stringContaining('/encoder_chunked_model.onnx.data'),
-        prefillUrl: expect.stringContaining('/decoder_prefill_model.onnx'),
-        prefillDataUrl: expect.stringContaining('/decoder_prefill_model.onnx.data'),
-        stepUrl: expect.stringContaining('/decoder_step_model.onnx'),
-        stepDataUrl: expect.stringContaining('/decoder_step_model.onnx.data'),
-      },
-    });
-    await expect(
-      factory.resolveModelRequest({ modelId: 'moonshine-tiny' }, context),
-    ).rejects.toThrow(/only the registered streaming Tiny bundle/);
-  });
 });

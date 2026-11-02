@@ -24,16 +24,16 @@ export type ExperimentalSpeechAudioContract =
   | 'short-clip-speech-llm'
   | 'encoder-cache-streaming';
 
-/** Experimental families are loaded from a caller-supplied local ONNX directory. */
-export type ExperimentalSpeechFamilyLocator = 'local-onnx-dir';
+/** Default artifact locator for an experimental family. Local artifacts can remain available. */
+export type ExperimentalSpeechFamilyLocator = 'local-onnx-dir' | 'huggingface';
 
 /**
  * Clone-safe descriptor returned by `listExperimentalSpeechFamilies()` and
  * `getExperimentalSpeechFamily()`.
  *
  * `audioContract` and `limitations` are the fields UIs and workers should
- * surface before attempting a load. `verifiedPreset` and `publicHostedWeights`
- * are always false.
+ * surface before attempting a load. A hosted bundle does not establish a
+ * broadly verified preset.
  */
 export interface ExperimentalSpeechFamilyDescriptor {
   readonly family: string;
@@ -41,8 +41,8 @@ export interface ExperimentalSpeechFamilyDescriptor {
   readonly status: ExperimentalSpeechFamilyStatus;
   /** Always false: these are not listed by `listSpeechModels()`. */
   readonly verifiedPreset: false;
-  /** Always false: callers must supply a local ONNX directory. */
-  readonly publicHostedWeights: false;
+  /** True when this family has a published model bundle. */
+  readonly publicHostedWeights: boolean;
   readonly locator: ExperimentalSpeechFamilyLocator;
   readonly envSmokeFlag: string;
   readonly factoryExport: string;

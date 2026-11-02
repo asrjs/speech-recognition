@@ -28,6 +28,8 @@ export interface ParakeetModelConfig {
   readonly topology?: 'tdt' | 'rnnt';
   /** Defaults to true; set false when no validated Hub export source exists. */
   readonly supportsHubSource?: boolean;
+  readonly encoderQuantizations?: readonly ('fp16' | 'int8' | 'fp32')[];
+  readonly decoderQuantizations?: readonly ('fp16' | 'int8' | 'fp32')[];
   readonly supportsWordTimestamps?: boolean;
   readonly defaultRevision?: string;
   readonly cacheKeyFallbackRevisions?: readonly string[];
@@ -100,7 +102,7 @@ export const MODELS: Record<string, ParakeetModelConfig> = {
     ],
   },
   'oruk/orukeet': {
-    repoId: 'oruk/orukeet',
+    repoId: 'ysdede/orukeet-0.6b-onnx',
     displayName: 'Orukeet 0.6B (Multilingual, community fine-tune of Parakeet TDT v3)',
     languages: [
       'en',
@@ -138,10 +140,9 @@ export const MODELS: Record<string, ParakeetModelConfig> = {
     predLayers: 2,
     topology: 'tdt',
     supportsWordTimestamps: true,
-    // Verified 2026-10-03: the upstream repo has no root-level encoder-model/
-    // decoder_joint-model/vocab.txt, so Hub loading would 404.
-    supportsHubSource: false,
-    defaultRevision: 'b59c13a733fce5cf193230d0fa317ee7f145a108',
+    encoderQuantizations: ['int8'],
+    decoderQuantizations: ['int8'],
+    defaultRevision: 'e35e05b5af1e3b2fdb831e8349530902b13d7eca',
   },
 };
 

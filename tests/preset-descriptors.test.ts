@@ -44,7 +44,6 @@ describe('built-in preset descriptors', () => {
     const senseVoice = getBuiltInModelDescriptor('FunAudioLLM/SenseVoiceSmall');
 
     for (const descriptor of [ctc, rnnt, senseVoice]) {
-      expect(descriptor?.loading.supportsHubSource).toBe(false);
       expect(descriptor?.loading.supportsLocalSource).toBe(true);
       expect(descriptor?.warmup.mode).toBe('non-empty');
       expect(descriptor?.capabilities.supportsTranslation).toBe(false);
@@ -82,7 +81,6 @@ describe('built-in preset descriptors', () => {
 
   it('lists the custom Whisper Turbo artifact as its own WebGPU local-capable model', () => {
     const turbo = getBuiltInModelDescriptor('ysdede/whisper-large-v3-turbo-onnx-4graph');
-    const publicLarge = getBuiltInModelDescriptor('openai/whisper-large-v3');
 
     expect(turbo).toMatchObject({
       modelId: 'ysdede/whisper-large-v3-turbo-onnx-4graph',
@@ -96,7 +94,6 @@ describe('built-in preset descriptors', () => {
         availableDecoderQuantizations: ['fp16'],
       },
     });
-    expect(publicLarge?.modelId).toBe('openai/whisper-large-v3');
     expect(
       resolveBuiltInLocalModelAdapter('ysdede/whisper-large-v3-turbo-onnx-4graph').preset,
     ).toBe('whisper');

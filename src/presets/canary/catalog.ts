@@ -68,7 +68,7 @@ export const MODELS = {
     promptFormat: 'canary2',
   },
   'nvidia/canary-1b': {
-    repoId: 'nvidia/canary-1b',
+    repoId: 'ysdede/canary-1b-onnx',
     displayName: 'Canary 1B (Multilingual AED)',
     languages: ['en', 'de', 'es', 'fr'],
     defaultSourceLanguage: 'en',
@@ -80,7 +80,7 @@ export const MODELS = {
     promptFormat: 'canary',
   },
   'nvidia/canary-1b-v2': {
-    repoId: 'nvidia/canary-1b-v2',
+    repoId: 'ysdede/canary-1b-v2-onnx',
     displayName: 'Canary 1B v2 (Multilingual AED)',
     languages: CANARY_1B_V2_LANGUAGES,
     defaultSourceLanguage: 'en',

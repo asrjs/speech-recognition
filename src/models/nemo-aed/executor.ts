@@ -272,6 +272,8 @@ export class OrtNemoAedExecutor implements NemoAedExecutor {
       ...artifacts,
       encoderUrl: (await resolveFile(artifacts.encoderFilename)) ?? artifacts.encoderUrl,
       decoderUrl: (await resolveFile(artifacts.decoderFilename)) ?? artifacts.decoderUrl,
+      encoderDataUrl: (await resolveFile(source.encoderDataFilename)) ?? artifacts.encoderDataUrl,
+      decoderDataUrl: (await resolveFile(source.decoderDataFilename)) ?? artifacts.decoderDataUrl,
       tokenizerUrl: (await resolveFile(artifacts.tokenizerFilename)) ?? artifacts.tokenizerUrl,
       configUrl: (await resolveFile(artifacts.configFilename)) ?? artifacts.configUrl,
       preprocessorUrl:

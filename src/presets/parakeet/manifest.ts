@@ -41,6 +41,19 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
     source: {
       kind: 'huggingface',
       repoId: 'ysdede/parakeet-tdt-0.6b-v2-onnx',
+      // Known repo files for the approved artifacts so optional sidecar checks
+      // do not need a hub tree listing (cached/offline loads stay silent).
+      repoFiles: [
+        'encoder-model.fp16.onnx',
+        'encoder-model.int8.onnx',
+        'encoder-model.onnx',
+        'encoder-model.onnx.data',
+        'decoder_joint-model.fp16.onnx',
+        'decoder_joint-model.int8.onnx',
+        'decoder_joint-model.onnx',
+        'config.json',
+        'vocab.txt',
+      ],
       preprocessorName: 'nemo128',
       preprocessorBackend: 'js',
     },
@@ -81,7 +94,12 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
       repoFiles: [
         'encoder-model.fp16.onnx',
+        'encoder-model.int8.onnx',
+        'encoder-model.onnx',
+        'encoder-model.onnx.data',
+        'decoder_joint-model.fp16.onnx',
         'decoder_joint-model.int8.onnx',
+        'decoder_joint-model.onnx',
         'config.json',
         'vocab.txt',
       ],
@@ -183,11 +201,21 @@ export const PARAKEET_PRESET_MANIFESTS: readonly ParakeetPresetManifest[] = [
       // Audited own Orukeet export: encoder output and decoder input are [B, D, T].
       encoderOutputLayout: 'bdt',
     },
-    // No Hub source: at revision b59c13a7 the upstream repo publishes graphs
-    // under onnx/combined-v0.1.0-int8/ and a tokenizer.json, not the root
-    // encoder-model/decoder_joint-model/vocab.txt layout this preset resolves.
-    // Advertising one would 404, so Orukeet is local-folder only until a
-    // matching validated export source exists.
+    source: {
+      kind: 'huggingface',
+      repoId: 'ysdede/orukeet-0.6b-onnx',
+      encoderQuant: 'int8',
+      decoderQuant: 'int8',
+      repoFiles: [
+        'encoder-model.int8.onnx',
+        'decoder_joint-model.int8.onnx',
+        'vocab.txt',
+        'config.json',
+        'nemo128.onnx',
+      ],
+      preprocessorName: 'nemo128',
+      preprocessorBackend: 'js',
+    },
     quirks: {
       preprocessorBackend: 'js',
     },

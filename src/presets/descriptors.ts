@@ -661,6 +661,55 @@ export function buildBuiltInHubLoadOptions(
         },
       };
     }
+    case 'parakeet-ctc':
+    case 'omnilingual-ctc': {
+      const root = `https://huggingface.co/${descriptor.loading.repoId}/resolve/${encodeURIComponent(input.revision || descriptor.loading.defaultRevision)}/`;
+      const common = { cpuThreads: input.cpuThreads, encoderBackend: componentBackends.encoderBackend };
+      return {
+        ...base,
+        options: descriptor.preset === 'parakeet-ctc' ? {
+          ...common,
+          source: { kind: 'direct', artifacts: { encoderUrl: `${root}model.onnx`, tokenizerUrl: `${root}tokenizer.json` } },
+        } : {
+          ...common,
+          backendId: componentBackends.encoderBackend,
+          modelUrl: `${root}model.int8.onnx`,
+          tokensUrl: `${root}tokens.txt`,
+        },
+      };
+    }
+    case 'wav2vec2-tr':
+      return {
+        ...base,
+        options: {
+          source: {
+            kind: 'huggingface',
+            repoId: descriptor.loading.repoId,
+            revision: input.revision || descriptor.loading.defaultRevision,
+            cpuThreads: input.cpuThreads,
+            enableProfiling: input.enableProfiling,
+          },
+        },
+      };
+    case 'gigaam-ctc':
+    case 'gigaam-rnnt':
+    case 'sensevoice':
+    case 'x-asr':
+      return {
+        ...base,
+        options: {
+          source: {
+            kind: 'huggingface',
+            repoId: descriptor.loading.repoId,
+            revision: input.revision || descriptor.loading.defaultRevision,
+            ...(descriptor.preset === 'sensevoice' ? { cmvnFilename: 'am.mvn' } : {}),
+            encoderBackend: componentBackends.encoderBackend,
+            decoderBackend: componentBackends.decoderBackend,
+            cpuThreads: input.cpuThreads,
+            enableProfiling: input.enableProfiling,
+          },
+        },
+      };
     case 'moonshine':
       return {
         ...base,

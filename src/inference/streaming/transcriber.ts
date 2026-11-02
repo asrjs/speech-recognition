@@ -92,7 +92,7 @@ export class DefaultStreamingTranscriber<
     // Eviction-Before-Drop Rule: when audio is about to be evicted from the window,
     // transcribe the current audio and seal words/tokens before the freeze boundary.
     if (this.window.wouldEvict(normalized.durationSeconds)) {
-      await this.commitBeforeEviction(generation);
+      await this.commitBeforeEviction(generation, normalized.durationSeconds);
     }
 
     if (generation !== this.stateGeneration) return this.staleUpdate();
@@ -162,7 +162,10 @@ export class DefaultStreamingTranscriber<
     };
   }
 
-  private async commitBeforeEviction(generation: number): Promise<void> {
+  private async commitBeforeEviction(
+    generation: number,
+    pendingDurationSeconds = 0,
+  ): Promise<void> {
     const audio = this.window.toPcmAudioBuffer();
     if (audio.numberOfFrames === 0) return;
 
@@ -181,7 +184,7 @@ export class DefaultStreamingTranscriber<
     if (generation !== this.stateGeneration) return;
 
     const offsetResult = this.applyWindowOffset(rawResult, windowBaseSeconds);
-    const evictionDuration = this.window.getEvictionDuration();
+    const evictionDuration = this.window.getEvictionDuration(pendingDurationSeconds);
     const freezeBoundary = windowBaseSeconds + evictionDuration;
 
     if (offsetResult.words && offsetResult.words.length > 0) {
@@ -202,7 +205,7 @@ export class DefaultStreamingTranscriber<
         (t) => (t.endTime ?? t.startTime ?? 0) <= freezeBoundary + 1e-4,
       );
       this.accumulator.commit(textToCommit, newWordsToCommit, segmentsToCommit, tokensToCommit);
-    } else if (offsetResult.text.trim().length > 0) {
+    } else if (evictionDuration > 0 && offsetResult.text.trim().length > 0) {
       const allWords = offsetResult.text.trim().split(/\s+/).filter(Boolean);
       const bufferedSeconds = this.window.getBufferedDurationSeconds();
       const fraction = bufferedSeconds > 0 ? Math.min(1, evictionDuration / bufferedSeconds) : 0;

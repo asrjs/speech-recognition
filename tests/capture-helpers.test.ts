@@ -1,10 +1,31 @@
 import {
+  createFixedChunkResampler,
   startMicrophoneCapture,
   startMicrophoneRingCapture,
 } from '@asrjs/speech-recognition/browser';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('microphone capture helpers', () => {
+  it('flushes the resampler tail at the target rate without resampling it twice', () => {
+    const chunks: Float32Array[] = [];
+    const resampler = createFixedChunkResampler({
+      sourceSampleRate: 48_000,
+      targetSampleRate: 16_000,
+      chunkFrames: 1,
+      onChunk: (pcm) => chunks.push(Float32Array.from(pcm)),
+    });
+    const input = Float32Array.from({ length: 4_800 }, (_, index) => Math.sin(index * 0.1));
+
+    resampler.push(input);
+    const beforeFlush = chunks.length;
+    resampler.flush();
+
+    // 4,800 source frames at 48 kHz are 1,600 target frames; 1,584 are emitted
+    // eagerly and the 16-sample look-ahead tail arrives on flush exactly once.
+    expect(beforeFlush).toBe(1_584);
+    expect(chunks.length).toBe(1_600);
+  });
+
   it('emits mono PCM chunks and cleans up audio resources on stop', async () => {
     const sourceNode = {
       connect: vi.fn(),

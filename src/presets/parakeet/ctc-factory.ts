@@ -1,17 +1,13 @@
 import type { FamilyModelLoadRequest, SpeechPresetFactory } from '../../types/index.js';
 import type { ParakeetCtcModelOptions } from '../../models/parakeet-ctc/types.js';
 import { DEFAULT_PARAKEET_CTC_CONFIG } from '../../models/parakeet-ctc/model.js';
+import { PARAKEET_CTC_PUBLISHED_BUNDLE, publishedBundleFileUrl } from '../published-bundles.js';
 
 export interface CreateParakeetCtcPresetFactoryOptions {
   readonly defaultModelId?: string;
 }
 
-/**
- * Resolves `parakeet-ctc` requests onto the local ParakeetForCTC family.
- *
- * The descriptor is local-folder only, so a request without an explicit source
- * fails closed rather than inventing a Hub repository that publishes no ONNX.
- */
+/** Resolves ParakeetForCTC requests with the pinned export or explicit local artifacts. */
 export function createParakeetCtcPresetFactory(
   options: CreateParakeetCtcPresetFactoryOptions = {},
 ): SpeechPresetFactory<ParakeetCtcModelOptions, ParakeetCtcModelOptions> {
@@ -25,11 +21,13 @@ export function createParakeetCtcPresetFactory(
       request,
       _context,
     ): Promise<FamilyModelLoadRequest<ParakeetCtcModelOptions>> {
-      if (!request.options?.source) {
-        throw new Error(
-          'parakeet-ctc has no validated Hub export; supply a local artifact source.',
-        );
-      }
+      const source = request.options?.source ?? {
+        kind: 'direct' as const,
+        artifacts: {
+          encoderUrl: publishedBundleFileUrl(PARAKEET_CTC_PUBLISHED_BUNDLE, 'model'),
+          tokenizerUrl: publishedBundleFileUrl(PARAKEET_CTC_PUBLISHED_BUNDLE, 'tokenizer'),
+        },
+      };
 
       return {
         family: 'parakeet-ctc',
@@ -42,6 +40,7 @@ export function createParakeetCtcPresetFactory(
             ...request.options?.config,
           },
           ...request.options,
+          source,
         } as ParakeetCtcModelOptions,
       };
     },

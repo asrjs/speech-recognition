@@ -20,8 +20,9 @@ export interface WhisperPresetManifest {
 }
 
 const WHISPER_4GRAPH_REPO_ID = 'ysdede/whisper-large-v3-turbo-onnx-4graph';
+const WHISPER_4GRAPH_REVISION = 'aecdcd17f2cf1f72b13ee92d258e1716dee7d976';
 
-function hfResolve(repoId: string, filename: string, revision = 'main'): string {
+function hfResolve(repoId: string, filename: string, revision = WHISPER_4GRAPH_REVISION): string {
   const repoPath = repoId.split('/').map(encodeURIComponent).join('/');
   const encodedRevision = encodeURIComponent(revision);
   const filePath = filename.split('/').map(encodeURIComponent).join('/');

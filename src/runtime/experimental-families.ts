@@ -22,8 +22,8 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     modelIdHint: 'gigaam-multilingual-ctc',
     status: 'experimental',
     verifiedPreset: false,
-    publicHostedWeights: false,
-    locator: 'local-onnx-dir',
+    publicHostedWeights: true,
+    locator: 'huggingface',
     envSmokeFlag: 'GIGAAM_CTC_ONNX_SMOKE',
     factoryExport: 'createGigaAmCtcModelFamily',
     artifactLabel: 'GigaAM',
@@ -31,17 +31,16 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     audioContract: 'offline-ctc',
     limitations: [
       'Catalog entry is experimental and is not a verified preset.',
-      'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Official GigaAM multilingual CTC. Chrome WebGPU and WASM match the JFK oracle. Load with a local ONNX directory.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false. Official GigaAM multilingual CTC has a pinned Hub bundle and browser transcription verification.',
   },
   {
     family: 'gigaam-rnnt',
     modelIdHint: 'gigaam-v3-e2e-rnnt',
     status: 'experimental',
     verifiedPreset: false,
-    publicHostedWeights: false,
-    locator: 'local-onnx-dir',
+    publicHostedWeights: true,
+    locator: 'huggingface',
     envSmokeFlag: 'GIGAAM_RNNT_ONNX_SMOKE',
     factoryExport: 'createGigaAmRnntModelFamily',
     artifactLabel: 'GigaAM RNN-T',
@@ -50,17 +49,16 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     limitations: [
       'Russian-only; do not mix with English JFK CTC claims.',
       'Catalog entry is experimental and is not a verified preset.',
-      'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Official GigaAM v3 E2E RNN-T. Russian-only; do not mix with JFK CTC claims. Encoder/decoder/joint from model.to_onnx. Chrome WebGPU and Node WASM match the official example.wav oracle. Local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false. Official Russian GigaAM v3 E2E RNN-T has a pinned Hub bundle. Encoder, decoder and joint come from model.to_onnx. Do not mix Russian-only output with English CTC claims.',
   },
   {
     family: 'sensevoice',
     modelIdHint: 'SenseVoiceSmall',
     status: 'experimental',
     verifiedPreset: false,
-    publicHostedWeights: false,
-    locator: 'local-onnx-dir',
+    publicHostedWeights: true,
+    locator: 'huggingface',
     envSmokeFlag: 'SENSEVOICE_ONNX_SMOKE',
     factoryExport: 'createSenseVoiceModelFamily',
     artifactLabel: 'SenseVoice',
@@ -68,17 +66,16 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     audioContract: 'offline-ctc',
     limitations: [
       'Catalog entry is experimental and is not a verified preset.',
-      'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. FunAudioLLM SenseVoiceSmall export. Chrome WebGPU and WASM match the JFK oracle. Local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false. Official FunAudioLLM SenseVoiceSmall export has a pinned Hub bundle and browser transcription verification.',
   },
   {
     family: 'x-asr',
     modelIdHint: 'x-asr-zh-en-160ms',
     status: 'experimental',
     verifiedPreset: false,
-    publicHostedWeights: false,
-    locator: 'local-onnx-dir',
+    publicHostedWeights: true,
+    locator: 'huggingface',
     envSmokeFlag: 'XASR_ONNX_SMOKE',
     factoryExport: 'createXAsrModelFamily',
     artifactLabel: 'X-ASR',
@@ -87,9 +84,8 @@ const EXPERIMENTAL_SPEECH_FAMILIES: readonly ExperimentalSpeechFamilyDescriptor[
     limitations: [
       'True encoder-cache streaming, not silent window looping.',
       'Catalog entry is experimental and is not a verified preset.',
-      'Requires a local ONNX directory; no hosted weights.',
     ],
-    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false and weights are not hosted. Sherpa Zipformer2 streaming zh-en 160ms. Chrome WebGPU and WASM match the JFK oracle. True encoder-cache streaming; local ONNX only.',
+    notes: 'Experimental catalog entry and local adapter are available; verifiedPreset remains false. Official X-ASR Zipformer2 zh-en 160 ms deployment graphs have a pinned Hub bundle. The family provides true encoder-cache streaming.',
   },
   {
     family: 'qwen-asr',
@@ -166,10 +162,13 @@ export function createExperimentalArtifactMissingError(
   const limitationText = limitations.length > 0 ? ` Limitations: ${limitations.join(' ')}` : '';
   const audio = descriptor ? ` Audio contract: ${descriptor.audioContract}.` : '';
   const languageText = languages.length > 0 ? ` Languages: ${languages.join(', ')}.` : '';
+  const sourceInstruction = descriptor?.publicHostedWeights
+    ? 'Pass options.source with compatible local artifacts or a Hugging Face source. '
+    : 'Pass options.source with a local ONNX directory (locator: local-onnx-dir). ';
   const message =
     `No ${label} artifact source is configured for "${id}". ` +
     `This family is experimental and is not a verified preset. ` +
-    `Pass options.source with a local ONNX directory (locator: local-onnx-dir). ` +
+    sourceInstruction +
     `Discover via listExperimentalSpeechFamilies() / getExperimentalSpeechFamily("${family}").` +
     languageText +
     audio +
@@ -179,7 +178,7 @@ export function createExperimentalArtifactMissingError(
     modelId: id,
     locator: descriptor?.locator ?? 'local-onnx-dir',
     verifiedPreset: false,
-    publicHostedWeights: false,
+    publicHostedWeights: descriptor?.publicHostedWeights ?? false,
     audioContract: descriptor?.audioContract,
     languages,
     limitations,

@@ -13,27 +13,6 @@ import { WhisperMelProcessor } from '../src/audio/whisper-mel.js';
 import { PcmAudioBuffer } from '../src/audio/index.js';
 
 describe('Whisper preset manifests', () => {
-  it('declares verified Hub sources and keeps original Large v3 local-only', () => {
-    for (const manifest of WHISPER_PRESET_MANIFESTS) {
-      if (manifest.modelId === 'openai/whisper-large-v3') {
-        expect(manifest.source).toBeUndefined();
-        expect(manifest.localGeometry).toEqual({ decoderLayers: 32, hiddenSize: 1280, decoderAttentionHeads: 20 });
-        continue;
-      }
-      expect(manifest.source).toBeDefined();
-      if (manifest.source?.kind === 'huggingface') {
-        expect(manifest.source.repoId).toMatch(/^onnx-community\/whisper-/);
-        expect(manifest.source.repoId).toMatch(/_timestamped$/);
-      } else if (manifest.source?.kind === 'splitgraph') {
-        expect(manifest.modelId).toBe('ysdede/whisper-large-v3-turbo-onnx-4graph');
-        expect(manifest.source.artifacts.encoderUrl).toContain('/fp16_iofp32/encoder_model.onnx');
-        expect(manifest.source.artifacts.decoderInitUrl).toContain('/fp16/decoder_init.onnx');
-        expect(manifest.source.artifacts.decoderStepUrl).toContain('/fp16/decoder_step.onnx');
-      } else {
-        expect.unreachable('Whisper preset source must be huggingface or splitgraph');
-      }
-    }
-  });
 
   it('uses 3000 mel frames for every Whisper encoder preset', () => {
     for (const manifest of WHISPER_PRESET_MANIFESTS) {

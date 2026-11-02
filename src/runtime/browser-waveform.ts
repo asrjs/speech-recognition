@@ -130,7 +130,6 @@ function drawLaneAxis(
     context.moveTo(0, y);
     context.lineTo(width, y);
     context.stroke();
-    context.fillText(entry.label, 8, Math.min(laneTop + laneHeight - 2, y - 2));
   }
   context.restore();
 }
@@ -209,10 +208,12 @@ function drawWaveformAxis(
 
   context.fillStyle = 'rgba(93, 115, 135, 0.72)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText('+1.0', 8, toY(axisTop) + 10);
-  context.fillText('0', 8, toY(axisMid) - 4);
-  context.fillText('-1.0', 8, toY(axisBottom) - 4);
-  if (options.waveformScaleMode !== 'physical' && displayGain > 1.05) {
+  if (width >= 240) {
+    context.fillText('+1.0', 8, toY(axisTop) + 10);
+    context.fillText('0', 8, toY(axisMid) - 4);
+    context.fillText('-1.0', 8, toY(axisBottom) - 4);
+  }
+  if (width >= 760 && options.waveformScaleMode !== 'physical' && displayGain > 1.05) {
     const detailLabel = options.waveformScaleMode === 'focus' ? 'detail' : 'balanced';
     context.fillText(`display x${displayGain.toFixed(1)} · ${detailLabel}`, width - 132, toY(axisTop) + 10);
   }
@@ -720,12 +721,16 @@ function drawTenVadOverlay(
     context.stroke();
     context.setLineDash([]);
     context.fillStyle = thresholdHit ? 'rgba(239, 68, 68, 0.95)' : 'rgba(37, 99, 235, 0.95)';
-    context.fillText(`thr ${threshold.toFixed(2)}`, 66, Math.max(laneTop + 10, thresholdY - 4));
+    if (width >= 560) {
+      context.textAlign = 'right';
+      context.fillText(`thr ${threshold.toFixed(2)}`, width - 6, Math.max(laneTop + 10, thresholdY - 4));
+      context.textAlign = 'left';
+    }
   }
 
   context.fillStyle = 'rgba(37, 99, 235, 0.8)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText('firered-vad', 8, laneTop + 10);
+
   context.restore();
 }
 
@@ -842,7 +847,7 @@ function drawEnergyOverlay(
 
   context.fillStyle = 'rgba(180, 83, 9, 0.85)';
   context.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-  context.fillText('pre-vad rms', 8, laneTop + 10);
+
   context.restore();
 }
 
@@ -916,6 +921,9 @@ function drawSegmentDebugLegend(
 ): void {
   const { waveformBottom } = getLaneLayout(height);
   const legendX = 12;
+  if (width < 560) {
+    return;
+  }
   const legendY = waveformBottom - 40;
   const legendWidth = 286;
   const legendHeight = 32;

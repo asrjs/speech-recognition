@@ -103,11 +103,11 @@ function resolveSource(source: SenseVoiceArtifactSource): {
 
   const revision = source.revision ?? 'main';
   const modelFilename = source.modelFilename ?? 'model.onnx';
-  const modelDataFilename = source.modelDataFilename ?? 'model.onnx_data';
+  const modelDataFilename = source.modelDataFilename;
   return {
     modelUrl: hfUrl(source.repoId, revision, modelFilename),
     tokenizerUrl: hfUrl(source.repoId, revision, source.tokenizerFilename ?? 'vocab.txt'),
-    modelDataUrl: hfUrl(source.repoId, revision, modelDataFilename),
+    modelDataUrl: modelDataFilename ? hfUrl(source.repoId, revision, modelDataFilename) : undefined,
     modelDataFilename,
     cmvnUrl: source.cmvnFilename ? hfUrl(source.repoId, revision, source.cmvnFilename) : undefined,
     wasmPaths: source.wasmPaths,

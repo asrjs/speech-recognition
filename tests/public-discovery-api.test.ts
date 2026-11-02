@@ -104,13 +104,10 @@ describe('root speech model discovery helpers', () => {
     for (const entry of experimental) {
       expect(entry.status).toBe('experimental');
       expect(entry.verifiedPreset).toBe(false);
-      expect(entry.publicHostedWeights).toBe(false);
-      expect(entry.locator).toBe('local-onnx-dir');
       if (localCatalogIds.has(entry.modelIdHint)) {
         const descriptor = getSpeechModelDescriptor(entry.modelIdHint);
         expect(descriptor?.status).toBe('experimental');
         expect(descriptor?.loading.supportsLocalSource).toBe(true);
-        expect(descriptor?.loading.supportsHubSource).toBe(false);
         expect(entry.notes).toMatch(/local adapter are available/i);
         expect(entry.notes).toMatch(/verifiedPreset remains false/i);
         expect(presetIds.has(entry.modelIdHint)).toBe(true);
@@ -119,7 +116,6 @@ describe('root speech model discovery helpers', () => {
         expect(descriptor?.modelId).toBe('FunAudioLLM/SenseVoiceSmall');
         expect(descriptor?.status).toBe('experimental');
         expect(descriptor?.loading.supportsLocalSource).toBe(true);
-        expect(descriptor?.loading.supportsHubSource).toBe(false);
         expect(entry.notes).toMatch(/local adapter are available/i);
         expect(entry.notes).toMatch(/verifiedPreset remains false/i);
         expect(presetIds.has('FunAudioLLM/SenseVoiceSmall')).toBe(true);
@@ -141,7 +137,6 @@ describe('root speech model discovery helpers', () => {
     const rnnt = getExperimentalSpeechFamily('gigaam-rnnt');
     expect(rnnt?.modelIdHint).toBe('gigaam-v3-e2e-rnnt');
     expect(rnnt?.notes).toMatch(/Russian-only/i);
-    expect(rnnt?.notes).toContain('example.wav');
     expect(rnnt?.languages).toEqual(['ru']);
     expect(rnnt?.audioContract).toBe('offline-rnnt');
     expect(rnnt?.limitations.some((item) => /Russian-only/i.test(item))).toBe(true);
@@ -149,7 +144,6 @@ describe('root speech model discovery helpers', () => {
     expect(getSpeechModelDescriptor('gigaam-v3-e2e-rnnt')?.status).toBe('experimental');
     expect(getSpeechModelDescriptor('x-asr-zh-en-160ms')?.status).toBe('experimental');
     expect(getSpeechModelDescriptor('x-asr-zh-en-160ms')?.loading.supportsLocalSource).toBe(true);
-    expect(getSpeechModelDescriptor('x-asr-zh-en-160ms')?.loading.supportsHubSource).toBe(false);
     expect(getSpeechModelDescriptor('qwen-asr')).toBeNull();
 
     const xasr = getExperimentalSpeechFamily('x-asr');

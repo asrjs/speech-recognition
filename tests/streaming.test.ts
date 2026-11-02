@@ -189,6 +189,49 @@ describe('streaming orchestration', () => {
       await transcriber.dispose();
     });
 
+    it('commits words sealed by the pending chunk before evicting them', async () => {
+      const session = {
+        async transcribe(input: { readonly numberOfFrames?: number }) {
+          const duration = (input.numberOfFrames ?? 0) / 16000;
+          const words: { text: string; startTime: number; endTime: number }[] = [];
+          if (duration >= 0.4) {
+            words.push({ text: 'alpha', startTime: 0.1, endTime: 0.4 });
+          }
+          if (duration >= 0.9) {
+            words.push({ text: 'bravo', startTime: 0.6, endTime: 0.9 });
+          }
+          return {
+            text: words.map((w) => w.text).join(' '),
+            words,
+            warnings: [],
+            meta: { detailLevel: 'words' as const, isFinal: true },
+          };
+        },
+        dispose() {},
+      };
+
+      const transcriber = new DefaultStreamingTranscriber(session as never, {
+        maxWindowMs: 1000,
+        overlapMs: 250,
+        detail: 'words',
+      });
+
+      await transcriber.pushAudio(new Float32Array(8000));
+      await transcriber.pushAudio(new Float32Array(8000));
+      expect(transcriber.getState().committedText).toBe('');
+
+      // 1.0 s buffered + 0.5 s incoming projects a 0.5 s eviction, so the
+      // words ending at or before 0.5 s must be sealed, not dropped.
+      await transcriber.pushAudio(new Float32Array(8000));
+      expect(transcriber.getState().committedText).toBe('alpha');
+
+      const final = await transcriber.finalize();
+      expect(final.text).toContain('alpha');
+      expect(final.text).toContain('bravo');
+
+      await transcriber.dispose();
+    });
+
     it('ensures emitPartials=false does not drop untranscribed audio before committing', async () => {
       let transcribeCount = 0;
       const session = {

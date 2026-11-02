@@ -471,6 +471,51 @@ npm run build
 node examples/nemo-tdt-native-local.mjs --help
 ```
 
+The `oruk/orukeet` preset also supports Hugging Face loading from
+[`ysdede/orukeet-0.6b-onnx`](https://huggingface.co/ysdede/orukeet-0.6b-onnx)
+at revision `e35e05b5af1e3b2fdb831e8349530902b13d7eca`. This export provides
+INT8 encoder and decoder-joint graphs only. The preset selects INT8 for both
+and uses the JavaScript frontend by default. The repository retains upstream
+weight and preprocessor licenses, notices, and file hashes.
+
+The following presets also have pinned Hub bundles. Local-folder loading
+remains available.
+
+| Preset model ID | Hub repository |
+| --- | --- |
+| `ctaguchi/parakeet-hf-ctc-110m-en` | [`ysdede/parakeet-hf-ctc-110m-en-onnx`](https://huggingface.co/ysdede/parakeet-hf-ctc-110m-en-onnx) |
+| `OpenVoiceOS/omnilingual-asr-ctc-300m-onnx` | [`ysdede/omnilingual-asr-ctc-300m-onnx`](https://huggingface.co/ysdede/omnilingual-asr-ctc-300m-onnx) |
+| `gigaam-multilingual-ctc` | [`ysdede/gigaam-multilingual-ctc-onnx`](https://huggingface.co/ysdede/gigaam-multilingual-ctc-onnx) |
+| `gigaam-v3-e2e-rnnt` | [`ysdede/gigaam-v3-e2e-rnnt-onnx`](https://huggingface.co/ysdede/gigaam-v3-e2e-rnnt-onnx) |
+| `FunAudioLLM/SenseVoiceSmall` | [`ysdede/sensevoice-small-onnx`](https://huggingface.co/ysdede/sensevoice-small-onnx) |
+| `x-asr-zh-en-160ms` | [`ysdede/x-asr-zh-en-160ms-onnx`](https://huggingface.co/ysdede/x-asr-zh-en-160ms-onnx) |
+| `mpoyraz/wav2vec2-xls-r-300m-cv7-turkish` | [`ysdede/wav2vec2-xls-r-300m-cv7-turkish-onnx`](https://huggingface.co/ysdede/wav2vec2-xls-r-300m-cv7-turkish-onnx) |
+| `UsefulSensors/moonshine-tiny` | [`ysdede/moonshine-tiny-onnx`](https://huggingface.co/ysdede/moonshine-tiny-onnx) |
+| `nvidia/canary-1b` | [`ysdede/canary-1b-onnx`](https://huggingface.co/ysdede/canary-1b-onnx) |
+| `nvidia/canary-1b-v2` | [`ysdede/canary-1b-v2-onnx`](https://huggingface.co/ysdede/canary-1b-v2-onnx) |
+| `ysdede/whisper-large-v3-turbo-onnx-4graph` | [`ysdede/whisper-large-v3-turbo-onnx-4graph`](https://huggingface.co/ysdede/whisper-large-v3-turbo-onnx-4graph) |
+
+Omnilingual consumes raw PCM without an additional waveform normalization
+step. Its published INT8 graph produced the JFK transcript in the browser.
+The Turkish CV7 bundle is not the XLSR-53 Turkish model in
+`ysdede/wav2vec2-large-xlsr-turkish-onnx`; their vocabularies and weights differ.
+
+For custom SenseVoice and Wav2Vec2 Hub sources, set `modelDataFilename` only
+when the graph has an external weight file. Single-file graphs need no
+sidecar. Canary Hub sources use `encoderDataFilename` and
+`decoderDataFilename` for their declared external weight files.
+
+Canary 1B and 1B v2 provide FP32 graphs and use the JavaScript frontend.
+Their exported token IDs and text match the native NeMo JFK reference.
+Both presets also transcribed the JFK fixture through the browser Hub path.
+Canary 1B v1 retains its **CC BY-NC 4.0 non-commercial license**. Publishing
+the export as open source does not remove this upstream restriction.
+Canary 1B v2 uses CC BY 4.0.
+
+The Whisper demo uses the existing Whisper Large v3 **Turbo** four-graph
+bundle. It does not select the full, non-Turbo Large v3 model. The Turbo
+browser preset requires WebGPU.
+
 For the locally exported Orukeet candidate and its fixed-rate fixture:
 
 ```powershell
@@ -662,9 +707,9 @@ Built-in providers/caches include:
 - IndexedDB cache
 - Node filesystem
 
-FireRed VAD degraded troubleshooting:
+VAD architecture and troubleshooting:
 
-- [`docs/FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md`](./FIRERED_VAD_DEGRADED_TROUBLESHOOTING.md)
+- [`docs/VAD_MODEL_ARCHITECTURE.md`](./VAD_MODEL_ARCHITECTURE.md)
 
 HuggingFace download resilience notes:
 

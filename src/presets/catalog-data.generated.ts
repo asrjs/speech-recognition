@@ -394,8 +394,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'word-dedupe'
     },
     loading: {
-      repoId: 'oruk/orukeet',
-      supportsHubSource: false,
+      repoId: 'ysdede/orukeet-0.6b-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
@@ -409,16 +409,12 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultEncoderBackend: 'webgpu',
       defaultDecoderBackend: 'wasm',
       availableEncoderQuantizations: [
-        'fp16',
-        'int8',
-        'fp32'
+        'int8'
       ],
       availableDecoderQuantizations: [
-        'fp16',
-        'int8',
-        'fp32'
+        'int8'
       ],
-      defaultEncoderQuantization: 'fp16',
+      defaultEncoderQuantization: 'int8',
       defaultDecoderQuantization: 'int8',
       supportsPreprocessorBackend: true,
       preprocessorBackends: [
@@ -429,7 +425,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: 'nemo128',
       encoderArtifactBaseName: 'encoder-model',
       decoderArtifactBaseName: 'decoder_joint-model',
-      defaultRevision: 'b59c13a733fce5cf193230d0fa317ee7f145a108'
+      defaultRevision: 'e35e05b5af1e3b2fdb831e8349530902b13d7eca'
     },
     controls: [],
     warmup: {
@@ -642,8 +638,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'concat'
     },
     loading: {
-      repoId: 'nvidia/canary-1b',
-      supportsHubSource: false,
+      repoId: 'ysdede/canary-1b-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
@@ -658,27 +654,22 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultEncoderBackend: 'webgpu',
       defaultDecoderBackend: 'wasm',
       availableEncoderQuantizations: [
-        'fp16',
-        'int8',
         'fp32'
       ],
       availableDecoderQuantizations: [
-        'fp16',
-        'int8',
         'fp32'
       ],
       defaultEncoderQuantization: 'fp32',
-      defaultDecoderQuantization: 'int8',
+      defaultDecoderQuantization: 'fp32',
       supportsPreprocessorBackend: true,
       preprocessorBackends: [
-        'js',
-        'onnx'
+        'js'
       ],
       defaultPreprocessorBackend: 'js',
       defaultPreprocessorName: 'nemo128',
       encoderArtifactBaseName: 'encoder-model',
       decoderArtifactBaseName: 'decoder-model',
-      defaultRevision: 'main'
+      defaultRevision: '4599573ca32f6193c2f676bcb78af72f9cfedcc1'
     },
     controls: [
       {
@@ -799,8 +790,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'concat'
     },
     loading: {
-      repoId: 'nvidia/canary-1b-v2',
-      supportsHubSource: false,
+      repoId: 'ysdede/canary-1b-v2-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: true,
       supportsSplitBackends: true,
@@ -815,27 +806,22 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultEncoderBackend: 'webgpu',
       defaultDecoderBackend: 'wasm',
       availableEncoderQuantizations: [
-        'fp16',
-        'int8',
         'fp32'
       ],
       availableDecoderQuantizations: [
-        'fp16',
-        'int8',
         'fp32'
       ],
       defaultEncoderQuantization: 'fp32',
-      defaultDecoderQuantization: 'int8',
+      defaultDecoderQuantization: 'fp32',
       supportsPreprocessorBackend: true,
       preprocessorBackends: [
-        'js',
-        'onnx'
+        'js'
       ],
       defaultPreprocessorBackend: 'js',
       defaultPreprocessorName: 'nemo128',
       encoderArtifactBaseName: 'encoder-model',
       decoderArtifactBaseName: 'decoder-model',
-      defaultRevision: 'main'
+      defaultRevision: '2a5b309facedec540461119374c24eeefd9b97b9'
     },
     controls: [
       {
@@ -1167,7 +1153,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     ],
     preset: 'parakeet-ctc',
     displayName: 'Parakeet HF CTC 110M (English)',
-    description: 'ParakeetForCTC student over the NeMo CTC boundary; local folder only because no validated Hub export exists.',
+    description: 'ParakeetForCTC student over the NeMo CTC boundary with a pinned ONNX Hub export.',
     classification: {
       ecosystem: 'nemo',
       processor: 'parakeet-mel-80',
@@ -1209,8 +1195,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      repoId: 'ctaguchi/parakeet-hf-ctc-110m-en',
-      supportsHubSource: false,
+      repoId: 'ysdede/parakeet-hf-ctc-110m-en-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1239,7 +1225,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: 'parakeet-mel-80',
       encoderArtifactBaseName: 'model',
       decoderArtifactBaseName: 'model',
-      defaultRevision: 'main'
+      defaultRevision: '27d8c28aba465e4afee5b85f9f8073d9a6735758'
     },
     controls: [],
     warmup: {
@@ -1300,8 +1286,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      repoId: 'OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
-      supportsHubSource: false,
+      repoId: 'ysdede/omnilingual-asr-ctc-300m-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1328,7 +1314,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'model',
       decoderArtifactBaseName: 'model',
-      defaultRevision: 'main'
+      defaultRevision: 'ce2fafb218ca0074880def186a25abbf095af19e'
     },
     controls: [],
     warmup: {
@@ -1336,7 +1322,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     },
     docs: {
       modelCardUrl: 'https://huggingface.co/OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
-      architectureSummary: 'Raw 16 kHz waveform, zero-mean unit-variance, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.'
+      architectureSummary: 'Raw 16 kHz PCM without host waveform normalization, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.'
     }
   },
   {
@@ -1345,7 +1331,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     aliases: [],
     preset: 'gigaam-ctc',
     displayName: 'GigaAM Multilingual CTC',
-    description: 'Official GigaAM multilingual CTC graph; local artifacts only.',
+    description: 'Official GigaAM multilingual CTC graph.',
     classification: {
       ecosystem: 'gigaam',
       processor: 'gigaam-fbank',
@@ -1389,7 +1375,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      supportsHubSource: false,
+      repoId: 'ysdede/gigaam-multilingual-ctc-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1416,7 +1403,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'multilingual_ctc',
       decoderArtifactBaseName: 'multilingual_ctc',
-      defaultRevision: 'local'
+      defaultRevision: 'd97e0c3a024eba7a167bace280de827aa970506b'
     },
     controls: [],
     warmup: {
@@ -1432,7 +1419,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     aliases: [],
     preset: 'gigaam-rnnt',
     displayName: 'GigaAM v3 E2E RNN-T (Russian)',
-    description: 'Official Russian GigaAM v3 RNN-T graphs; local artifacts only.',
+    description: 'Official Russian GigaAM v3 RNN-T graphs.',
     classification: {
       ecosystem: 'gigaam',
       processor: 'gigaam-fbank',
@@ -1472,7 +1459,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'concat'
     },
     loading: {
-      supportsHubSource: false,
+      repoId: 'ysdede/gigaam-v3-e2e-rnnt-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: true,
@@ -1500,7 +1488,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'v3_e2e_rnnt_encoder',
       decoderArtifactBaseName: 'v3_e2e_rnnt_encoder',
-      defaultRevision: 'local'
+      defaultRevision: '0649dfcb6271a713c5aec4321d97d52f3988cd30'
     },
     controls: [],
     warmup: {
@@ -1518,7 +1506,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     ],
     preset: 'sensevoice',
     displayName: 'SenseVoice Small',
-    description: 'Official FunAudioLLM SenseVoiceSmall ONNX export; local artifacts only.',
+    description: 'Official FunAudioLLM SenseVoiceSmall ONNX export.',
     classification: {
       ecosystem: 'funasr',
       processor: 'kaldi-fbank',
@@ -1563,7 +1551,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      supportsHubSource: false,
+      repoId: 'ysdede/sensevoice-small-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1592,7 +1581,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'model',
       decoderArtifactBaseName: 'model',
-      defaultRevision: 'local'
+      defaultRevision: 'b6c40945d2759130ea312d14f92ddad079ba7933'
     },
     controls: [],
     warmup: {
@@ -1608,7 +1597,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     aliases: [],
     preset: 'x-asr',
     displayName: 'X-ASR zh-en 160 ms Streaming',
-    description: 'Experimental local-only Zipformer2 transducer with native encoder-cache streaming.',
+    description: 'Experimental Zipformer2 transducer with native encoder-cache streaming.',
     classification: {
       ecosystem: 'x-asr',
       processor: 'kaldi-fbank',
@@ -1649,7 +1638,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'concat'
     },
     loading: {
-      supportsHubSource: false,
+      repoId: 'ysdede/x-asr-zh-en-160ms-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1679,7 +1669,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'encoder-160ms',
       decoderArtifactBaseName: 'decoder-160ms',
-      defaultRevision: 'local'
+      defaultRevision: '19e639c536041f60aface640c6e6a944fc3915c9'
     },
     controls: [],
     warmup: {
@@ -1739,8 +1729,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      repoId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
-      supportsHubSource: false,
+      repoId: 'ysdede/wav2vec2-xls-r-300m-cv7-turkish-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1767,7 +1757,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'model',
       decoderArtifactBaseName: 'model',
-      defaultRevision: 'main'
+      defaultRevision: '44e8fcf6b23dce1e39516c0d90254d47d2a6f33b'
     },
     controls: [],
     warmup: {
@@ -1827,8 +1817,8 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultMergeStrategy: 'ctc-collapse'
     },
     loading: {
-      repoId: 'UsefulSensors/moonshine-tiny',
-      supportsHubSource: false,
+      repoId: 'ysdede/moonshine-tiny-onnx',
+      supportsHubSource: true,
       supportsLocalSource: true,
       supportsSplitQuantization: false,
       supportsSplitBackends: false,
@@ -1855,7 +1845,7 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
       defaultPreprocessorName: null,
       encoderArtifactBaseName: 'encoder_model',
       decoderArtifactBaseName: 'decoder_with_past_model',
-      defaultRevision: 'main'
+      defaultRevision: '4cea222534a2151ec3f193f4d5ea888d9455f151'
     },
     controls: [],
     warmup: {
@@ -2133,87 +2123,6 @@ export const CATALOG_DESCRIPTORS: readonly BuiltInModelDescriptor[] = [
     }
   },
   {
-    modelId: 'openai/whisper-large-v3',
-    aliases: [
-      'whisper-large-v3'
-    ],
-    preset: 'whisper',
-    displayName: 'Whisper Large v3',
-    description: 'Whisper Large v3 with a local four-graph ONNX export.',
-    classification: {
-      ecosystem: 'openai',
-      processor: 'whisper-mel',
-      encoder: 'whisper-transformer',
-      decoder: 'transformer-decoder',
-      topology: 'aed',
-      family: 'whisper',
-      task: 'multitask-asr-translation'
-    },
-    languages: [
-      'auto'
-    ],
-    defaultSourceLanguage: 'auto',
-    defaultTargetLanguage: 'auto',
-    capabilities: {
-      supportedTasks: [
-        'asr',
-        'speech-translation'
-      ],
-      supportsTranslation: true,
-      supportsPunctuationCapitalization: false,
-      supportsInverseTextNormalization: false,
-      supportsWordTimestamps: true,
-      supportsSegmentTimestamps: true,
-      supportsPromptControls: false
-    },
-    inference: {
-      sampleRate: 16000,
-      maxInputDurationSec: 30,
-      recommendedWindowDurationSec: 30,
-      minWindowDurationSec: 5,
-      maxWindowDurationSec: 30,
-      autoWindowThresholdSec: 30,
-      defaultStrideSec: 5,
-      supportsWordTimestamps: true,
-      supportsTokenTimestamps: true,
-      supportsSegmentTimestamps: true,
-      supportsConfidence: true,
-      defaultSegmentationStrategy: 'whisper-token',
-      defaultMergeStrategy: 'whisper-stride'
-    },
-    loading: {
-      supportsHubSource: false,
-      supportsLocalSource: true,
-      supportsSplitQuantization: false,
-      supportsSplitBackends: false,
-      availableEncoderBackends: [
-        'webgpu'
-      ],
-      availableDecoderBackends: [
-        'webgpu'
-      ],
-      defaultEncoderBackend: 'webgpu',
-      defaultDecoderBackend: 'webgpu',
-      availableEncoderQuantizations: [
-        'fp16'
-      ],
-      availableDecoderQuantizations: [
-        'fp16'
-      ],
-      defaultEncoderQuantization: 'fp16',
-      defaultDecoderQuantization: 'fp16',
-      supportsPreprocessorBackend: false,
-      preprocessorBackends: [],
-      defaultPreprocessorBackend: null,
-      defaultPreprocessorName: null,
-      defaultRevision: 'main'
-    },
-    controls: [],
-    warmup: {
-      mode: 'non-empty'
-    }
-  },
-  {
     modelId: 'ysdede/whisper-large-v3-turbo-onnx-4graph',
     aliases: [
       'whisper-large-v3-turbo-onnx-4graph',
@@ -2330,6 +2239,17 @@ const sources = {
   'parakeet-tdt-0.6b-v2': {
     kind: 'huggingface',
     repoId: 'ysdede/parakeet-tdt-0.6b-v2-onnx',
+    repoFiles: [
+      'encoder-model.fp16.onnx',
+      'encoder-model.int8.onnx',
+      'encoder-model.onnx',
+      'encoder-model.onnx.data',
+      'decoder_joint-model.fp16.onnx',
+      'decoder_joint-model.int8.onnx',
+      'decoder_joint-model.onnx',
+      'config.json',
+      'vocab.txt'
+    ],
     preprocessorName: 'nemo128',
     preprocessorBackend: 'js',
     revision: 'main',
@@ -2343,7 +2263,12 @@ const sources = {
     revision: 'f88260fa0777fe0868dda6df85d1a98f012a4a7a',
     repoFiles: [
       'encoder-model.fp16.onnx',
+      'encoder-model.int8.onnx',
+      'encoder-model.onnx',
+      'encoder-model.onnx.data',
+      'decoder_joint-model.fp16.onnx',
       'decoder_joint-model.int8.onnx',
+      'decoder_joint-model.onnx',
       'config.json',
       'vocab.txt'
     ],
@@ -2361,9 +2286,44 @@ const sources = {
     revision: '6d6be8e9113b4aa8ae7b4d5dfb655795c084d0c6',
     cacheKeyFallbackRevisions: undefined
   },
+  'oruk/orukeet': {
+    kind: 'huggingface',
+    repoId: 'ysdede/orukeet-0.6b-onnx',
+    encoderQuant: 'int8',
+    decoderQuant: 'int8',
+    repoFiles: [
+      'encoder-model.int8.onnx',
+      'decoder_joint-model.int8.onnx',
+      'vocab.txt',
+      'config.json',
+      'nemo128.onnx'
+    ],
+    preprocessorName: 'nemo128',
+    preprocessorBackend: 'js',
+    revision: 'e35e05b5af1e3b2fdb831e8349530902b13d7eca',
+    cacheKeyFallbackRevisions: undefined
+  },
   'nvidia/canary-180m-flash': {
     kind: 'huggingface',
     repoId: 'ysdede/canary-180m-flash-onnx',
+    preprocessorBackend: 'js'
+  },
+  'nvidia/canary-1b': {
+    kind: 'huggingface',
+    repoId: 'ysdede/canary-1b-onnx',
+    revision: '4599573ca32f6193c2f676bcb78af72f9cfedcc1',
+    encoderQuant: 'fp32',
+    decoderQuant: 'fp32',
+    encoderDataFilename: 'encoder-model.onnx.data',
+    preprocessorBackend: 'js'
+  },
+  'nvidia/canary-1b-v2': {
+    kind: 'huggingface',
+    repoId: 'ysdede/canary-1b-v2-onnx',
+    revision: '2a5b309facedec540461119374c24eeefd9b97b9',
+    encoderQuant: 'fp32',
+    decoderQuant: 'fp32',
+    encoderDataFilename: 'encoder-model.onnx.data',
     preprocessorBackend: 'js'
   },
   'google/medasr': {

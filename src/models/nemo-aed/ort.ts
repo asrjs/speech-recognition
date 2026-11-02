@@ -105,6 +105,12 @@ function resolveHuggingFaceArtifacts(
     artifacts: {
       encoderUrl: buildResolveUrl(source.repoId, revision, encoderFilename),
       decoderUrl: buildResolveUrl(source.repoId, revision, decoderFilename),
+      encoderDataUrl: source.encoderDataFilename
+        ? buildResolveUrl(source.repoId, revision, source.encoderDataFilename)
+        : undefined,
+      decoderDataUrl: source.decoderDataFilename
+        ? buildResolveUrl(source.repoId, revision, source.decoderDataFilename)
+        : undefined,
       tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename),
       configUrl: buildResolveUrl(source.repoId, revision, configFilename),
       preprocessorUrl: preprocessorFilename

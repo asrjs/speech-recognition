@@ -18,6 +18,17 @@ import {
   resolveNemotronPresetManifest,
 } from './nemotron/factory.js';
 import type { BuiltInModelDescriptor } from './descriptors.js';
+import {
+  GIGAAM_CTC_PUBLISHED_BUNDLE,
+  GIGAAM_RNNT_PUBLISHED_BUNDLE,
+  SENSEVOICE_PUBLISHED_BUNDLE,
+  XASR_PUBLISHED_BUNDLE,
+  PARAKEET_CTC_PUBLISHED_BUNDLE,
+  OMNILINGUAL_CTC_PUBLISHED_BUNDLE,
+  WAV2VEC2_TURKISH_PUBLISHED_BUNDLE,
+  MOONSHINE_TINY_PUBLISHED_BUNDLE,
+  type PublishedBundle,
+} from './published-bundles.js';
 
 function buildWarmupExpectedTexts(): readonly string[] {
   return [
@@ -162,10 +173,10 @@ function createParakeetDescriptors(): BuiltInModelDescriptor[] {
         availableDecoderBackends: ['wasm'],
         defaultEncoderBackend: 'webgpu',
         defaultDecoderBackend: 'wasm',
-        availableEncoderQuantizations: ['fp16', 'int8', 'fp32'],
-        availableDecoderQuantizations: ['fp16', 'int8', 'fp32'],
-        defaultEncoderQuantization: 'fp16',
-        defaultDecoderQuantization: 'int8',
+        availableEncoderQuantizations: config.encoderQuantizations ?? ['fp16', 'int8', 'fp32'],
+        availableDecoderQuantizations: config.decoderQuantizations ?? ['fp16', 'int8', 'fp32'],
+        defaultEncoderQuantization: source?.kind === 'huggingface' ? source.encoderQuant ?? 'fp16' : 'fp16',
+        defaultDecoderQuantization: source?.kind === 'huggingface' ? source.decoderQuant ?? 'int8' : 'int8',
         supportsPreprocessorBackend: true,
         preprocessorBackends: ['js', 'onnx'],
         defaultPreprocessorBackend: source?.preprocessorBackend ?? 'js',
@@ -221,17 +232,17 @@ function createCanaryDescriptors(): BuiltInModelDescriptor[] {
         availableDecoderBackends: ['webgpu', 'wasm'],
         defaultEncoderBackend: 'webgpu',
         defaultDecoderBackend: 'wasm',
-        availableEncoderQuantizations: ['fp16', 'int8', 'fp32'],
-        availableDecoderQuantizations: ['fp16', 'int8', 'fp32'],
-        defaultEncoderQuantization: 'fp32',
-        defaultDecoderQuantization: 'int8',
+        availableEncoderQuantizations: manifest?.quantizations ?? ['fp16', 'int8', 'fp32'],
+        availableDecoderQuantizations: manifest?.quantizations ?? ['fp16', 'int8', 'fp32'],
+        defaultEncoderQuantization: source?.kind === 'huggingface' ? source.encoderQuant ?? 'fp32' : 'fp32',
+        defaultDecoderQuantization: source?.kind === 'huggingface' ? source.decoderQuant ?? 'int8' : 'int8',
         supportsPreprocessorBackend: true,
-        preprocessorBackends: ['js', 'onnx'],
+        preprocessorBackends: manifest?.preprocessorBackends ?? ['js', 'onnx'],
         defaultPreprocessorBackend: source?.preprocessorBackend ?? 'js',
         defaultPreprocessorName: 'nemo128',
         encoderArtifactBaseName: 'encoder-model',
         decoderArtifactBaseName: 'decoder-model',
-        defaultRevision: 'main',
+        defaultRevision: source?.kind === 'huggingface' ? source.revision ?? 'main' : 'main',
       },
       controls: [
         {
@@ -317,7 +328,7 @@ function createMedAsrDescriptors(): BuiltInModelDescriptor[] {
       inference: createCtcInferenceLimits(),
       loading: {
         repoId: source?.kind === 'huggingface' ? source.repoId : undefined,
-        supportsHubSource: true,
+        supportsHubSource: source?.kind === 'huggingface',
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -353,7 +364,7 @@ function createParakeetCtcDescriptors(): BuiltInModelDescriptor[] {
       preset: 'parakeet-ctc',
       displayName: 'Parakeet HF CTC 110M (English)',
       description:
-        'ParakeetForCTC student over the NeMo CTC boundary; local folder only because no validated Hub export exists.',
+        'ParakeetForCTC student over the NeMo CTC boundary with a pinned ONNX Hub export.',
       classification: {
         ecosystem: 'nemo',
         processor: 'parakeet-mel-80',
@@ -383,8 +394,8 @@ function createParakeetCtcDescriptors(): BuiltInModelDescriptor[] {
         supportsConfidence: true,
       },
       loading: {
-        repoId: 'ctaguchi/parakeet-hf-ctc-110m-en',
-        supportsHubSource: false,
+        repoId: PARAKEET_CTC_PUBLISHED_BUNDLE.repoId,
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -402,7 +413,7 @@ function createParakeetCtcDescriptors(): BuiltInModelDescriptor[] {
         defaultPreprocessorName: 'parakeet-mel-80',
         encoderArtifactBaseName: 'model',
         decoderArtifactBaseName: 'model',
-        defaultRevision: 'main',
+        defaultRevision: PARAKEET_CTC_PUBLISHED_BUNDLE.revision,
       },
       controls: [],
       warmup: {
@@ -455,8 +466,8 @@ function createOmnilingualCtcDescriptors(): BuiltInModelDescriptor[] {
         supportsConfidence: true,
       },
       loading: {
-        repoId: 'OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
-        supportsHubSource: false,
+        repoId: OMNILINGUAL_CTC_PUBLISHED_BUNDLE.repoId,
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -474,14 +485,14 @@ function createOmnilingualCtcDescriptors(): BuiltInModelDescriptor[] {
         defaultPreprocessorName: null,
         encoderArtifactBaseName: 'model',
         decoderArtifactBaseName: 'model',
-        defaultRevision: 'main',
+        defaultRevision: OMNILINGUAL_CTC_PUBLISHED_BUNDLE.revision,
       },
       controls: [],
       warmup: { mode: 'non-empty' },
       docs: {
         modelCardUrl: 'https://huggingface.co/OpenVoiceOS/omnilingual-asr-ctc-300m-onnx',
         architectureSummary:
-          'Raw 16 kHz waveform, zero-mean unit-variance, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.',
+          'Raw 16 kHz PCM without host waveform normalization, convolutional frontend inside the graph, CTC greedy decode over a 10288-token vocabulary.',
       },
     },
   ];
@@ -497,8 +508,9 @@ function createNewLocalAsrDescriptors(): BuiltInModelDescriptor[] {
     supportsSegmentTimestamps: false,
     supportsPromptControls: false,
   };
-  const localLoading = (artifact: string) => ({
-    supportsHubSource: false,
+  const publishedLoading = (artifact: string, bundle: PublishedBundle) => ({
+    repoId: bundle.repoId,
+    supportsHubSource: true,
     supportsLocalSource: true,
     supportsSplitQuantization: false,
     supportsSplitBackends: false,
@@ -516,7 +528,7 @@ function createNewLocalAsrDescriptors(): BuiltInModelDescriptor[] {
     defaultPreprocessorName: null,
     encoderArtifactBaseName: artifact,
     decoderArtifactBaseName: artifact,
-    defaultRevision: 'local',
+    defaultRevision: bundle.revision,
   });
   const localInference = {
     sampleRate: 16000,
@@ -536,48 +548,48 @@ function createNewLocalAsrDescriptors(): BuiltInModelDescriptor[] {
     {
       status: 'experimental', modelId: 'gigaam-multilingual-ctc', aliases: [], preset: 'gigaam-ctc',
       displayName: 'GigaAM Multilingual CTC',
-      description: 'Official GigaAM multilingual CTC graph; local artifacts only.',
+      description: 'Official GigaAM multilingual CTC graph.',
       classification: { ecosystem: 'gigaam', processor: 'gigaam-fbank', encoder: 'conformer', decoder: 'ctc', topology: 'ctc', family: 'gigaam-ctc', task: 'asr' },
       languages: ['ru', 'en', 'kk', 'ky', 'uz'], defaultSourceLanguage: 'ru',
       capabilities: commonCapabilities,
       inference: { ...localInference, supportsTokenTimestamps: true, supportsConfidence: true },
-      loading: localLoading('multilingual_ctc'), controls: [], warmup: { mode: 'non-empty' },
+      loading: publishedLoading('multilingual_ctc', GIGAAM_CTC_PUBLISHED_BUNDLE), controls: [], warmup: { mode: 'non-empty' },
       docs: { architectureSummary: 'Official GigaAM multilingual CTC encoder with GigaAM fbank features.' },
     },
     {
       status: 'experimental', modelId: 'gigaam-v3-e2e-rnnt', aliases: [], preset: 'gigaam-rnnt',
       displayName: 'GigaAM v3 E2E RNN-T (Russian)',
-      description: 'Official Russian GigaAM v3 RNN-T graphs; local artifacts only.',
+      description: 'Official Russian GigaAM v3 RNN-T graphs.',
       classification: { ecosystem: 'gigaam', processor: 'gigaam-fbank', encoder: 'conformer', decoder: 'rnnt', topology: 'rnnt', family: 'gigaam-rnnt', task: 'asr' },
       languages: ['ru'], defaultSourceLanguage: 'ru',
       capabilities: commonCapabilities,
       inference: { ...localInference, maxInputDurationSec: 30, recommendedWindowDurationSec: 15, maxWindowDurationSec: 30, autoWindowThresholdSec: 30, defaultSegmentationStrategy: 'vad', defaultMergeStrategy: 'concat' },
-      loading: { ...localLoading('v3_e2e_rnnt_encoder'), supportsSplitBackends: true, availableDecoderBackends: ['wasm', 'webgpu'] as const },
+      loading: { ...publishedLoading('v3_e2e_rnnt_encoder', GIGAAM_RNNT_PUBLISHED_BUNDLE), supportsSplitBackends: true, availableDecoderBackends: ['wasm', 'webgpu'] as const },
       controls: [], warmup: { mode: 'non-empty' },
       docs: { architectureSummary: 'Russian-only official GigaAM v3 encoder, predictor and joint graphs.' },
     },
     {
       status: 'experimental', modelId: 'FunAudioLLM/SenseVoiceSmall', aliases: ['SenseVoiceSmall'], preset: 'sensevoice',
       displayName: 'SenseVoice Small',
-      description: 'Official FunAudioLLM SenseVoiceSmall ONNX export; local artifacts only.',
+      description: 'Official FunAudioLLM SenseVoiceSmall ONNX export.',
       classification: { ecosystem: 'funasr', processor: 'kaldi-fbank', encoder: 'conformer', decoder: 'ctc', topology: 'ctc', family: 'sensevoice', task: 'asr' },
       languages: ['auto', 'zh', 'en', 'yue', 'ja', 'ko'], defaultSourceLanguage: 'auto',
       capabilities: commonCapabilities,
       inference: { ...localInference, maxInputDurationSec: 30, maxWindowDurationSec: 30, autoWindowThresholdSec: 30 },
-      loading: { ...localLoading('model'), supportsPreprocessorBackend: true, preprocessorBackends: ['js'] as const, defaultPreprocessorBackend: 'js' as const },
+      loading: { ...publishedLoading('model', SENSEVOICE_PUBLISHED_BUNDLE), supportsPreprocessorBackend: true, preprocessorBackends: ['js'] as const, defaultPreprocessorBackend: 'js' as const },
       controls: [], warmup: { mode: 'non-empty' },
       docs: { architectureSummary: 'Official SenseVoice CTC graph with Kaldi fbank, LFR and CMVN features.' },
     },
     {
       status: 'experimental', modelId: 'x-asr-zh-en-160ms', aliases: [], preset: 'x-asr',
       displayName: 'X-ASR zh-en 160 ms Streaming',
-      description: 'Experimental local-only Zipformer2 transducer with native encoder-cache streaming.',
+      description: 'Experimental Zipformer2 transducer with native encoder-cache streaming.',
       classification: { ecosystem: 'x-asr', processor: 'kaldi-fbank', encoder: 'zipformer2', decoder: 'stateless-rnnt', topology: 'stateless-rnnt', family: 'x-asr', task: 'asr' },
       languages: ['zh', 'en'], defaultSourceLanguage: 'zh',
       capabilities: commonCapabilities,
       inference: { ...localInference, defaultSegmentationStrategy: 'none', defaultMergeStrategy: 'concat' },
       loading: {
-        ...localLoading('encoder-160ms'),
+        ...publishedLoading('encoder-160ms', XASR_PUBLISHED_BUNDLE),
         availableDecoderBackends: ['wasm', 'webgpu'] as const,
         supportsPreprocessorBackend: true,
         preprocessorBackends: ['js'] as const,
@@ -628,8 +640,8 @@ function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
         supportsConfidence: true,
       },
       loading: {
-        repoId: 'mpoyraz/wav2vec2-xls-r-300m-cv7-turkish',
-        supportsHubSource: false,
+        repoId: WAV2VEC2_TURKISH_PUBLISHED_BUNDLE.repoId,
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -647,7 +659,7 @@ function createTurkishWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
         defaultPreprocessorName: null,
         encoderArtifactBaseName: 'model',
         decoderArtifactBaseName: 'model',
-        defaultRevision: 'main',
+        defaultRevision: WAV2VEC2_TURKISH_PUBLISHED_BUNDLE.revision,
       },
       controls: [],
       warmup: { mode: 'non-empty' },
@@ -768,8 +780,8 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
         supportsConfidence: true,
       },
       loading: {
-        repoId: 'UsefulSensors/moonshine-tiny',
-        supportsHubSource: false,
+        repoId: MOONSHINE_TINY_PUBLISHED_BUNDLE.repoId,
+        supportsHubSource: true,
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: false,
@@ -787,7 +799,7 @@ function createMoonshineDescriptors(): BuiltInModelDescriptor[] {
         defaultPreprocessorName: null,
         encoderArtifactBaseName: 'encoder_model',
         decoderArtifactBaseName: 'decoder_with_past_model',
-        defaultRevision: 'main',
+        defaultRevision: MOONSHINE_TINY_PUBLISHED_BUNDLE.revision,
       },
       controls: [],
       warmup: { mode: 'expected-text' },
@@ -932,7 +944,6 @@ function createWav2Vec2Descriptors(): BuiltInModelDescriptor[] {
 function createWhisperDescriptors(): BuiltInModelDescriptor[] {
   return [
     'openai/whisper-base',
-    'openai/whisper-large-v3',
     'ysdede/whisper-large-v3-turbo-onnx-4graph',
   ].map((modelId) => {
     const manifest = resolveWhisperPresetManifest(modelId);
@@ -942,11 +953,7 @@ function createWhisperDescriptors(): BuiltInModelDescriptor[] {
       modelId,
       aliases: manifest?.aliases ?? [],
       preset: 'whisper',
-      displayName: isTurbo4Graph
-        ? 'Whisper Large v3 Turbo (4-graph ONNX)'
-        : modelId === 'openai/whisper-base'
-          ? 'Whisper Base'
-          : 'Whisper Large v3',
+      displayName: isTurbo4Graph ? 'Whisper Large v3 Turbo (4-graph ONNX)' : 'Whisper Base',
       description: manifest?.description ?? 'Whisper preset.',
       classification: manifest?.classification ?? {},
       languages: manifest?.config.languages ?? ['auto'],
@@ -1037,7 +1044,7 @@ function createNemotronDescriptors(): BuiltInModelDescriptor[] {
       inference: createNemotronInferenceLimits(),
       loading: {
         repoId: source?.kind === 'huggingface' ? source.repoId : undefined,
-        supportsHubSource: true,
+        supportsHubSource: source?.kind === 'huggingface',
         supportsLocalSource: true,
         supportsSplitQuantization: false,
         supportsSplitBackends: true,

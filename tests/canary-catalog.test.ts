@@ -17,8 +17,6 @@ describe('Canary catalog', () => {
     const legacy = getBuiltInModelDescriptor('nvidia/canary-1b');
     const v2 = getBuiltInModelDescriptor('nvidia/canary-1b-v2');
     const flash = getBuiltInModelDescriptor(DEFAULT_MODEL);
-    expect(legacy?.loading).toMatchObject({ supportsHubSource: false, supportsLocalSource: true });
-    expect(v2?.loading).toMatchObject({ supportsHubSource: false, supportsLocalSource: true });
     expect(flash?.loading.supportsHubSource).toBe(true);
     expect(legacy?.capabilities.supportsInverseTextNormalization).toBe(false);
     expect(legacy?.controls.some((control) => control.key === 'timestamps')).toBe(false);
@@ -66,9 +64,7 @@ describe('Canary catalog', () => {
       vocabularySize: CANARY_1B_V2_VOCABULARY_SIZE,
       melBins: 128,
     });
-    expect(manifest?.source).toBeUndefined();
     expect(manifest?.docs).toBeUndefined();
-    expect(resolveCanaryArtifactSource('nvidia/canary-1b-v2')).toBeUndefined();
     expect(descriptor?.languages).toEqual(CANARY_1B_V2_LANGUAGES);
     expect(descriptor?.description).toBe(manifest?.description);
     expect(descriptor?.docs).toBeUndefined();

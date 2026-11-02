@@ -1,6 +1,5 @@
 import { CtcDecoder } from '../../ctc/index.js';
 import { normalizePcmInput } from '../../audio/index.js';
-import { normalizeWav2Vec2Waveform } from '../wav2vec2/executor.js';
 import {
   createOrtSession,
   disposeOrtOutputs,
@@ -12,17 +11,12 @@ import {
 import type { LasrCtcNativeTranscript } from '../lasr-ctc/types.js';
 import { OmnilingualCtcTokenizer } from './tokenizer.js';
 
-/** Meta Omnilingual's wav2vec2 waveform LayerNorm contract. */
-export const DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON = 1e-5;
-
 export interface OmnilingualCtcOptions {
   readonly modelUrl: string;
   readonly tokensUrl: string;
   readonly externalDataUrl?: string;
   readonly externalDataFilename?: string;
   readonly sampleRate?: number;
-  /** Population-variance epsilon used by the raw-waveform LayerNorm frontend. */
-  readonly normalizationEpsilon?: number;
   readonly vocabularySize?: number;
   readonly blankId?: number;
   readonly backendId?: 'wasm' | 'webgpu';
@@ -53,10 +47,9 @@ function readFloat32(tensor: OrtTensorLike): Float32Array {
  *
  * The graph takes raw 16 kHz samples as `x [batch, num_samples]` with the
  * convolutional feature extractor inside, and returns
- * `logits [batch, frames, vocab]`. Per-utterance zero-mean unit-variance
- * normalization is a caller responsibility, as in the wav2vec2 family, and the
- * graph exposes no length input so long audio is handled by the caller through
- * windowing.
+ * `logits [batch, frames, vocab]`. This exported graph consumes unnormalized
+ * PCM samples. Applying the checkpoint's separate waveform normalization here
+ * changes its predictions. Long audio is windowed by the caller.
  */
 export async function loadOmnilingualCtc(
   options: OmnilingualCtcOptions,
@@ -81,11 +74,7 @@ export async function loadOmnilingualCtc(
   return {
     vocabularySize,
     async transcribe(pcm: Float32Array): Promise<LasrCtcNativeTranscript> {
-      const normalized = normalizeWav2Vec2Waveform(
-        pcm,
-        options.normalizationEpsilon ?? DEFAULT_OMNILINGUAL_CTC_NORMALIZATION_EPSILON,
-      );
-      const input = new ort.Tensor('float32', normalized, [1, normalized.length]);
+      const input = new ort.Tensor('float32', pcm, [1, pcm.length]);
       let outputs: Record<string, OrtTensorLike> | undefined;
       try {
         outputs = await session.run({ x: input });

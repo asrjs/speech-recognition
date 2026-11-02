@@ -73,6 +73,8 @@ export interface CanaryPresetManifest {
   readonly classification: ModelClassification;
   readonly config: Partial<NemoAedModelConfig>;
   readonly source?: NemoAedArtifactSource;
+  readonly quantizations?: readonly ('fp16' | 'int8' | 'fp32')[];
+  readonly preprocessorBackends?: readonly ('js' | 'onnx')[];
   readonly docs?: CanaryPresetDocumentation;
 }
 
@@ -252,6 +254,7 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
       vocabularySize: 4128,
       languages: ['en', 'de', 'es', 'fr'],
       melBins: 128,
+      preprocessorValidLengthMode: 'onnx',
       encoderHiddenSize: 1024,
       decoderHiddenSize: 1024,
       encoderOutputSize: 1024,
@@ -278,6 +281,17 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
         vocabSize: 4128,
       },
     },
+    quantizations: ['fp32'],
+    preprocessorBackends: ['js'],
+    source: {
+      kind: 'huggingface',
+      repoId: 'ysdede/canary-1b-onnx',
+      revision: '4599573ca32f6193c2f676bcb78af72f9cfedcc1',
+      encoderQuant: 'fp32',
+      decoderQuant: 'fp32',
+      encoderDataFilename: 'encoder-model.onnx.data',
+      preprocessorBackend: 'js',
+    },
   },
   {
     preset: 'canary',
@@ -297,6 +311,11 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
       vocabularySize: CANARY_1B_V2_VOCABULARY_SIZE,
       languages: CANARY_1B_V2_LANGUAGES,
       melBins: 128,
+      preprocessorValidLengthMode: 'onnx',
+      encoderHiddenSize: 1024,
+      decoderHiddenSize: 1024,
+      encoderOutputSize: 1024,
+      maxTargetPositions: 1024,
       promptFormat: 'canary2',
       promptDefaults: [
         {
@@ -310,6 +329,17 @@ export const CANARY_PRESET_MANIFESTS: readonly CanaryPresetManifest[] = [
           diarize: false,
         },
       ],
+    },
+    quantizations: ['fp32'],
+    preprocessorBackends: ['js'],
+    source: {
+      kind: 'huggingface',
+      repoId: 'ysdede/canary-1b-v2-onnx',
+      revision: '2a5b309facedec540461119374c24eeefd9b97b9',
+      encoderQuant: 'fp32',
+      decoderQuant: 'fp32',
+      encoderDataFilename: 'encoder-model.onnx.data',
+      preprocessorBackend: 'js',
     },
   },
 ];

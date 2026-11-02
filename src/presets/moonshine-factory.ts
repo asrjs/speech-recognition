@@ -2,6 +2,7 @@ import type { SpeechPresetFactory } from '../types/index.js';
 import type { MoonshineLoadOptions } from '../models/moonshine/types.js';
 import {
   MOONSHINE_STREAMING_TINY_PUBLISHED_BUNDLE,
+  MOONSHINE_TINY_PUBLISHED_BUNDLE,
   publishedBundleFileUrl,
 } from './published-bundles.js';
 
@@ -23,6 +24,11 @@ export function createMoonshinePresetFactory(
       const streamingModel = [
         'moonshine-ai/moonshine-streaming-tiny',
         'moonshine-streaming-tiny',
+      ].includes(modelId.toLowerCase());
+      const offlineModel = [
+        'moonshine-tiny',
+        'usefulsensors/moonshine-tiny',
+        'moonshine-ai/moonshine-tiny',
       ].includes(modelId.toLowerCase());
       const options =
         request.options?.encoderUrl || request.options?.streaming
@@ -86,12 +92,25 @@ export function createMoonshinePresetFactory(
                   ),
                 },
               }
-            : undefined;
+            : offlineModel && factoryOptions.useManifestSource !== false
+              ? {
+                  ...request.options,
+                  encoderUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'encoder'),
+                  encoderDataUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'encoderData'),
+                  crossKvUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'crossKv'),
+                  crossKvDataUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'crossKvData'),
+                  decoderUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'decoder'),
+                  decoderDataUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'decoderData'),
+                  tokenizerUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'tokenizer'),
+                  generationUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'generation'),
+                  receiptUrl: publishedBundleFileUrl(MOONSHINE_TINY_PUBLISHED_BUNDLE, 'receipt'),
+                }
+              : undefined;
       if (!options) {
         throw new Error(
           factoryOptions.useManifestSource === false
             ? 'moonshine requires explicit local artifacts when manifest sources are disabled.'
-            : 'moonshine needs local artifacts; only the registered streaming Tiny bundle has a Hub source.',
+            : 'moonshine requires explicit artifacts for models without a registered Hub bundle.',
         );
       }
       return {

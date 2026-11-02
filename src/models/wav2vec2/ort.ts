@@ -132,13 +132,15 @@ function resolveHuggingFaceArtifacts(
 ): ResolvedWav2Vec2Artifacts {
   const revision = source.revision ?? 'main';
   const modelFilename = source.modelFilename ?? 'model.onnx';
-  const modelDataFilename = source.modelDataFilename ?? 'model.onnx.data';
+  const modelDataFilename = source.modelDataFilename;
   const tokenizerFilename = source.tokenizerFilename ?? 'vocab.json';
 
   return {
     artifacts: {
       modelUrl: buildResolveUrl(source.repoId, revision, modelFilename, source.subfolder),
-      modelDataUrl: buildResolveUrl(source.repoId, revision, modelDataFilename, source.subfolder),
+      modelDataUrl: modelDataFilename
+        ? buildResolveUrl(source.repoId, revision, modelDataFilename, source.subfolder)
+        : undefined,
       modelDataFilename,
       tokenizerUrl: buildResolveUrl(source.repoId, revision, tokenizerFilename, source.subfolder),
     },

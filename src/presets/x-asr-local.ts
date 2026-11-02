@@ -1,5 +1,6 @@
 import type { FamilyModelLoadRequest, SpeechPresetFactory } from '../types/index.js';
 import type { XAsrModelOptions } from '../models/x-asr/types.js';
+import { XASR_PUBLISHED_BUNDLE } from './published-bundles.js';
 
 const MODEL_ID = 'x-asr-zh-en-160ms';
 
@@ -8,9 +9,11 @@ export function createXAsrPresetFactory(): SpeechPresetFactory<XAsrModelOptions,
     preset: 'x-asr',
     supports(modelId?: string) { return modelId === MODEL_ID; },
     async resolveModelRequest(request): Promise<FamilyModelLoadRequest<XAsrModelOptions>> {
-      if (request.options?.source?.kind !== 'direct') {
-        throw new Error('X-ASR 160 ms requires local official ONNX artifacts via a direct artifact source.');
-      }
+      const source = request.options?.source ?? {
+        kind: 'huggingface' as const,
+        repoId: XASR_PUBLISHED_BUNDLE.repoId,
+        revision: XASR_PUBLISHED_BUNDLE.revision,
+      };
       return {
         family: 'x-asr',
         modelId: request.modelId ?? MODEL_ID,
@@ -18,7 +21,8 @@ export function createXAsrPresetFactory(): SpeechPresetFactory<XAsrModelOptions,
         resolvedPreset: 'x-asr',
         options: {
           ...request.options,
-          config: { ...request.options.config, chunkMs: 160 },
+          source,
+          config: { ...request.options?.config, chunkMs: 160 },
         },
       };
     },

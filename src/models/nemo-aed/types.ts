@@ -97,6 +97,9 @@ export interface NemoAedHuggingFaceSource {
   readonly decoderBackend?: NemoAedExecutionBackend;
   readonly encoderQuant?: NemoAedQuantization;
   readonly decoderQuant?: NemoAedQuantization;
+  /** External weight files for the selected encoder and decoder graphs. */
+  readonly encoderDataFilename?: string;
+  readonly decoderDataFilename?: string;
   readonly preprocessorName?: 'nemo80' | 'nemo128';
   readonly tokenizerName?: string;
   readonly configName?: string;

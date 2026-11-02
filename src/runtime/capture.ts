@@ -241,29 +241,30 @@ export function createFixedChunkResampler(options: {
   let pending = new Float32Array(chunkFrames);
   let pendingLength = 0;
 
+  const emitChunks = (samples: Float32Array): void => {
+    let offset = 0;
+    while (offset < samples.length) {
+      const count = Math.min(chunkFrames - pendingLength, samples.length - offset);
+      pending.set(samples.subarray(offset, offset + count), pendingLength);
+      pendingLength += count;
+      offset += count;
+      if (pendingLength === chunkFrames) {
+        const out = pending;
+        pending = new Float32Array(chunkFrames);
+        pendingLength = 0;
+        options.onChunk(out);
+      }
+    }
+  };
+
   return {
     push(chunk: Float32Array) {
       if (!chunk.length) return;
-      const samples = resampler.process(chunk);
-      let offset = 0;
-      while (offset < samples.length) {
-        const count = Math.min(chunkFrames - pendingLength, samples.length - offset);
-        pending.set(samples.subarray(offset, offset + count), pendingLength);
-        pendingLength += count;
-        offset += count;
-        if (pendingLength === chunkFrames) {
-          const out = pending;
-          pending = new Float32Array(chunkFrames);
-          pendingLength = 0;
-          options.onChunk(out);
-        }
-      }
+      emitChunks(resampler.process(chunk));
     },
     flush() {
-      const tail = resampler.flush();
-      if (tail.length > 0) {
-        this.push(tail);
-      }
+      // Resampler output is already at the target rate; only chunk it.
+      emitChunks(resampler.flush());
     },
   };
 }
