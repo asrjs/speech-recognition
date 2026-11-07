@@ -16,7 +16,9 @@ import type { DedupWord, FormattedTranscript, Sentence } from '../post-processin
 import type {
   ProductionTranscript,
   ProductionTranscriptMetrics,
+  ProductionTranscriptSegment,
   ProductionTranscriptSubtitles,
+  ProductionTranscriptWord,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -66,8 +68,17 @@ export interface ProductionWhisperTranscriptInput {
   readonly utteranceText: string;
   readonly isFinal: boolean;
   readonly language?: string;
-  readonly segments?: readonly unknown[];
+  readonly segments?: readonly ProductionWhisperSegmentInput[];
   readonly words?: readonly ProductionWhisperWordInput[];
+}
+
+export interface ProductionWhisperSegmentInput {
+  readonly text?: string;
+  readonly startTime?: number;
+  readonly endTime?: number;
+  readonly confidence?: number;
+  readonly start?: number;
+  readonly end?: number;
 }
 
 /** One executor word in either the Whisper native or the legacy shape. */
@@ -91,8 +102,8 @@ export interface ProductionWhisperWordInput {
  * subtitles, so they are skipped. A missing confidence becomes 0 rather than an
  * invented value, so a scored duplicate always wins de-duplication.
  */
-function toDedupWords(words: readonly ProductionWhisperWordInput[]): DedupWord[] {
-  const result: DedupWord[] = [];
+function toDedupWords(words: readonly ProductionWhisperWordInput[]): ProductionTranscriptWord[] {
+  const result: ProductionTranscriptWord[] = [];
   for (const input of words) {
     const word = input.text ?? input.word;
     const start = input.startTime ?? input.start;
@@ -106,6 +117,27 @@ function toDedupWords(words: readonly ProductionWhisperWordInput[]): DedupWord[]
       start: start as number,
       end: end as number,
       probability: Number.isFinite(confidence) ? (confidence as number) : 0,
+    });
+  }
+  return result;
+}
+
+function toProductionSegments(
+  segments: readonly ProductionWhisperSegmentInput[],
+): ProductionTranscriptSegment[] {
+  const result: ProductionTranscriptSegment[] = [];
+  for (const input of segments) {
+    const text = input.text;
+    const start = input.startTime ?? input.start;
+    const end = input.endTime ?? input.end;
+    if (typeof text !== 'string' || !Number.isFinite(start) || !Number.isFinite(end)) {
+      continue;
+    }
+    result.push({
+      text,
+      start: start as number,
+      end: end as number,
+      confidence: input.confidence,
     });
   }
   return result;
@@ -176,7 +208,7 @@ export class ProductionWhisperPipeline {
       language: nativeResult.language ?? options.language ?? 'en',
       sentences: formatted.sentences,
       words,
-      segments: nativeResult.segments ?? [],
+      segments: toProductionSegments(nativeResult.segments ?? []),
       subtitles,
       metrics: {
         ...metrics,

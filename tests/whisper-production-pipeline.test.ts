@@ -206,8 +206,8 @@ describe('ProductionWhisperPipeline', () => {
       expect(result.metrics.wordCount).toBe(3);
     });
 
-    it('does not invent confidence and passes segments through unchanged', async () => {
-      const { native, executor } = nativeExecutor([
+    it('does not invent confidence and maps segments to canonical shape', async () => {
+      const { executor } = nativeExecutor([
         { text: 'one', startTime: 0, endTime: 0.4 },
         { text: 'two', startTime: 0.5, endTime: 0.9 },
       ]);
@@ -216,7 +216,14 @@ describe('ProductionWhisperPipeline', () => {
       const result = await pipeline.transcribe(new Float32Array(16000), { sampleRate: 16000 });
 
       expect(result.words.map((word) => word.probability)).toEqual([0, 0]);
-      expect(result.segments).toBe(native.segments);
+      expect(result.segments).toEqual([
+        {
+          text: 'segment',
+          start: 0,
+          end: 2,
+          confidence: 0.7,
+        }
+      ]);
     });
 
     it('skips words without text or finite timing', async () => {
