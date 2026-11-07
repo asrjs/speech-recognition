@@ -17,6 +17,17 @@ export interface ProductionTranscriptMetrics {
   readonly sentenceCount: number;
 }
 
+export interface ProductionTranscriptWord extends DedupWord {
+  probability: number;
+}
+
+export interface ProductionTranscriptSegment {
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
+  readonly confidence?: number;
+}
+
 export interface ProductionTranscript {
   /** Full transcript text with sentences separated by newlines */
   readonly text: string;
@@ -32,9 +43,9 @@ export interface ProductionTranscript {
    * Executor words in the same shape as `sentences[].words`. `probability` is
    * the executor confidence, or 0 when the executor reported none.
    */
-  readonly words: readonly DedupWord[];
+  readonly words: readonly ProductionTranscriptWord[];
   /** Segments from the executor, passed through unchanged. */
-  readonly segments: readonly unknown[];
+  readonly segments: readonly ProductionTranscriptSegment[];
   /** Subtitles (SRT + VTT) */
   readonly subtitles: ProductionTranscriptSubtitles;
   /** Metrics */
