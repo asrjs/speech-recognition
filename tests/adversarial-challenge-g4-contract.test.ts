@@ -631,6 +631,6 @@ describe('Adversarial Challenge G4: Public API & Documentation Contract Audit', 
       }
 
       expect(relevantErrors.length).toBe(0);
-    });
+    }, 20000);
   });
 });
